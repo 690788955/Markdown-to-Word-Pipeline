@@ -25,6 +25,7 @@ param(
     [switch]$BuildAll,           # 新增：构建客户的所有文档
     [switch]$Clean,
     [switch]$InitTemplate,
+    [switch]$InstallFonts,
     [switch]$Help
 )
 
@@ -57,6 +58,7 @@ function Show-Help {
   -BuildAll         构建指定客户的所有文档
   -Clean            清理构建产物
   -InitTemplate     生成默认 Word 模板
+  -InstallFonts     安装项目字体
   -Help             显示帮助信息
 
 示例:
@@ -71,6 +73,7 @@ function Show-Help {
   .\build.ps1 -Client example-client -BuildAll    # 构建所有文档
   .\build.ps1 -ListClients                        # 列出所有客户
   .\build.ps1 -ListModules                        # 列出所有模块
+  .\build.ps1 -InstallFonts                       # 安装字体
   .\build.ps1 -Clean                              # 清理构建目录
 
 文档模块:
@@ -392,6 +395,15 @@ if ($ListModules) { Show-Modules; exit 0 }
 if ($ListDocs) { Show-Docs -ClientName $Client; exit 0 }
 if ($Clean) { Invoke-Clean; exit 0 }
 if ($InitTemplate) { Initialize-Template; exit 0 }
+if ($InstallFonts) { 
+    $fontScript = "scripts\install-fonts.ps1"
+    if (Test-Path $fontScript) {
+        & $fontScript
+    } else {
+        Write-Host "[错误] 字体安装脚本不存在: $fontScript" -ForegroundColor Red
+    }
+    exit 0 
+}
 
 # 构建所有文档
 if ($BuildAll) {
