@@ -85,7 +85,10 @@ function Show-Modules {
 function Invoke-Clean {
     Write-Host "清理构建目录..."
     if (Test-Path $BuildDir) {
-        Get-ChildItem -Path $BuildDir -Include "*.docx", "*.pdf" -File | Remove-Item -Force
+        Remove-Item -Path $BuildDir -Recurse -Force
+        Write-Host "已删除 $BuildDir 目录"
+    } else {
+        Write-Host "$BuildDir 目录不存在"
     }
     Write-Host "完成。"
 }

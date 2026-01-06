@@ -78,9 +78,9 @@ dir:
 # 清理构建产物
 .PHONY: clean
 clean:
-	@echo "Cleaning build directory..."
-	@rm -f $(BUILD_DIR)/*.docx $(BUILD_DIR)/*.pdf $(BUILD_DIR)/*.html
-	@echo "Done."
+	@echo "清理构建目录..."
+	@rm -rf $(BUILD_DIR)
+	@echo "完成。"
 
 # ==========================================
 # 列表命令
