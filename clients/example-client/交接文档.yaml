@@ -6,10 +6,10 @@ template: "default.docx"
 
 modules:
   - src/metadata.yaml
-  - src/10-background.md
-  - src/01-overview.md
-  - src/02-architecture.md
-  - src/11-contacts.md
+  - src/10-项目背景.md
+  - src/01-概述.md
+  - src/02-系统架构.md
+  - src/11-联系人.md
 
 pandoc_args:
   - "--toc"

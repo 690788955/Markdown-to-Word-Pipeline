@@ -6,9 +6,9 @@ template: "default.docx"
 
 modules:
   - src/metadata.yaml
-  - src/01-overview.md
-  - src/04-troubleshooting.md
-  - src/09-emergency.md
+  - src/01-概述.md
+  - src/04-故障处理.md
+  - src/09-应急预案.md
 
 pandoc_args:
   - "--toc"

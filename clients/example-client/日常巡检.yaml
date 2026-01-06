@@ -6,9 +6,9 @@ template: "default.docx"
 
 modules:
   - src/metadata.yaml
-  - src/01-overview.md
-  - src/03-daily-ops.md
-  - src/05-monitoring.md
+  - src/01-概述.md
+  - src/03-日常运维.md
+  - src/05-监控告警.md
 
 pandoc_args:
   - "--toc"

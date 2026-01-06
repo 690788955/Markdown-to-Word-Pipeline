@@ -6,9 +6,9 @@ template: "default.docx"
 
 modules:
   - src/metadata.yaml
-  - src/01-overview.md
-  - src/02-architecture.md
-  - src/08-deployment.md
+  - src/01-概述.md
+  - src/02-系统架构.md
+  - src/08-部署上线.md
 
 pandoc_args:
   - "--toc"
