@@ -1,0 +1,18 @@
+# 部署手册
+# 系统架构和部署相关内容
+
+client_name: "示例客户"
+template: "default.docx"
+
+modules:
+  - src/metadata.yaml
+  - src/01-overview.md
+  - src/02-architecture.md
+  - src/08-deployment.md
+
+pandoc_args:
+  - "--toc"
+  - "--number-sections"
+  - "--standalone"
+
+output_pattern: "{client}_部署手册_{date}.docx"

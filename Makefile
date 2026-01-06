@@ -1,5 +1,5 @@
 # ==========================================
-# Markdown to Word Pipeline - Makefile
+# 运维文档生成系统 - Makefile
 # ==========================================
 
 # 配置区域
@@ -7,6 +7,8 @@
 
 # 默认客户配置
 client ?= default
+# 文档类型（可选）
+doc ?=
 
 # 目录设置
 SRC_DIR := src
@@ -19,48 +21,38 @@ PANDOC := pandoc
 
 # 客户配置文件路径
 CLIENT_DIR := $(CLIENTS_DIR)/$(client)
-CONFIG_FILE := $(CLIENT_DIR)/config.yaml
-CLIENT_META := $(CLIENT_DIR)/metadata.yaml
-
-# 默认模板
-DEFAULT_TEMPLATE := $(TEMPLATES_DIR)/default.docx
 
 # ==========================================
 # 主要目标
 # ==========================================
 
-# 默认目标
 .PHONY: all
 all: build
 
-# 构建文档
 .PHONY: build
 build: check-deps check-config dir
 	@echo "=========================================="
-	@echo "Building document for client: $(client)"
+	@echo "构建文档 - 客户: $(client)"
 	@echo "=========================================="
-	@./scripts/build.sh "$(client)"
+	@./scripts/build.sh "$(client)" "$(doc)"
 
 # ==========================================
 # 检查和验证
 # ==========================================
 
-# 检查依赖
 .PHONY: check-deps
 check-deps:
 	@command -v $(PANDOC) >/dev/null 2>&1 || { \
-		echo "[ERROR] Pandoc not found. Please install Pandoc first."; \
-		echo "Visit: https://pandoc.org/installing.html"; \
-		echo "Or run: sudo apt install pandoc (Debian/Ubuntu)"; \
+		echo "[错误] 未找到 Pandoc，请先安装"; \
+		echo "安装: sudo apt install pandoc"; \
 		exit 1; \
 	}
 
-# 检查客户配置
 .PHONY: check-config
 check-config:
 	@if [ ! -d "$(CLIENT_DIR)" ]; then \
-		echo "[ERROR] Client config not found: $(client)"; \
-		echo "Available clients:"; \
+		echo "[错误] 客户配置不存在: $(client)"; \
+		echo "可用客户:"; \
 		$(MAKE) -s list-clients; \
 		exit 1; \
 	fi
@@ -69,13 +61,11 @@ check-config:
 # 目录管理
 # ==========================================
 
-# 创建输出目录
 .PHONY: dir
 dir:
 	@mkdir -p $(BUILD_DIR)
 	@mkdir -p scripts
 
-# 清理构建产物
 .PHONY: clean
 clean:
 	@echo "清理构建目录..."
@@ -86,39 +76,48 @@ clean:
 # 列表命令
 # ==========================================
 
-# 列出所有客户配置
 .PHONY: list-clients
 list-clients:
-	@echo "Available clients:"
+	@echo "可用客户:"
 	@for dir in $(CLIENTS_DIR)/*/; do \
 		echo "  - $$(basename $$dir)"; \
 	done
 
-# 列出所有文档模块
 .PHONY: list-modules
 list-modules:
-	@echo "Available modules in $(SRC_DIR)/:"
-	@find $(SRC_DIR) -maxdepth 1 \( -name "*.md" -o -name "*.yaml" \) -type f | while read f; do \
+	@echo "可用文档模块 ($(SRC_DIR)/):"
+	@find $(SRC_DIR) -maxdepth 1 \( -name "*.md" -o -name "*.yaml" \) -type f | sort | while read f; do \
 		echo "  - $$f"; \
+	done
+
+.PHONY: list-docs
+list-docs:
+	@echo "客户 [$(client)] 的文档类型:"
+	@for f in $(CLIENT_DIR)/*.yaml; do \
+		name=$$(basename "$$f" .yaml); \
+		if [ "$$name" = "metadata" ]; then continue; fi; \
+		if [ "$$name" = "config" ]; then \
+			echo "  - (默认)"; \
+		else \
+			echo "  - $$name"; \
+		fi; \
 	done
 
 # ==========================================
 # 初始化
 # ==========================================
 
-# 初始化默认模板
 .PHONY: init-template
 init-template: check-deps
-	@echo "Generating default Word template..."
+	@echo "生成默认 Word 模板..."
 	@mkdir -p $(TEMPLATES_DIR)
-	@echo "# Template" | $(PANDOC) -o $(DEFAULT_TEMPLATE)
-	@echo "Template created: $(DEFAULT_TEMPLATE)"
+	@echo "# Template" | $(PANDOC) -o $(TEMPLATES_DIR)/default.docx
+	@echo "模板已创建: $(TEMPLATES_DIR)/default.docx"
 
-# 设置脚本执行权限
 .PHONY: init
 init: dir
 	@chmod +x scripts/build.sh 2>/dev/null || true
-	@echo "Project initialized."
+	@echo "项目已初始化。"
 
 # ==========================================
 # 帮助信息
@@ -127,26 +126,25 @@ init: dir
 .PHONY: help
 help:
 	@echo "=========================================="
-	@echo "Markdown to Word Pipeline"
+	@echo "运维文档生成系统"
 	@echo "=========================================="
 	@echo ""
-	@echo "Usage: make [target] [client=CLIENT_NAME]"
+	@echo "用法: make [目标] [client=客户名] [doc=文档类型]"
 	@echo ""
-	@echo "Targets:"
-	@echo "  make              Build with default client config"
-	@echo "  make client=xxx   Build with specified client config"
-	@echo "  make list-clients List all available client configs"
-	@echo "  make list-modules List all document modules"
-	@echo "  make clean        Clean build artifacts"
-	@echo "  make init-template Generate default Word template"
-	@echo "  make init         Initialize project (set permissions)"
-	@echo "  make help         Show this help message"
+	@echo "目标:"
+	@echo "  make                    使用默认配置构建"
+	@echo "  make client=xxx         指定客户构建"
+	@echo "  make client=xxx doc=yyy 构建指定文档类型"
+	@echo "  make list-clients       列出所有客户"
+	@echo "  make list-modules       列出所有文档模块"
+	@echo "  make list-docs client=x 列出客户的文档类型"
+	@echo "  make clean              清理构建目录"
+	@echo "  make init-template      生成默认模板"
+	@echo "  make init               初始化项目"
+	@echo "  make help               显示帮助"
 	@echo ""
-	@echo "Examples:"
+	@echo "示例:"
 	@echo "  make"
 	@echo "  make client=example-client"
-	@echo "  make clean"
+	@echo "  make client=example-client doc=运维手册"
 	@echo ""
-
-# 伪目标声明
-.PHONY: all build check-deps check-config dir clean list-clients list-modules init-template init help

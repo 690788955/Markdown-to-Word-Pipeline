@@ -1,6 +1,7 @@
-# 默认配置 - 完整运维手册
+# 运维手册 - 完整版
+# 包含所有运维相关章节
 
-client_name: "默认"
+client_name: "示例客户"
 template: "default.docx"
 
 modules:
@@ -22,4 +23,4 @@ pandoc_args:
   - "--number-sections"
   - "--standalone"
 
-output_pattern: "{title}_{date}.docx"
+output_pattern: "{client}_运维手册_{date}.docx"

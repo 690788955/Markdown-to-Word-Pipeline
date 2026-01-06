@@ -1,16 +1,16 @@
 ---
-# 示例客户元数据
-# ==========================================
+# 客户元数据覆盖
+# 此文件中的值会覆盖 src/metadata.yaml 中的同名字段
 
-title: "技术解决方案"
-subtitle: "为示例科技有限公司定制"
-author: "技术团队"
-date: "2026-01-06"
+title: "XX系统运维手册"
+subtitle: "为示例客户定制"
+author: "运维团队"
+date: "2026年1月"
 version: "v1.0"
 
-# 客户特定信息
+# 客户信息
 client:
-  name: "示例科技有限公司"
-  contact: "王经理"
-  email: "wang@example.com"
+  name: "示例客户公司"
+  contact: "张工"
+  system: "XX业务系统"
 ---

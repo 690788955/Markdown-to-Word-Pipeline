@@ -1,0 +1,19 @@
+# 交接文档
+# 项目背景和系统概览
+
+client_name: "示例客户"
+template: "default.docx"
+
+modules:
+  - src/metadata.yaml
+  - src/10-background.md
+  - src/01-overview.md
+  - src/02-architecture.md
+  - src/11-contacts.md
+
+pandoc_args:
+  - "--toc"
+  - "--number-sections"
+  - "--standalone"
+
+output_pattern: "{client}_交接文档_{date}.docx"

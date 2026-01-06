@@ -1,21 +1,23 @@
 # 示例客户配置
-# ==========================================
+# 复制此目录并修改为你的客户配置
 
-# 客户基本信息
-client_name: "示例科技有限公司"
+client_name: "示例客户"
 template: "default.docx"
 
-# 要包含的文档模块（按顺序）
+# 选择需要的章节
 modules:
   - src/metadata.yaml
-  - src/01-introduction.md
-  - src/02-content.md
+  - src/01-overview.md
+  - src/02-architecture.md
+  - src/03-daily-ops.md
+  - src/04-troubleshooting.md
+  # - src/05-monitoring.md    # 按需取消注释
+  # - src/06-backup.md
+  # - src/07-security.md
 
-# Pandoc 额外参数
 pandoc_args:
   - "--toc"
   - "--number-sections"
   - "--standalone"
 
-# 输出文件名模式
-output_pattern: "{client}_{title}_{version}_{date}.docx"
+output_pattern: "{client}_运维手册_{date}.docx"

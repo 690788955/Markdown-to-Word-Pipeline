@@ -16,8 +16,11 @@
 
 param(
     [string]$Client = "default",
+    [string]$Doc = "",           # 新增：指定文档类型
     [switch]$ListClients,
+    [switch]$ListDocs,           # 新增：列出客户的所有文档
     [switch]$ListModules,
+    [switch]$BuildAll,           # 新增：构建客户的所有文档
     [switch]$Clean,
     [switch]$InitTemplate,
     [switch]$Help
@@ -45,16 +48,21 @@ Markdown to Word Pipeline (Windows)
 
 参数:
   -Client <名称>    指定客户配置（默认: default）
+  -Doc <文档类型>   指定文档类型（如：技术方案、投标书）
   -ListClients      列出所有可用客户配置
+  -ListDocs         列出指定客户的所有文档类型
   -ListModules      列出所有文档模块
+  -BuildAll         构建指定客户的所有文档
   -Clean            清理构建产物
   -InitTemplate     生成默认 Word 模板
   -Help             显示帮助信息
 
 示例:
-  .\build.ps1
-  .\build.ps1 -Client 银行客户
-  .\build.ps1 -Client 零售客户
+  .\build.ps1                              # 默认构建
+  .\build.ps1 -Client 银行客户              # 使用 config.yaml
+  .\build.ps1 -Client 银行客户 -Doc 投标书  # 指定文档类型
+  .\build.ps1 -Client 银行客户 -ListDocs    # 列出文档类型
+  .\build.ps1 -Client 银行客户 -BuildAll    # 构建所有文档
   .\build.ps1 -ListClients
   .\build.ps1 -Clean
 
@@ -76,6 +84,29 @@ function Show-Modules {
     Get-ChildItem -Path $SrcDir -Include "*.md", "*.yaml" -File -Recurse | ForEach-Object {
         $relativePath = $_.FullName.Replace((Get-Location).Path + "\", "")
         Write-Host "  - $relativePath"
+    }
+}
+
+# 列出客户的所有文档类型
+function Show-Docs {
+    param([string]$ClientName)
+    
+    $clientDir = Join-Path $ClientsDir $ClientName
+    if (-not (Test-Path $clientDir)) {
+        Write-Host "[错误] 客户不存在: $ClientName" -ForegroundColor Red
+        return
+    }
+    
+    Write-Host "客户 [$ClientName] 的文档类型:"
+    Get-ChildItem -Path $clientDir -Filter "*.yaml" | ForEach-Object {
+        $docName = $_.BaseName
+        if ($docName -eq "metadata") {
+            # 跳过 metadata.yaml
+        } elseif ($docName -eq "config") {
+            Write-Host "  - (默认)" -ForegroundColor Gray
+        } else {
+            Write-Host "  - $docName"
+        }
     }
 }
 
@@ -168,7 +199,10 @@ function Read-YamlList {
 # 构建
 # ==========================================
 function Invoke-Build {
-    param([string]$ClientName)
+    param(
+        [string]$ClientName,
+        [string]$DocType = ""
+    )
     
     # 检查 Pandoc
     $pandocPath = Get-Command pandoc -ErrorAction SilentlyContinue
@@ -184,8 +218,14 @@ function Invoke-Build {
     }
     
     $clientDir = Join-Path $ClientsDir $ClientName
-    $configFile = Join-Path $clientDir "config.yaml"
     $clientMeta = Join-Path $clientDir "metadata.yaml"
+    
+    # 确定配置文件
+    if ($DocType -ne "") {
+        $configFile = Join-Path $clientDir "$DocType.yaml"
+    } else {
+        $configFile = Join-Path $clientDir "config.yaml"
+    }
     
     # 检查客户配置
     if (-not (Test-Path $clientDir)) {
@@ -197,11 +237,16 @@ function Invoke-Build {
     
     if (-not (Test-Path $configFile)) {
         Write-Host "[错误] 配置文件不存在: $configFile" -ForegroundColor Red
+        if ($DocType -ne "") {
+            Write-Host "可用的文档类型:"
+            Show-Docs -ClientName $ClientName
+        }
         exit 1
     }
     
+    $docLabel = if ($DocType -ne "") { "[$DocType]" } else { "" }
     Write-Host "==========================================" -ForegroundColor Cyan
-    Write-Host "构建文档 - 客户: $ClientName" -ForegroundColor Cyan
+    Write-Host "构建文档 - 客户: $ClientName $docLabel" -ForegroundColor Cyan
     Write-Host "==========================================" -ForegroundColor Cyan
     
     # 读取配置
@@ -324,7 +369,31 @@ function Invoke-Build {
 if ($Help) { Show-Help; exit 0 }
 if ($ListClients) { Show-Clients; exit 0 }
 if ($ListModules) { Show-Modules; exit 0 }
+if ($ListDocs) { Show-Docs -ClientName $Client; exit 0 }
 if ($Clean) { Invoke-Clean; exit 0 }
 if ($InitTemplate) { Initialize-Template; exit 0 }
 
-Invoke-Build -ClientName $Client
+# 构建所有文档
+if ($BuildAll) {
+    $clientDir = Join-Path $ClientsDir $Client
+    if (-not (Test-Path $clientDir)) {
+        Write-Host "[错误] 客户不存在: $Client" -ForegroundColor Red
+        exit 1
+    }
+    
+    Get-ChildItem -Path $clientDir -Filter "*.yaml" | ForEach-Object {
+        $docName = $_.BaseName
+        if ($docName -ne "metadata") {
+            if ($docName -eq "config") {
+                Invoke-Build -ClientName $Client -DocType ""
+            } else {
+                Invoke-Build -ClientName $Client -DocType $docName
+            }
+            Write-Host ""
+        }
+    }
+    exit 0
+}
+
+# 单个文档构建
+Invoke-Build -ClientName $Client -DocType $Doc

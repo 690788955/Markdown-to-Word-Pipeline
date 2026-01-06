@@ -1,12 +1,13 @@
 #!/bin/bash
 # ==========================================
-# Markdown to Word Pipeline - Build Script
+# 运维文档生成系统 - 构建脚本
 # ==========================================
 
 set -e
 
 # 参数
 CLIENT="${1:-default}"
+DOC_TYPE="${2:-}"
 
 # 配置
 SRC_DIR="src"
@@ -15,8 +16,14 @@ TEMPLATES_DIR="templates"
 BUILD_DIR="build"
 
 CLIENT_DIR="${CLIENTS_DIR}/${CLIENT}"
-CONFIG_FILE="${CLIENT_DIR}/config.yaml"
 CLIENT_META="${CLIENT_DIR}/metadata.yaml"
+
+# 确定配置文件
+if [ -n "$DOC_TYPE" ]; then
+    CONFIG_FILE="${CLIENT_DIR}/${DOC_TYPE}.yaml"
+else
+    CONFIG_FILE="${CLIENT_DIR}/config.yaml"
+fi
 
 # ==========================================
 # 辅助函数
@@ -76,14 +83,18 @@ replace_placeholders() {
 # ==========================================
 
 echo "=========================================="
-echo "Building document for client: ${CLIENT}"
+if [ -n "$DOC_TYPE" ]; then
+    echo "构建文档 - 客户: ${CLIENT} [${DOC_TYPE}]"
+else
+    echo "构建文档 - 客户: ${CLIENT}"
+fi
 echo "=========================================="
 
 # 检查客户目录
 if [ ! -d "$CLIENT_DIR" ]; then
-    echo "[ERROR] Client directory not found: $CLIENT_DIR"
+    echo "[错误] 客户目录不存在: $CLIENT_DIR"
     echo ""
-    echo "Available clients:"
+    echo "可用客户:"
     for dir in ${CLIENTS_DIR}/*/; do
         echo "  - $(basename "$dir")"
     done
@@ -92,14 +103,21 @@ fi
 
 # 检查配置文件
 if [ ! -f "$CONFIG_FILE" ]; then
-    echo "[ERROR] Config file not found: $CONFIG_FILE"
-    echo "Please create a config.yaml file in the client directory."
+    echo "[错误] 配置文件不存在: $CONFIG_FILE"
+    if [ -n "$DOC_TYPE" ]; then
+        echo "可用的文档类型:"
+        for f in ${CLIENT_DIR}/*.yaml; do
+            name=$(basename "$f" .yaml)
+            [ "$name" = "metadata" ] && continue
+            [ "$name" = "config" ] && echo "  - (默认)" || echo "  - $name"
+        done
+    fi
     exit 1
 fi
 
 # 验证 YAML 格式（基础检查）
 if ! grep -q "^modules:" "$CONFIG_FILE" 2>/dev/null; then
-    echo "[WARNING] No 'modules' key found in config. Using defaults."
+    echo "[警告] 配置中未找到 'modules' 键，使用默认值"
 fi
 
 # 读取配置
@@ -123,18 +141,18 @@ done < <(read_yaml_list "$CONFIG_FILE" "pandoc_args")
 [ -z "$client_name" ] && client_name="$CLIENT"
 [ -z "$template" ] && template="default.docx"
 [ -z "$output_pattern" ] && output_pattern="{title}_{date}.docx"
-[ ${#modules[@]} -eq 0 ] && modules=("${SRC_DIR}/metadata.yaml" "${SRC_DIR}/01-introduction.md" "${SRC_DIR}/02-content.md")
+[ ${#modules[@]} -eq 0 ] && modules=("${SRC_DIR}/metadata.yaml" "${SRC_DIR}/01-overview.md")
 
-echo "Client Name: $client_name"
-echo "Template: $template"
-echo "Modules: ${modules[*]}"
+echo "客户名称: $client_name"
+echo "模板: $template"
+echo "模块: ${modules[*]}"
 
 # 检查模板文件
 template_path="${TEMPLATES_DIR}/${template}"
 if [ ! -f "$template_path" ]; then
-    echo "[WARNING] Template not found: $template_path"
-    echo "Run 'make init-template' to generate a default template."
-    echo "Building without custom template..."
+    echo "[警告] 模板不存在: $template_path"
+    echo "运行 'make init-template' 生成默认模板"
+    echo "继续构建（不使用模板）..."
     template_path=""
 fi
 
@@ -144,26 +162,24 @@ for module in "${modules[@]}"; do
     if [ -f "$module" ]; then
         valid_modules+=("$module")
     else
-        echo "[WARNING] Module not found: $module"
+        echo "[警告] 模块不存在: $module"
     fi
 done
 
 if [ ${#valid_modules[@]} -eq 0 ]; then
-    echo "[ERROR] No valid modules found!"
+    echo "[错误] 没有有效的文档模块！"
     exit 1
 fi
 
 # 检查图片引用
-echo "Checking image references..."
+echo "检查图片引用..."
 for module in "${valid_modules[@]}"; do
     if [[ "$module" == *.md ]]; then
-        # 提取图片路径
         grep -oE '!\[[^]]*\]\([^)]+\)' "$module" 2>/dev/null | while read -r img_ref; do
             img_path=$(echo "$img_ref" | sed 's/.*](\([^)]*\)).*/\1/')
-            # 检查相对路径
             full_path="${SRC_DIR}/${img_path}"
             if [[ ! "$img_path" =~ ^http ]] && [ ! -f "$full_path" ] && [ ! -f "$img_path" ]; then
-                echo "[WARNING] Image not found: $img_path (in $module)"
+                echo "[警告] 图片不存在: $img_path (在 $module 中)"
             fi
         done
     fi
@@ -195,7 +211,7 @@ title_clean=$(echo "$title" | tr ' ' '_')
 output_filename=$(replace_placeholders "$output_pattern" "$client_name_clean" "$title_clean" "$version" "$date")
 output_path="${BUILD_DIR}/${output_filename}"
 
-echo "Output: $output_path"
+echo "输出: $output_path"
 echo ""
 
 # 构建 Pandoc 命令
@@ -222,16 +238,16 @@ for arg in "${pandoc_args[@]}"; do
     pandoc_cmd+=("$arg")
 done
 
-echo "Executing: ${pandoc_cmd[*]}"
+echo "执行: ${pandoc_cmd[*]}"
 echo ""
 
 # 执行 Pandoc
 if "${pandoc_cmd[@]}"; then
     echo "=========================================="
-    echo "Build successful!"
-    echo "Output: $output_path"
+    echo "构建成功！"
+    echo "输出文件: $output_path"
     echo "=========================================="
 else
-    echo "[ERROR] Pandoc failed!"
+    echo "[错误] Pandoc 执行失败！"
     exit 1
 fi
