@@ -8,6 +8,7 @@ set -e
 # 参数
 CLIENT="${1:-default}"
 DOC_TYPE="${2:-}"
+CUSTOM_CLIENT_NAME="${3:-}"
 
 # 配置
 SRC_DIR="src"
@@ -142,6 +143,12 @@ done < <(read_yaml_list "$CONFIG_FILE" "pandoc_args")
 [ -z "$template" ] && template="default.docx"
 [ -z "$output_pattern" ] && output_pattern="{title}_{date}.docx"
 [ ${#modules[@]} -eq 0 ] && modules=("${SRC_DIR}/metadata.yaml" "${SRC_DIR}/01-overview.md")
+
+# 如果传入了自定义客户名称，使用它覆盖配置
+if [ -n "$CUSTOM_CLIENT_NAME" ]; then
+    client_name="$CUSTOM_CLIENT_NAME"
+    echo "使用自定义客户名称: $CUSTOM_CLIENT_NAME"
+fi
 
 echo "客户名称: $client_name"
 echo "模板: $template"

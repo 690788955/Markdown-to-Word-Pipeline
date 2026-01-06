@@ -102,3 +102,55 @@ build-all-clients:
     # 仅手动触发
     - when: manual
       allow_failure: true
+
+# ==========================================
+# Web 应用构建
+# ==========================================
+
+# 构建 Web 应用
+build-web:
+  stage: build
+  image: golang:1.21
+  
+  script:
+    - cd web
+    - go build -o doc-generator-web-linux-amd64 .
+    - GOOS=windows GOARCH=amd64 go build -o doc-generator-web-windows-amd64.exe .
+  
+  artifacts:
+    name: "web-app-${CI_COMMIT_SHORT_SHA}"
+    paths:
+      - web/doc-generator-web-linux-amd64
+      - web/doc-generator-web-windows-amd64.exe
+    expire_in: 1 week
+  
+  rules:
+    # web 目录有变更时自动构建
+    - if: $CI_COMMIT_BRANCH == "main"
+      changes:
+        - web/**
+    - if: $CI_COMMIT_BRANCH == "master"
+      changes:
+        - web/**
+    # 手动触发
+    - when: manual
+      allow_failure: true
+
+# 构建 Docker 镜像（可选）
+build-web-docker:
+  stage: build
+  image: docker:latest
+  services:
+    - docker:dind
+  
+  script:
+    - docker build -t doc-generator-web:${CI_COMMIT_SHORT_SHA} -f web/Dockerfile .
+    - docker tag doc-generator-web:${CI_COMMIT_SHORT_SHA} doc-generator-web:latest
+    # 如果配置了 Container Registry，可以推送镜像
+    # - docker push $CI_REGISTRY_IMAGE:${CI_COMMIT_SHORT_SHA}
+    # - docker push $CI_REGISTRY_IMAGE:latest
+  
+  rules:
+    # 仅手动触发
+    - when: manual
+      allow_failure: true

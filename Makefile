@@ -9,6 +9,8 @@
 client ?= default
 # 文档类型（可选）
 doc ?=
+# 自定义客户名称（可选，覆盖配置中的 client_name）
+client_name ?=
 
 # 目录设置
 SRC_DIR := src
@@ -34,7 +36,7 @@ build: check-deps check-config dir
 	@echo "=========================================="
 	@echo "构建文档 - 客户: $(client)"
 	@echo "=========================================="
-	@./scripts/build.sh "$(client)" "$(doc)"
+	@./scripts/build.sh "$(client)" "$(doc)" "$(client_name)"
 
 # ==========================================
 # 检查和验证
@@ -129,12 +131,13 @@ help:
 	@echo "运维文档生成系统"
 	@echo "=========================================="
 	@echo ""
-	@echo "用法: make [目标] [client=客户名] [doc=文档类型]"
+	@echo "用法: make [目标] [client=客户名] [doc=文档类型] [client_name=自定义名称]"
 	@echo ""
 	@echo "目标:"
 	@echo "  make                    使用默认配置构建"
 	@echo "  make client=xxx         指定客户构建"
 	@echo "  make client=xxx doc=yyy 构建指定文档类型"
+	@echo "  make client=xxx client_name=zzz  使用自定义客户名称"
 	@echo "  make list-clients       列出所有客户"
 	@echo "  make list-modules       列出所有文档模块"
 	@echo "  make list-docs client=x 列出客户的文档类型"
@@ -151,6 +154,7 @@ help:
 	@echo "  make client=example-client doc=应急预案"
 	@echo "  make client=example-client doc=日常巡检"
 	@echo "  make client=example-client doc=交接文档"
+	@echo "  make client=example-client client_name=某某公司"
 	@echo "  make list-docs client=example-client"
 	@echo ""
 	@echo "文档模块:"

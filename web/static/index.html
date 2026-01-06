@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>运维文档生成系统</title>
+    <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>📄 运维文档生成系统</h1>
+            <p class="subtitle">选择客户和文档类型，一键生成 Word 文档</p>
+        </header>
+
+        <main>
+            <section class="card">
+                <h2>生成文档</h2>
+                
+                <div class="form-group">
+                    <label for="clientSelect">选择客户配置</label>
+                    <div class="select-wrapper">
+                        <select id="clientSelect" disabled>
+                            <option value="">加载中...</option>
+                        </select>
+                        <button type="button" id="refreshClients" class="btn-icon" title="刷新客户列表">🔄</button>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label for="clientNameInput">客户名称（可选，覆盖配置中的名称）</label>
+                    <input type="text" id="clientNameInput" placeholder="留空则使用配置中的默认名称">
+                    <small>输入后将替换生成文档中的客户名称</small>
+                </div>
+
+                <div class="form-group">
+                    <label>选择文档类型（可多选）</label>
+                    <div id="docTypeList" class="checkbox-list">
+                        <p class="placeholder">请先选择客户配置</p>
+                    </div>
+                    <div class="checkbox-actions">
+                        <button type="button" id="selectAll" class="btn-link" style="display:none;">全选</button>
+                        <button type="button" id="selectNone" class="btn-link" style="display:none;">取消全选</button>
+                    </div>
+                </div>
+
+                <div class="form-actions">
+                    <button type="button" id="generateBtn" class="btn btn-primary" disabled>
+                        <span class="btn-text">生成文档</span>
+                        <span class="btn-loading" style="display: none;">生成中...</span>
+                    </button>
+                </div>
+
+                <!-- 生成结果 -->
+                <div id="result" class="result" style="display: none;">
+                    <div id="resultSuccess" class="result-success" style="display: none;">
+                        <p>✅ 文档生成成功！</p>
+                        <div id="downloadLinks"></div>
+                    </div>
+                    <div id="resultError" class="result-error" style="display: none;">
+                        <p>❌ <span id="errorMessage"></span></p>
+                        <button type="button" id="retryBtn" class="btn btn-secondary">重试</button>
+                    </div>
+                </div>
+            </section>
+        </main>
+
+        <footer>
+            <p>运维文档生成系统 &copy; 2026</p>
+        </footer>
+    </div>
+
+    <script src="/static/app.js"></script>
+</body>
+</html>

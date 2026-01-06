@@ -7,6 +7,7 @@
 - 📝 **模块化文档**: 将运维文档拆分为独立模块（架构、日常运维、故障处理等）
 - 🎨 **多客户支持**: 为不同客户配置专属的文档组合和元数据
 - 🔧 **自动化构建**: 通过命令一键生成 Word 文档
+- 🌐 **Web 界面**: 提供可视化界面，选择客户和文档类型即可生成
 - 🚀 **CI/CD 集成**: 支持 GitHub Actions / GitLab CI 自动构建
 
 ## 目录结构
@@ -44,6 +45,11 @@ project-root/
 │
 ├── scripts/                    # 构建脚本
 │   └── build.sh
+│
+├── web/                        # Web 界面（Go）
+│   ├── main.go                 # 入口文件
+│   ├── static/                 # 前端资源
+│   └── README.md               # Web 使用说明
 │
 └── build/                      # 输出目录
 ```
@@ -92,6 +98,34 @@ make client=example-client
 ### 3. 查看输出
 
 构建完成后，Word 文档保存在 `build/` 目录。
+
+## Web 界面
+
+除了命令行，还可以使用 Web 界面生成文档：
+
+### 启动 Web 服务
+
+```bash
+# 进入 web 目录构建
+cd web
+go build -o doc-generator-web .
+
+# 回到项目根目录运行
+cd ..
+./web/doc-generator-web      # Linux/macOS
+web\doc-generator-web.exe    # Windows
+```
+
+访问 http://localhost:8080 即可使用。
+
+### Web 功能
+
+- 选择客户和文档类型
+- 一键生成并下载文档
+- 创建新客户配置
+- 实时显示配置更新
+
+详细说明见 [web/README.md](web/README.md)
 
 ## 常用命令
 

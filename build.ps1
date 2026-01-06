@@ -19,6 +19,7 @@
 param(
     [string]$Client = "default",
     [string]$Doc = "",           # 新增：指定文档类型
+    [string]$ClientName = "",    # 新增：自定义客户名称（覆盖配置）
     [switch]$ListClients,
     [switch]$ListDocs,           # 新增：列出客户的所有文档
     [switch]$ListModules,
@@ -223,8 +224,9 @@ function Read-YamlList {
 # ==========================================
 function Invoke-Build {
     param(
-        [string]$ClientName,
-        [string]$DocType = ""
+        [string]$ClientConfig,
+        [string]$DocType = "",
+        [string]$CustomClientName = ""
     )
     
     # 检查 Pandoc
@@ -240,7 +242,7 @@ function Invoke-Build {
         New-Item -ItemType Directory -Path $BuildDir | Out-Null
     }
     
-    $clientDir = Join-Path $ClientsDir $ClientName
+    $clientDir = Join-Path $ClientsDir $ClientConfig
     $clientMeta = Join-Path $clientDir "metadata.yaml"
     
     # 确定配置文件
@@ -252,7 +254,7 @@ function Invoke-Build {
     
     # 检查客户配置
     if (-not (Test-Path $clientDir)) {
-        Write-Host "[错误] 客户配置不存在: $ClientName" -ForegroundColor Red
+        Write-Host "[错误] 客户配置不存在: $ClientConfig" -ForegroundColor Red
         Write-Host ""
         Show-Clients
         exit 1
@@ -262,14 +264,14 @@ function Invoke-Build {
         Write-Host "[错误] 配置文件不存在: $configFile" -ForegroundColor Red
         if ($DocType -ne "") {
             Write-Host "可用的文档类型:"
-            Show-Docs -ClientName $ClientName
+            Show-Docs -ClientName $ClientConfig
         }
         exit 1
     }
     
     $docLabel = if ($DocType -ne "") { "[$DocType]" } else { "" }
     Write-Host "==========================================" -ForegroundColor Cyan
-    Write-Host "构建文档 - 客户: $ClientName $docLabel" -ForegroundColor Cyan
+    Write-Host "构建文档 - 客户: $ClientConfig $docLabel" -ForegroundColor Cyan
     Write-Host "==========================================" -ForegroundColor Cyan
     
     # 读取配置
@@ -279,8 +281,14 @@ function Invoke-Build {
     $modules = Read-YamlList -FilePath $configFile -Key "modules"
     $pandocArgs = Read-YamlList -FilePath $configFile -Key "pandoc_args"
     
+    # 如果传入了自定义客户名称，使用它覆盖配置
+    if ($CustomClientName -ne "") {
+        $clientNameValue = $CustomClientName
+        Write-Host "使用自定义客户名称: $CustomClientName" -ForegroundColor Yellow
+    }
+    
     # 默认值
-    if (-not $clientNameValue) { $clientNameValue = $ClientName }
+    if (-not $clientNameValue) { $clientNameValue = $ClientConfig }
     if (-not $template) { $template = "default.docx" }
     if (-not $outputPattern) { $outputPattern = "{title}_{date}.docx" }
     if ($modules.Count -eq 0) {
@@ -417,9 +425,9 @@ if ($BuildAll) {
         $docName = $_.BaseName
         if ($docName -ne "metadata") {
             if ($docName -eq "config") {
-                Invoke-Build -ClientName $Client -DocType ""
+                Invoke-Build -ClientConfig $Client -DocType "" -CustomClientName $ClientName
             } else {
-                Invoke-Build -ClientName $Client -DocType $docName
+                Invoke-Build -ClientConfig $Client -DocType $docName -CustomClientName $ClientName
             }
             Write-Host ""
         }
@@ -428,4 +436,4 @@ if ($BuildAll) {
 }
 
 # 单个文档构建
-Invoke-Build -ClientName $Client -DocType $Doc
+Invoke-Build -ClientConfig $Client -DocType $Doc -CustomClientName $ClientName

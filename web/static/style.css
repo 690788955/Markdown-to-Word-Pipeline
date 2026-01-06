@@ -1,0 +1,425 @@
+/* 基础样式 */
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, "Noto Sans SC", sans-serif;
+    background-color: #f5f7fa;
+    color: #333;
+    line-height: 1.6;
+    min-height: 100vh;
+}
+
+.container {
+    max-width: 800px;
+    margin: 0 auto;
+    padding: 20px;
+}
+
+/* 头部 */
+header {
+    text-align: center;
+    padding: 40px 20px;
+}
+
+header h1 {
+    font-size: 2rem;
+    color: #2c3e50;
+    margin-bottom: 10px;
+}
+
+header .subtitle {
+    color: #7f8c8d;
+    font-size: 1rem;
+}
+
+/* 卡片 */
+.card {
+    background: white;
+    border-radius: 12px;
+    padding: 30px;
+    margin-bottom: 20px;
+    box-shadow: 0 2px 12px rgba(0, 0, 0, 0.08);
+}
+
+.card h2 {
+    font-size: 1.25rem;
+    color: #2c3e50;
+    margin-bottom: 20px;
+    padding-bottom: 10px;
+    border-bottom: 2px solid #eee;
+}
+
+/* 表单 */
+.form-group {
+    margin-bottom: 20px;
+}
+
+.form-group label {
+    display: block;
+    font-weight: 500;
+    margin-bottom: 8px;
+    color: #34495e;
+}
+
+.form-group small {
+    display: block;
+    margin-top: 5px;
+    color: #95a5a6;
+    font-size: 0.85rem;
+}
+
+.select-wrapper {
+    display: flex;
+    gap: 10px;
+    align-items: center;
+}
+
+.select-wrapper select {
+    flex: 1;
+}
+
+select, input[type="text"] {
+    width: 100%;
+    padding: 12px 15px;
+    border: 2px solid #e0e0e0;
+    border-radius: 8px;
+    font-size: 1rem;
+    transition: border-color 0.2s, box-shadow 0.2s;
+    background-color: white;
+}
+
+select:focus, input[type="text"]:focus {
+    outline: none;
+    border-color: #3498db;
+    box-shadow: 0 0 0 3px rgba(52, 152, 219, 0.1);
+}
+
+select:disabled, input[type="text"]:disabled {
+    background-color: #f8f9fa;
+    cursor: not-allowed;
+}
+
+/* 复选框列表 */
+.checkbox-list {
+    border: 2px solid #e0e0e0;
+    border-radius: 8px;
+    padding: 15px;
+    max-height: 250px;
+    overflow-y: auto;
+}
+
+.checkbox-list .placeholder {
+    color: #95a5a6;
+    text-align: center;
+    padding: 20px;
+}
+
+.checkbox-item {
+    display: flex;
+    align-items: center;
+    padding: 10px;
+    border-radius: 6px;
+    cursor: pointer;
+    transition: background 0.2s;
+}
+
+.checkbox-item:hover {
+    background: #f8f9fa;
+}
+
+.checkbox-item input[type="checkbox"] {
+    width: 18px;
+    height: 18px;
+    margin-right: 12px;
+    cursor: pointer;
+}
+
+.checkbox-item label {
+    cursor: pointer;
+    flex: 1;
+    font-weight: normal;
+    margin-bottom: 0;
+}
+
+.checkbox-item .doc-default {
+    font-size: 0.8rem;
+    color: #3498db;
+    margin-left: 8px;
+}
+
+.checkbox-actions {
+    margin-top: 10px;
+    display: flex;
+    gap: 15px;
+}
+
+.btn-link {
+    background: none;
+    border: none;
+    color: #3498db;
+    cursor: pointer;
+    font-size: 0.9rem;
+    padding: 0;
+}
+
+.btn-link:hover {
+    text-decoration: underline;
+}
+
+/* 按钮 */
+.btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 12px 24px;
+    border: none;
+    border-radius: 8px;
+    font-size: 1rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s;
+    text-decoration: none;
+}
+
+.btn:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+}
+
+.btn-primary {
+    background: linear-gradient(135deg, #3498db, #2980b9);
+    color: white;
+}
+
+.btn-primary:hover:not(:disabled) {
+    background: linear-gradient(135deg, #2980b9, #1f6dad);
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(52, 152, 219, 0.3);
+}
+
+.btn-secondary {
+    background: #ecf0f1;
+    color: #34495e;
+}
+
+.btn-secondary:hover:not(:disabled) {
+    background: #dfe6e9;
+}
+
+.btn-success {
+    background: linear-gradient(135deg, #27ae60, #219a52);
+    color: white;
+    margin: 5px;
+}
+
+.btn-success:hover:not(:disabled) {
+    background: linear-gradient(135deg, #219a52, #1e8449);
+}
+
+.btn-icon {
+    padding: 10px;
+    background: #ecf0f1;
+    border: none;
+    border-radius: 8px;
+    cursor: pointer;
+    font-size: 1.1rem;
+    transition: background 0.2s;
+}
+
+.btn-icon:hover {
+    background: #dfe6e9;
+}
+
+.form-actions {
+    margin-top: 25px;
+}
+
+/* 结果区域 */
+.result {
+    margin-top: 20px;
+    padding: 20px;
+    border-radius: 8px;
+}
+
+.result-success {
+    background: #d4edda;
+    border: 1px solid #c3e6cb;
+    color: #155724;
+}
+
+.result-success p {
+    margin-bottom: 15px;
+}
+
+#downloadLinks {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+}
+
+.result-error {
+    background: #f8d7da;
+    border: 1px solid #f5c6cb;
+    color: #721c24;
+}
+
+.result-error p {
+    margin-bottom: 15px;
+}
+
+/* 加载状态 */
+.btn-loading {
+    display: inline-flex;
+    align-items: center;
+}
+
+.btn-loading::before {
+    content: "";
+    width: 16px;
+    height: 16px;
+    border: 2px solid transparent;
+    border-top-color: currentColor;
+    border-radius: 50%;
+    margin-right: 8px;
+    animation: spin 0.8s linear infinite;
+}
+
+@keyframes spin {
+    to {
+        transform: rotate(360deg);
+    }
+}
+
+/* 页脚 */
+footer {
+    text-align: center;
+    padding: 30px 20px;
+    color: #95a5a6;
+    font-size: 0.9rem;
+}
+
+/* 响应式布局 */
+@media (max-width: 600px) {
+    .container {
+        padding: 15px;
+    }
+
+    header {
+        padding: 30px 15px;
+    }
+
+    header h1 {
+        font-size: 1.5rem;
+    }
+
+    .card {
+        padding: 20px;
+    }
+
+    .btn {
+        width: 100%;
+    }
+
+    .select-wrapper {
+        flex-direction: column;
+    }
+
+    .select-wrapper .btn-icon {
+        width: 100%;
+    }
+
+    #downloadLinks {
+        flex-direction: column;
+    }
+
+    #downloadLinks .btn {
+        width: 100%;
+    }
+}
+
+/* 深色模式支持 */
+@media (prefers-color-scheme: dark) {
+    body {
+        background-color: #1a1a2e;
+        color: #eee;
+    }
+
+    .card {
+        background: #16213e;
+        box-shadow: 0 2px 12px rgba(0, 0, 0, 0.3);
+    }
+
+    .card h2 {
+        color: #eee;
+        border-bottom-color: #333;
+    }
+
+    header h1 {
+        color: #eee;
+    }
+
+    header .subtitle {
+        color: #aaa;
+    }
+
+    .form-group label {
+        color: #ddd;
+    }
+
+    select, input[type="text"] {
+        background-color: #0f3460;
+        border-color: #333;
+        color: #eee;
+    }
+
+    select:focus, input[type="text"]:focus {
+        border-color: #3498db;
+    }
+
+    .checkbox-list {
+        background-color: #0f3460;
+        border-color: #333;
+    }
+
+    .checkbox-item:hover {
+        background: #1a4a7a;
+    }
+
+    .btn-secondary {
+        background: #0f3460;
+        color: #eee;
+    }
+
+    .btn-secondary:hover:not(:disabled) {
+        background: #1a4a7a;
+    }
+
+    .btn-icon {
+        background: #0f3460;
+        color: #eee;
+    }
+
+    .btn-icon:hover {
+        background: #1a4a7a;
+    }
+
+    .result-success {
+        background: #1e4620;
+        border-color: #2d6a30;
+        color: #a3d9a5;
+    }
+
+    .result-error {
+        background: #4a1c1c;
+        border-color: #6a2c2c;
+        color: #f5a5a5;
+    }
+
+    footer {
+        color: #666;
+    }
+}
