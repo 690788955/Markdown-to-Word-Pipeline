@@ -1,0 +1,149 @@
+# ==========================================
+# Markdown to Word Pipeline - GitHub Actions
+# ==========================================
+
+name: Build Documents
+
+on:
+  # 推送到 main 分支时自动构建
+  push:
+    branches: [main, master]
+    paths:
+      - 'src/**'
+      - 'clients/**'
+      - 'templates/**'
+  
+  # Pull Request 时构建（用于预览）
+  pull_request:
+    branches: [main, master]
+  
+  # 手动触发，可指定客户
+  workflow_dispatch:
+    inputs:
+      client:
+        description: '客户名称（留空则构建所有客户）'
+        required: false
+        default: ''
+      all_clients:
+        description: '构建所有客户'
+        type: boolean
+        default: false
+
+jobs:
+  # 构建单个客户文档
+  build-single:
+    if: github.event_name != 'workflow_dispatch' || (github.event.inputs.client != '' && github.event.inputs.all_clients == 'false')
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      
+      - name: Setup Pandoc
+        uses: pandoc/actions/setup@v1
+        with:
+          version: 3.1.11
+      
+      - name: Create directories
+        run: |
+          mkdir -p build templates
+          chmod +x scripts/build.sh
+      
+      - name: Generate default template
+        run: |
+          if [ ! -f "templates/default.docx" ]; then
+            echo "# Template" | pandoc -o templates/default.docx
+          fi
+      
+      - name: Build document
+        run: |
+          CLIENT="${{ github.event.inputs.client }}"
+          if [ -z "$CLIENT" ]; then
+            CLIENT="default"
+          fi
+          make client="$CLIENT"
+      
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: document-${{ github.event.inputs.client || 'default' }}-${{ github.sha }}
+          path: build/*.docx
+          retention-days: 30
+
+  # 构建所有客户文档
+  build-all:
+    if: github.event_name == 'workflow_dispatch' && github.event.inputs.all_clients == 'true'
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      
+      - name: Setup Pandoc
+        uses: pandoc/actions/setup@v1
+        with:
+          version: 3.1.11
+      
+      - name: Create directories
+        run: |
+          mkdir -p build templates
+          chmod +x scripts/build.sh
+      
+      - name: Generate default template
+        run: |
+          echo "# Template" | pandoc -o templates/default.docx
+      
+      - name: Build all clients
+        run: |
+          for client_dir in clients/*/; do
+            client=$(basename "$client_dir")
+            echo "=========================================="
+            echo "Building for client: $client"
+            echo "=========================================="
+            make client="$client" || true
+          done
+      
+      - name: Upload all artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: all-documents-${{ github.sha }}
+          path: build/*.docx
+          retention-days: 30
+
+  # 发布 Release 时自动构建所有文档
+  build-release:
+    if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/')
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      
+      - name: Setup Pandoc
+        uses: pandoc/actions/setup@v1
+        with:
+          version: 3.1.11
+      
+      - name: Create directories
+        run: |
+          mkdir -p build templates
+          chmod +x scripts/build.sh
+      
+      - name: Generate default template
+        run: |
+          echo "# Template" | pandoc -o templates/default.docx
+      
+      - name: Build all clients
+        run: |
+          for client_dir in clients/*/; do
+            client=$(basename "$client_dir")
+            echo "Building for client: $client"
+            make client="$client" || true
+          done
+      
+      - name: Upload to Release
+        uses: softprops/action-gh-release@v1
+        with:
+          files: build/*.docx
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

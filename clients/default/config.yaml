@@ -1,0 +1,21 @@
+# 默认配置
+# 包含所有章节的完整方案
+
+client_name: "默认"
+template: "default.docx"
+
+modules:
+  - src/metadata.yaml
+  - src/01-executive-summary.md
+  - src/02-current-analysis.md
+  - src/03-solution-design.md
+  - src/04-implementation-plan.md
+  - src/05-budget.md
+  - src/06-appendix.md
+
+pandoc_args:
+  - "--toc"
+  - "--number-sections"
+  - "--standalone"
+
+output_pattern: "{title}_{date}.docx"

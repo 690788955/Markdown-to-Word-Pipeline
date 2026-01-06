@@ -1,0 +1,25 @@
+# 构建产物
+build/*.docx
+build/*.pdf
+build/*.html
+
+# 临时文件
+*.tmp
+*.bak
+*~
+
+# 编辑器文件
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# 系统文件
+.DS_Store
+Thumbs.db
+
+# Pandoc 临时文件
+*.tex
+*.aux
+*.log
+*.out

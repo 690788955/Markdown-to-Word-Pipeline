@@ -1,0 +1,21 @@
+# 示例客户配置
+# ==========================================
+
+# 客户基本信息
+client_name: "示例科技有限公司"
+template: "default.docx"
+
+# 要包含的文档模块（按顺序）
+modules:
+  - src/metadata.yaml
+  - src/01-introduction.md
+  - src/02-content.md
+
+# Pandoc 额外参数
+pandoc_args:
+  - "--toc"
+  - "--number-sections"
+  - "--standalone"
+
+# 输出文件名模式
+output_pattern: "{client}_{title}_{version}_{date}.docx"

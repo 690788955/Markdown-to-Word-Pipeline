@@ -1,0 +1,104 @@
+# ==========================================
+# Markdown to Word Pipeline - GitLab CI/CD
+# ==========================================
+
+stages:
+  - build
+
+variables:
+  # 默认客户配置，可通过 CI/CD 变量覆盖
+  CLIENT: "default"
+
+# 构建文档
+build-document:
+  stage: build
+  image: pandoc/latex:latest
+  
+  before_script:
+    # 设置脚本执行权限
+    - chmod +x scripts/build.sh
+    # 创建必要目录
+    - mkdir -p build templates
+  
+  script:
+    # 生成默认模板（如果不存在）
+    - |
+      if [ ! -f "templates/default.docx" ]; then
+        echo "# Template" | pandoc -o templates/default.docx
+      fi
+    # 执行构建
+    - make client=${CLIENT}
+  
+  artifacts:
+    name: "document-${CI_COMMIT_REF_SLUG}-${CI_COMMIT_SHORT_SHA}"
+    paths:
+      - build/*.docx
+    expire_in: 1 week
+  
+  rules:
+    # 主分支推送时自动构建
+    - if: $CI_COMMIT_BRANCH == "main"
+    - if: $CI_COMMIT_BRANCH == "master"
+    # 手动触发
+    - when: manual
+      allow_failure: true
+
+# 为特定客户构建（手动触发）
+build-for-client:
+  stage: build
+  image: pandoc/latex:latest
+  
+  before_script:
+    - chmod +x scripts/build.sh
+    - mkdir -p build templates
+  
+  script:
+    - |
+      if [ ! -f "templates/default.docx" ]; then
+        echo "# Template" | pandoc -o templates/default.docx
+      fi
+    - make client=${CLIENT}
+  
+  artifacts:
+    name: "document-${CLIENT}-${CI_COMMIT_SHORT_SHA}"
+    paths:
+      - build/*.docx
+    expire_in: 1 week
+  
+  rules:
+    # 仅手动触发
+    - when: manual
+      allow_failure: true
+
+# 构建所有客户文档
+build-all-clients:
+  stage: build
+  image: pandoc/latex:latest
+  
+  before_script:
+    - chmod +x scripts/build.sh
+    - mkdir -p build templates
+  
+  script:
+    - |
+      if [ ! -f "templates/default.docx" ]; then
+        echo "# Template" | pandoc -o templates/default.docx
+      fi
+    # 遍历所有客户配置并构建
+    - |
+      for client_dir in clients/*/; do
+        client=$(basename "$client_dir")
+        echo "Building for client: $client"
+        make client="$client" || true
+      done
+  
+  artifacts:
+    name: "all-documents-${CI_COMMIT_SHORT_SHA}"
+    paths:
+      - build/*.docx
+    expire_in: 1 week
+  
+  rules:
+    # 仅手动触发
+    - when: manual
+      allow_failure: true
