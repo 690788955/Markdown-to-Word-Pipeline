@@ -1,17 +1,19 @@
 <# 
 .SYNOPSIS
-    Markdown to Word Pipeline - Windows 构建脚本
+    运维文档生成系统 - Windows 构建脚本
 
 .DESCRIPTION
-    将 Markdown 文档组合并转换为 Word 格式
+    将 Markdown 运维文档模块组合并转换为 Word 格式
 
 .EXAMPLE
-    .\build.ps1                     # 使用默认配置构建
-    .\build.ps1 -Client 银行客户     # 指定客户构建
-    .\build.ps1 -ListClients        # 列出所有客户
-    .\build.ps1 -Clean              # 清理构建目录
-    .\build.ps1 -InitTemplate       # 生成默认模板
-    .\build.ps1 -Help               # 显示帮助
+    .\build.ps1                                    # 使用默认配置构建
+    .\build.ps1 -Client example-client             # 指定客户构建
+    .\build.ps1 -Client example-client -Doc 运维手册  # 构建运维手册
+    .\build.ps1 -Client example-client -ListDocs   # 列出文档类型
+    .\build.ps1 -Client example-client -BuildAll   # 构建所有文档
+    .\build.ps1 -ListClients                       # 列出所有客户
+    .\build.ps1 -Clean                             # 清理构建目录
+    .\build.ps1 -Help                              # 显示帮助
 #>
 
 param(
@@ -41,14 +43,14 @@ $BuildDir = "build"
 function Show-Help {
     Write-Host @"
 ==========================================
-Markdown to Word Pipeline (Windows)
+运维文档生成系统 (Windows)
 ==========================================
 
 用法: .\build.ps1 [参数]
 
 参数:
   -Client <名称>    指定客户配置（默认: default）
-  -Doc <文档类型>   指定文档类型（如：技术方案、投标书）
+  -Doc <文档类型>   指定文档类型（如：运维手册、部署手册）
   -ListClients      列出所有可用客户配置
   -ListDocs         列出指定客户的所有文档类型
   -ListModules      列出所有文档模块
@@ -58,13 +60,31 @@ Markdown to Word Pipeline (Windows)
   -Help             显示帮助信息
 
 示例:
-  .\build.ps1                              # 默认构建
-  .\build.ps1 -Client 银行客户              # 使用 config.yaml
-  .\build.ps1 -Client 银行客户 -Doc 投标书  # 指定文档类型
-  .\build.ps1 -Client 银行客户 -ListDocs    # 列出文档类型
-  .\build.ps1 -Client 银行客户 -BuildAll    # 构建所有文档
-  .\build.ps1 -ListClients
-  .\build.ps1 -Clean
+  .\build.ps1                                     # 默认构建
+  .\build.ps1 -Client example-client              # 使用 config.yaml
+  .\build.ps1 -Client example-client -Doc 运维手册   # 构建运维手册
+  .\build.ps1 -Client example-client -Doc 部署手册   # 构建部署手册
+  .\build.ps1 -Client example-client -Doc 应急预案   # 构建应急预案
+  .\build.ps1 -Client example-client -Doc 日常巡检   # 构建日常巡检手册
+  .\build.ps1 -Client example-client -Doc 交接文档   # 构建交接文档
+  .\build.ps1 -Client example-client -ListDocs    # 列出文档类型
+  .\build.ps1 -Client example-client -BuildAll    # 构建所有文档
+  .\build.ps1 -ListClients                        # 列出所有客户
+  .\build.ps1 -ListModules                        # 列出所有模块
+  .\build.ps1 -Clean                              # 清理构建目录
+
+文档模块:
+  01-概述.md       概述、适用范围
+  02-系统架构.md   系统架构、服务器清单
+  03-日常运维.md   日常巡检、常用命令
+  04-故障处理.md   故障分级、处理流程
+  05-监控告警.md   监控体系、告警阈值
+  06-备份恢复.md   备份策略、恢复流程
+  07-安全规范.md   访问控制、安全检查
+  08-部署上线.md   部署流程、回滚方案
+  09-应急预案.md   应急响应、灾难恢复
+  10-项目背景.md   项目背景、业务说明
+  11-联系人.md     联系人清单、值班表
 
 "@
 }
