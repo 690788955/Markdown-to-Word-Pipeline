@@ -5,19 +5,7 @@
 name: Build Documents
 
 on:
-  # 推送到 main 分支时自动构建
-  push:
-    branches: [main, master]
-    paths:
-      - 'src/**'
-      - 'clients/**'
-      - 'templates/**'
-  
-  # Pull Request 时构建（用于预览）
-  pull_request:
-    branches: [main, master]
-  
-  # 手动触发，可指定客户
+  # 仅手动触发
   workflow_dispatch:
     inputs:
       client:
@@ -110,9 +98,11 @@ jobs:
           path: build/*.docx
           retention-days: 30
 
-  # 发布 Release 时自动构建所有文档
+  # 发布 Release 时自动构建所有文档（可选，取消注释启用）
+  # release:
+  #   types: [published]
   build-release:
-    if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/')
+    if: false  # 禁用自动 Release 构建
     runs-on: ubuntu-latest
     
     steps:
