@@ -1,6 +1,6 @@
 # ==========================================
 # 运维文档生成系统 - Docker 构建文件
-# 支持 Word 和 PDF 格式输出
+# 支持 Word 和 PDF 格式输出，支持 amd64/arm64 架构
 # ==========================================
 # 多阶段构建，优化镜像大小
 #
@@ -18,15 +18,13 @@
 #     -v /path/to/your/templates:/app/templates \
 #     -v /path/to/output:/app/build \
 #     doc-generator
-#
-#   # 只挂载客户配置和输出目录
-#   docker run -p 8080:8080 \
-#     -v /path/to/your/clients:/app/clients \
-#     -v /path/to/output:/app/build \
-#     doc-generator
 
 # 阶段1: 构建 Go 应用
-FROM golang:1.21-alpine AS builder
+FROM --platform=$BUILDPLATFORM golang:1.21-alpine AS builder
+
+ARG TARGETPLATFORM
+ARG TARGETOS
+ARG TARGETARCH
 
 WORKDIR /build
 
@@ -37,24 +35,29 @@ RUN go mod download
 # 复制源代码
 COPY web/ ./
 
-# 构建应用
-RUN CGO_ENABLED=0 GOOS=linux go build -ldflags="-w -s" -o doc-generator-web .
+# 构建应用（交叉编译）
+RUN CGO_ENABLED=0 GOOS=${TARGETOS} GOARCH=${TARGETARCH} go build -ldflags="-w -s" -o doc-generator-web .
 
-# 阶段2: 运行时镜像
-FROM pandoc/latex:latest
+# 阶段2: 运行时镜像（使用支持多架构的 Alpine + TeX Live）
+FROM alpine:3.19
 
-# 安装基础工具
-RUN apk add --no-cache make bash wget curl
+# 安装基础工具和 Pandoc
+RUN apk add --no-cache \
+    make bash wget curl \
+    pandoc \
+    texlive-xetex \
+    texmf-dist-latexextra \
+    texmf-dist-fontsextra \
+    font-noto-cjk \
+    fontconfig
 
 # 安装 Eisvogel 模板（PDF 生成必需）
 RUN mkdir -p /root/.local/share/pandoc/templates && \
-    wget -q -O /root/.local/share/pandoc/templates/eisvogel.latex \
-    https://github.com/Wandmalfarbe/pandoc-latex-template/releases/download/2.4.2/eisvogel.latex || \
-    wget -q -O /root/.local/share/pandoc/templates/eisvogel.latex \
-    https://raw.githubusercontent.com/Wandmalfarbe/pandoc-latex-template/master/eisvogel.latex
-
-# 安装中文字体（Noto Sans CJK）
-RUN apk add --no-cache font-noto-cjk
+    wget -q -O /tmp/eisvogel.tar.gz \
+    https://github.com/Wandmalfarbe/pandoc-latex-template/releases/download/2.4.2/Eisvogel-2.4.2.tar.gz && \
+    tar -xzf /tmp/eisvogel.tar.gz -C /tmp && \
+    cp /tmp/eisvogel.latex /root/.local/share/pandoc/templates/ && \
+    rm -rf /tmp/eisvogel.tar.gz /tmp/eisvogel.latex /tmp/Eisvogel-*
 
 # 更新字体缓存
 RUN fc-cache -fv

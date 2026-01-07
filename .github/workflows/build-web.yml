@@ -1,6 +1,7 @@
 # ==========================================
 # Web 应用构建 - GitHub Actions
 # ==========================================
+# 构建多平台可执行文件（包含 ARM 架构）
 
 name: Build Web Application
 
@@ -28,67 +29,45 @@ jobs:
         with:
           go-version: '1.21'
       
-      - name: Build for Linux
+      - name: Build for Linux (amd64)
         run: |
           cd web
-          GOOS=linux GOARCH=amd64 go build -o doc-generator-web-linux-amd64 .
+          CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -ldflags="-w -s" -o doc-generator-web-linux-amd64 .
       
-      - name: Build for Windows
+      - name: Build for Linux (arm64)
         run: |
           cd web
-          GOOS=windows GOARCH=amd64 go build -o doc-generator-web-windows-amd64.exe .
+          CGO_ENABLED=0 GOOS=linux GOARCH=arm64 go build -ldflags="-w -s" -o doc-generator-web-linux-arm64 .
       
-      - name: Build for macOS
+      - name: Build for Windows (amd64)
         run: |
           cd web
-          GOOS=darwin GOARCH=amd64 go build -o doc-generator-web-darwin-amd64 .
-          GOOS=darwin GOARCH=arm64 go build -o doc-generator-web-darwin-arm64 .
+          CGO_ENABLED=0 GOOS=windows GOARCH=amd64 go build -ldflags="-w -s" -o doc-generator-web-windows-amd64.exe .
       
-      - name: Upload Linux artifact
+      - name: Build for Windows (arm64)
+        run: |
+          cd web
+          CGO_ENABLED=0 GOOS=windows GOARCH=arm64 go build -ldflags="-w -s" -o doc-generator-web-windows-arm64.exe .
+      
+      - name: Build for macOS (amd64)
+        run: |
+          cd web
+          CGO_ENABLED=0 GOOS=darwin GOARCH=amd64 go build -ldflags="-w -s" -o doc-generator-web-darwin-amd64 .
+      
+      - name: Build for macOS (arm64)
+        run: |
+          cd web
+          CGO_ENABLED=0 GOOS=darwin GOARCH=arm64 go build -ldflags="-w -s" -o doc-generator-web-darwin-arm64 .
+      
+      - name: Upload all artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: doc-generator-web-linux-amd64
-          path: web/doc-generator-web-linux-amd64
-      
-      - name: Upload Windows artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: doc-generator-web-windows-amd64
-          path: web/doc-generator-web-windows-amd64.exe
-      
-      - name: Upload macOS artifacts
-        uses: actions/upload-artifact@v4
-        with:
-          name: doc-generator-web-darwin
+          name: doc-generator-web-binaries
           path: |
+            web/doc-generator-web-linux-amd64
+            web/doc-generator-web-linux-arm64
+            web/doc-generator-web-windows-amd64.exe
+            web/doc-generator-web-windows-arm64.exe
             web/doc-generator-web-darwin-amd64
             web/doc-generator-web-darwin-arm64
-
-  # Docker 镜像构建（可选）
-  docker:
-    runs-on: ubuntu-latest
-    needs: build
-    if: github.event_name == 'push' && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master')
-    
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-      
-      - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v3
-      
-      - name: Build Docker image
-        run: |
-          docker build -t doc-generator-web:latest -f web/Dockerfile .
-      
-      # 如果需要推送到 Docker Hub，取消下面的注释并配置 secrets
-      # - name: Login to Docker Hub
-      #   uses: docker/login-action@v3
-      #   with:
-      #     username: ${{ secrets.DOCKER_USERNAME }}
-      #     password: ${{ secrets.DOCKER_PASSWORD }}
-      # 
-      # - name: Push to Docker Hub
-      #   run: |
-      #     docker tag doc-generator-web:latest ${{ secrets.DOCKER_USERNAME }}/doc-generator-web:latest
-      #     docker push ${{ secrets.DOCKER_USERNAME }}/doc-generator-web:latest
+          retention-days: 30
