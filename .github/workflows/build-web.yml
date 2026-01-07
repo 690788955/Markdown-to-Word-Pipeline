@@ -2,18 +2,11 @@
 # Web 应用构建 - GitHub Actions
 # ==========================================
 # 构建多平台可执行文件（包含 ARM 架构）
+# 每个平台打包成独立 zip，解压即可使用
 
 name: Build Web Application
 
 on:
-  push:
-    branches: [main, master]
-    paths:
-      - 'web/**'
-  pull_request:
-    branches: [main, master]
-    paths:
-      - 'web/**'
   workflow_dispatch:
 
 jobs:
@@ -29,45 +22,69 @@ jobs:
         with:
           go-version: '1.21'
       
-      - name: Build for Linux (amd64)
+      - name: Build and package for Linux (amd64)
         run: |
           cd web
-          CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -ldflags="-w -s" -o doc-generator-web-linux-amd64 .
+          CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -ldflags="-w -s" -o doc-generator-web .
+          mkdir -p ../dist/linux-amd64
+          cp doc-generator-web ../dist/linux-amd64/
+          cp -r static ../dist/linux-amd64/
+          cd ../dist && zip -r doc-generator-web-linux-amd64.zip linux-amd64
+          rm -rf linux-amd64
       
-      - name: Build for Linux (arm64)
+      - name: Build and package for Linux (arm64)
         run: |
           cd web
-          CGO_ENABLED=0 GOOS=linux GOARCH=arm64 go build -ldflags="-w -s" -o doc-generator-web-linux-arm64 .
+          CGO_ENABLED=0 GOOS=linux GOARCH=arm64 go build -ldflags="-w -s" -o doc-generator-web .
+          mkdir -p ../dist/linux-arm64
+          cp doc-generator-web ../dist/linux-arm64/
+          cp -r static ../dist/linux-arm64/
+          cd ../dist && zip -r doc-generator-web-linux-arm64.zip linux-arm64
+          rm -rf linux-arm64
       
-      - name: Build for Windows (amd64)
+      - name: Build and package for Windows (amd64)
         run: |
           cd web
-          CGO_ENABLED=0 GOOS=windows GOARCH=amd64 go build -ldflags="-w -s" -o doc-generator-web-windows-amd64.exe .
+          CGO_ENABLED=0 GOOS=windows GOARCH=amd64 go build -ldflags="-w -s" -o doc-generator-web.exe .
+          mkdir -p ../dist/windows-amd64
+          cp doc-generator-web.exe ../dist/windows-amd64/
+          cp -r static ../dist/windows-amd64/
+          cd ../dist && zip -r doc-generator-web-windows-amd64.zip windows-amd64
+          rm -rf windows-amd64
       
-      - name: Build for Windows (arm64)
+      - name: Build and package for Windows (arm64)
         run: |
           cd web
-          CGO_ENABLED=0 GOOS=windows GOARCH=arm64 go build -ldflags="-w -s" -o doc-generator-web-windows-arm64.exe .
+          CGO_ENABLED=0 GOOS=windows GOARCH=arm64 go build -ldflags="-w -s" -o doc-generator-web.exe .
+          mkdir -p ../dist/windows-arm64
+          cp doc-generator-web.exe ../dist/windows-arm64/
+          cp -r static ../dist/windows-arm64/
+          cd ../dist && zip -r doc-generator-web-windows-arm64.zip windows-arm64
+          rm -rf windows-arm64
       
-      - name: Build for macOS (amd64)
+      - name: Build and package for macOS (amd64)
         run: |
           cd web
-          CGO_ENABLED=0 GOOS=darwin GOARCH=amd64 go build -ldflags="-w -s" -o doc-generator-web-darwin-amd64 .
+          CGO_ENABLED=0 GOOS=darwin GOARCH=amd64 go build -ldflags="-w -s" -o doc-generator-web .
+          mkdir -p ../dist/darwin-amd64
+          cp doc-generator-web ../dist/darwin-amd64/
+          cp -r static ../dist/darwin-amd64/
+          cd ../dist && zip -r doc-generator-web-darwin-amd64.zip darwin-amd64
+          rm -rf darwin-amd64
       
-      - name: Build for macOS (arm64)
+      - name: Build and package for macOS (arm64)
         run: |
           cd web
-          CGO_ENABLED=0 GOOS=darwin GOARCH=arm64 go build -ldflags="-w -s" -o doc-generator-web-darwin-arm64 .
+          CGO_ENABLED=0 GOOS=darwin GOARCH=arm64 go build -ldflags="-w -s" -o doc-generator-web .
+          mkdir -p ../dist/darwin-arm64
+          cp doc-generator-web ../dist/darwin-arm64/
+          cp -r static ../dist/darwin-arm64/
+          cd ../dist && zip -r doc-generator-web-darwin-arm64.zip darwin-arm64
+          rm -rf darwin-arm64
       
-      - name: Upload all artifacts
+      - name: Upload artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: doc-generator-web-binaries
-          path: |
-            web/doc-generator-web-linux-amd64
-            web/doc-generator-web-linux-arm64
-            web/doc-generator-web-windows-amd64.exe
-            web/doc-generator-web-windows-arm64.exe
-            web/doc-generator-web-darwin-amd64
-            web/doc-generator-web-darwin-arm64
+          name: doc-generator-web-releases
+          path: dist/*.zip
           retention-days: 30

@@ -67,6 +67,9 @@ WORKDIR /app
 # 从构建阶段复制可执行文件
 COPY --from=builder /build/doc-generator-web /app/
 
+# 复制静态资源（Web 界面）
+COPY web/static/ /app/static/
+
 # 复制项目文件（作为默认内容，可被挂载覆盖）
 COPY Makefile /app/
 COPY bin/ /app/bin/

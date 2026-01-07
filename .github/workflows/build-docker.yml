@@ -14,9 +14,6 @@
 name: Build Docker Image
 
 on:
-  push:
-    tags:
-      - 'v*'
   workflow_dispatch:
     inputs:
       tag:
