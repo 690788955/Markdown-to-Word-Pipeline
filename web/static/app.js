@@ -9,11 +9,8 @@ let selectedModules = [];
 let currentEditConfig = null; // 当前编辑的配置
 let currentClient = null; // 当前选中的客户信息
 
-// 提前声明全局函数（解决 onclick 找不到函数的问题）
-window.showConfigModal = function(editMode) { showConfigModal(editMode); };
-window.hideConfigModal = function() { hideConfigModal(); };
-window.hideConfirmModal = function() { hideConfirmModal(); };
-window.submitConfig = function() { submitConfig(); };
+// 全局函数声明（稍后会被实际函数覆盖）
+let showConfigModal, hideConfigModal, hideConfirmModal, submitConfig;
 
 // 初始化
 document.addEventListener('DOMContentLoaded', function() {
@@ -778,7 +775,7 @@ async function deleteConfig(clientName, docTypeName) {
     }
 }
 
-// 更新全局函数引用（确保指向正确的函数实现）
+// 暴露函数到全局作用域（供 HTML onclick 调用）
 window.showConfigModal = showConfigModal;
 window.hideConfigModal = hideConfigModal;
 window.hideConfirmModal = hideConfirmModal;
