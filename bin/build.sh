@@ -218,13 +218,18 @@ read_pdf_option() {
         return
     fi
     
+    # 支持带连字符和下划线的键名
+    local key_pattern="$key"
+    local key_alt="${key//-/_}"  # 将连字符替换为下划线
+    
     local value
-    value=$(awk -v key="$key" '
+    value=$(awk -v key="$key" -v key_alt="$key_alt" '
         /^pdf_options:/ { in_section=1; next }
         in_section && /^[^[:space:]]/ { exit }
-        in_section && $0 ~ "^[[:space:]]+"key":" {
-            gsub(/^[[:space:]]+'"$key"':[[:space:]]*/, "")
+        in_section && ($0 ~ "^[[:space:]]+"key":" || $0 ~ "^[[:space:]]+"key_alt":") {
+            sub(/^[[:space:]]+[^:]+:[[:space:]]*/, "")
             gsub(/["'\'']/, "")
+            gsub(/[[:space:]]*$/, "")
             print
             exit
         }
@@ -440,15 +445,23 @@ while IFS= read -r line; do
     [ -n "$line" ] && pandoc_args+=("$line")
 done < <(read_yaml_list "$CONFIG_FILE" "pandoc_args")
 
-# 读取 PDF 选项
+# 读取 PDF 选项（使用更通用的默认字体）
 pdf_titlepage=$(read_pdf_option "$CONFIG_FILE" "titlepage" "true")
-pdf_titlepage_color=$(read_pdf_option "$CONFIG_FILE" "titlepage_color" "2C3E50")
-pdf_titlepage_text_color=$(read_pdf_option "$CONFIG_FILE" "titlepage_text_color" "FFFFFF")
-pdf_CJKmainfont=$(read_pdf_option "$CONFIG_FILE" "CJKmainfont" "Noto Sans CJK SC")
-pdf_mainfont=$(read_pdf_option "$CONFIG_FILE" "mainfont" "Noto Sans")
-pdf_monofont=$(read_pdf_option "$CONFIG_FILE" "monofont" "Noto Sans Mono")
+pdf_titlepage_color=$(read_pdf_option "$CONFIG_FILE" "titlepage-color" "2C3E50")
+pdf_titlepage_text_color=$(read_pdf_option "$CONFIG_FILE" "titlepage-text-color" "FFFFFF")
+# 字体默认值：Linux 优先使用 Noto Sans CJK SC，macOS 使用 PingFang SC
+if [[ "$OSTYPE" == "darwin"* ]]; then
+    default_cjk_font="PingFang SC"
+    default_mono_font="Menlo"
+else
+    default_cjk_font="Noto Sans CJK SC"
+    default_mono_font="Noto Sans Mono"
+fi
+pdf_CJKmainfont=$(read_pdf_option "$CONFIG_FILE" "CJKmainfont" "$default_cjk_font")
+pdf_mainfont=$(read_pdf_option "$CONFIG_FILE" "mainfont" "$default_cjk_font")
+pdf_monofont=$(read_pdf_option "$CONFIG_FILE" "monofont" "$default_mono_font")
 pdf_toc=$(read_pdf_option "$CONFIG_FILE" "toc" "true")
-pdf_toc_depth=$(read_pdf_option "$CONFIG_FILE" "toc_depth" "3")
+pdf_toc_depth=$(read_pdf_option "$CONFIG_FILE" "toc-depth" "3")
 
 # 默认值
 [ -z "$client_name" ] && client_name="$CLIENT"
@@ -553,10 +566,14 @@ if [ "$FORMAT" = "word" ]; then
 else
     pandoc_cmd+=(--pdf-engine=xelatex)
     pandoc_cmd+=(--template=eisvogel)
+    # 表格兼容性设置 - 禁用表格标题以避免 longtable 兼容性问题
+    pandoc_cmd+=(-V disable-caption=true)
+    pandoc_cmd+=(-V table-use-row-colors=true)
     [ "$pdf_titlepage" = "true" ] && pandoc_cmd+=(-V titlepage=true)
     [ -n "$pdf_titlepage_color" ] && pandoc_cmd+=(-V "titlepage-color=$pdf_titlepage_color")
     [ -n "$pdf_CJKmainfont" ] && pandoc_cmd+=(-V "CJKmainfont=$pdf_CJKmainfont")
     [ -n "$pdf_mainfont" ] && pandoc_cmd+=(-V "mainfont=$pdf_mainfont")
+    [ -n "$pdf_monofont" ] && pandoc_cmd+=(-V "monofont=$pdf_monofont")
     [ "$pdf_toc" = "true" ] && pandoc_cmd+=(--toc --toc-depth="$pdf_toc_depth")
 fi
 

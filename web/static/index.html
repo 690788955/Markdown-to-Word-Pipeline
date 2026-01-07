@@ -69,13 +69,14 @@
 
     <!-- 新建/编辑配置模态框 -->
     <div id="configModal" class="modal" style="display:none;">
-        <div class="modal-content">
+        <div class="modal-content modal-lg">
             <div class="modal-header">
                 <h2 id="modalTitle">新建配置</h2>
                 <button class="modal-close" onclick="hideConfigModal()">&times;</button>
             </div>
             <div class="modal-body">
                 <form id="configForm">
+                    <!-- 基本信息 -->
                     <div class="form-row">
                         <div class="form-group">
                             <label for="cfgClientName">客户名称 *</label>
@@ -88,42 +89,330 @@
                     </div>
                     <div class="form-row">
                         <div class="form-group">
-                            <label for="cfgTemplate">Word 模板</label>
-                            <select id="cfgTemplate">
-                                <option value="">加载中...</option>
-                            </select>
-                        </div>
-                        <div class="form-group">
                             <label for="cfgOutputPattern">输出文件名模式</label>
-                            <input type="text" id="cfgOutputPattern" placeholder="{client}_{title}_{date}.docx">
-                            <small class="form-hint">支持: {client}, {title}, {version}, {date}</small>
-                        </div>
-                    </div>
-                    
-                    <div class="form-group">
-                        <label>Pandoc 参数</label>
-                        <div class="checkbox-group">
-                            <label class="checkbox-label">
-                                <input type="checkbox" id="argToc" checked> --toc (目录)
-                            </label>
-                            <label class="checkbox-label">
-                                <input type="checkbox" id="argNumberSections" checked> --number-sections (章节编号)
-                            </label>
-                            <label class="checkbox-label">
-                                <input type="checkbox" id="argStandalone" checked> --standalone (独立文档)
-                            </label>
-                        </div>
-                        <input type="text" id="cfgCustomArgs" placeholder="其他参数，用空格分隔">
-                    </div>
-
-                    <div class="form-group">
-                        <label>选择文档模块 * <small>(拖拽排序)</small></label>
-                        <div id="moduleList" class="module-list">
-                            <div class="list-empty">加载中...</div>
+                            <input type="text" id="cfgOutputPattern" placeholder="{client}_{title}_{date}">
+                            <small class="form-hint">支持: {client}, {title}, {version}, {date}（扩展名自动添加）</small>
                         </div>
                     </div>
 
-                    <div class="form-group">
+                    <!-- Tab 导航 -->
+                    <div class="config-tabs">
+                        <button type="button" class="tab-btn active" data-tab="tabGeneral">通用设置</button>
+                        <button type="button" class="tab-btn" data-tab="tabWord">Word 设置</button>
+                        <button type="button" class="tab-btn" data-tab="tabPdf">PDF 设置</button>
+                        <button type="button" class="tab-btn" data-tab="tabModules">文档模块</button>
+                    </div>
+
+                    <!-- Tab 内容：通用设置 -->
+                    <div id="tabGeneral" class="tab-content active">
+                        <div class="pandoc-args-section">
+                            <div class="args-category">
+                                <h4>基础设置</h4>
+                                <div class="checkbox-group">
+                                    <label class="checkbox-label">
+                                        <input type="checkbox" id="argToc" checked> --toc (生成目录)
+                                    </label>
+                                    <label class="checkbox-label">
+                                        <input type="checkbox" id="argNumberSections" checked> --number-sections (章节编号)
+                                    </label>
+                                    <label class="checkbox-label">
+                                        <input type="checkbox" id="argStandalone" checked> --standalone (独立文档)
+                                    </label>
+                                    <label class="checkbox-label">
+                                        <input type="checkbox" id="argFileScope"> --file-scope (文件独立处理)
+                                    </label>
+                                    <label class="checkbox-label">
+                                        <input type="checkbox" id="argPreserveTabs"> --preserve-tabs (保留Tab)
+                                    </label>
+                                    <label class="checkbox-label">
+                                        <input type="checkbox" id="argStripComments"> --strip-comments (移除注释)
+                                    </label>
+                                </div>
+                            </div>
+                            <div class="args-category">
+                                <h4>目录设置</h4>
+                                <div class="args-row">
+                                    <label for="argTocDepth">目录深度</label>
+                                    <select id="argTocDepth">
+                                        <option value="">默认(3)</option>
+                                        <option value="1">1级</option>
+                                        <option value="2">2级</option>
+                                        <option value="3">3级</option>
+                                        <option value="4">4级</option>
+                                        <option value="5">5级</option>
+                                        <option value="6">6级</option>
+                                    </select>
+                                </div>
+                            </div>
+                            <div class="args-category">
+                                <h4>标题设置</h4>
+                                <div class="args-row">
+                                    <label for="argShiftHeading">标题级别偏移</label>
+                                    <select id="argShiftHeading">
+                                        <option value="">不偏移</option>
+                                        <option value="-2">-2 (提升2级)</option>
+                                        <option value="-1">-1 (提升1级)</option>
+                                        <option value="1">+1 (降低1级)</option>
+                                        <option value="2">+2 (降低2级)</option>
+                                    </select>
+                                </div>
+                                <div class="args-row">
+                                    <label for="argTopLevelDiv">顶级分区类型</label>
+                                    <select id="argTopLevelDiv">
+                                        <option value="">默认</option>
+                                        <option value="section">section</option>
+                                        <option value="chapter">chapter</option>
+                                        <option value="part">part</option>
+                                    </select>
+                                </div>
+                            </div>
+                            <div class="args-category">
+                                <h4>代码高亮</h4>
+                                <div class="args-row">
+                                    <label for="argHighlightStyle">高亮样式</label>
+                                    <select id="argHighlightStyle">
+                                        <option value="">默认(pygments)</option>
+                                        <option value="pygments">pygments</option>
+                                        <option value="kate">kate</option>
+                                        <option value="monochrome">monochrome</option>
+                                        <option value="espresso">espresso</option>
+                                        <option value="zenburn">zenburn</option>
+                                        <option value="haddock">haddock</option>
+                                        <option value="tango">tango</option>
+                                        <option value="breezedark">breezedark</option>
+                                    </select>
+                                </div>
+                                <label class="checkbox-label" style="margin-top:8px;">
+                                    <input type="checkbox" id="argNoHighlight"> --no-highlight (禁用代码高亮)
+                                </label>
+                            </div>
+                            <div class="args-category">
+                                <h4>文本格式</h4>
+                                <div class="args-row">
+                                    <label for="argWrap">文本换行</label>
+                                    <select id="argWrap">
+                                        <option value="">默认(auto)</option>
+                                        <option value="auto">auto</option>
+                                        <option value="none">none (不换行)</option>
+                                        <option value="preserve">preserve (保留原样)</option>
+                                    </select>
+                                </div>
+                                <div class="args-row">
+                                    <label for="argColumns">换行列数</label>
+                                    <input type="number" id="argColumns" placeholder="默认72" min="20" max="200">
+                                </div>
+                                <div class="args-row">
+                                    <label for="argTabStop">Tab宽度</label>
+                                    <select id="argTabStop">
+                                        <option value="">默认(4)</option>
+                                        <option value="2">2</option>
+                                        <option value="4">4</option>
+                                        <option value="8">8</option>
+                                    </select>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="form-group" style="margin-top: 12px;">
+                            <label for="cfgCustomArgs">其他自定义参数</label>
+                            <input type="text" id="cfgCustomArgs" placeholder="例如: --metadata=key:value">
+                            <small class="form-hint">用空格分隔多个参数</small>
+                        </div>
+                    </div>
+
+                    <!-- Tab 内容：Word 设置 -->
+                    <div id="tabWord" class="tab-content">
+                        <div class="format-settings">
+                            <div class="args-category">
+                                <h4>Word 模板</h4>
+                                <div class="form-group">
+                                    <label for="cfgTemplate">选择模板</label>
+                                    <select id="cfgTemplate">
+                                        <option value="">使用默认模板</option>
+                                    </select>
+                                    <small class="form-hint">Word 字体样式由模板文件控制，修改 templates/default.docx 中的样式</small>
+                                </div>
+                            </div>
+                            <div class="args-category">
+                                <h4>说明</h4>
+                                <p class="info-text">Word 文档的字体、样式、页眉页脚等由模板文件 (.docx) 控制。</p>
+                                <p class="info-text">如需自定义样式：</p>
+                                <ol class="info-list">
+                                    <li>打开 templates/default.docx</li>
+                                    <li>修改"样式"中的字体、大小、颜色等</li>
+                                    <li>保存模板文件</li>
+                                </ol>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Tab 内容：PDF 设置 -->
+                    <div id="tabPdf" class="tab-content">
+                        <div class="format-settings">
+                            <div class="pdf-settings-grid">
+                                <!-- 字体设置 -->
+                                <div class="args-category">
+                                    <h4>字体设置</h4>
+                                    <div class="args-row">
+                                        <label for="pdfMainFont">正文字体</label>
+                                        <select id="pdfMainFont">
+                                            <option value="">默认</option>
+                                            <option value="Microsoft YaHei" selected>微软雅黑</option>
+                                            <option value="SimSun">宋体</option>
+                                            <option value="SimHei">黑体</option>
+                                            <option value="KaiTi">楷体</option>
+                                            <option value="FangSong">仿宋</option>
+                                            <option value="Noto Sans SC">Noto Sans SC</option>
+                                            <option value="Noto Serif SC">Noto Serif SC</option>
+                                            <option value="Source Han Sans SC">思源黑体</option>
+                                        </select>
+                                    </div>
+                                    <div class="args-row">
+                                        <label for="pdfMonoFont">代码字体</label>
+                                        <select id="pdfMonoFont">
+                                            <option value="">默认</option>
+                                            <option value="Consolas" selected>Consolas</option>
+                                            <option value="Courier New">Courier New</option>
+                                            <option value="Source Code Pro">Source Code Pro</option>
+                                            <option value="Fira Code">Fira Code</option>
+                                        </select>
+                                    </div>
+                                    <div class="args-row">
+                                        <label for="pdfFontSize">字体大小</label>
+                                        <select id="pdfFontSize">
+                                            <option value="">默认(11pt)</option>
+                                            <option value="10pt">10pt</option>
+                                            <option value="11pt">11pt</option>
+                                            <option value="12pt">12pt</option>
+                                        </select>
+                                    </div>
+                                    <div class="args-row">
+                                        <label for="pdfLineStretch">行间距</label>
+                                        <select id="pdfLineStretch">
+                                            <option value="">默认(1.0)</option>
+                                            <option value="1.0">1.0</option>
+                                            <option value="1.15">1.15</option>
+                                            <option value="1.25">1.25</option>
+                                            <option value="1.5">1.5</option>
+                                            <option value="2.0">2.0</option>
+                                        </select>
+                                    </div>
+                                </div>
+                                <!-- 封面设置 -->
+                                <div class="args-category">
+                                    <h4>封面设置</h4>
+                                    <label class="checkbox-label">
+                                        <input type="checkbox" id="pdfTitlePage" checked> 启用封面
+                                    </label>
+                                    <div class="args-row">
+                                        <label for="pdfTitleBgColor">封面背景色</label>
+                                        <input type="color" id="pdfTitleBgColor" value="#2C3E50">
+                                    </div>
+                                    <div class="args-row">
+                                        <label for="pdfTitleTextColor">封面文字色</label>
+                                        <input type="color" id="pdfTitleTextColor" value="#FFFFFF">
+                                    </div>
+                                    <div class="args-row">
+                                        <label for="pdfTitleRuleColor">装饰线颜色</label>
+                                        <input type="color" id="pdfTitleRuleColor" value="#3498DB">
+                                    </div>
+                                </div>
+                                <!-- 页面设置 -->
+                                <div class="args-category">
+                                    <h4>页面设置</h4>
+                                    <div class="args-row">
+                                        <label for="pdfGeometry">页边距</label>
+                                        <select id="pdfGeometry">
+                                            <option value="">默认</option>
+                                            <option value="margin=2cm">2cm</option>
+                                            <option value="margin=2.5cm" selected>2.5cm</option>
+                                            <option value="margin=3cm">3cm</option>
+                                            <option value="margin=1in">1英寸</option>
+                                        </select>
+                                    </div>
+                                    <div class="args-row">
+                                        <label for="pdfPaperSize">纸张大小</label>
+                                        <select id="pdfPaperSize">
+                                            <option value="">默认(A4)</option>
+                                            <option value="a4paper">A4</option>
+                                            <option value="letterpaper">Letter</option>
+                                            <option value="a5paper">A5</option>
+                                        </select>
+                                    </div>
+                                    <label class="checkbox-label">
+                                        <input type="checkbox" id="pdfTocOwnPage" checked> 目录单独一页
+                                    </label>
+                                </div>
+                                <!-- 链接设置 -->
+                                <div class="args-category">
+                                    <h4>链接设置</h4>
+                                    <label class="checkbox-label">
+                                        <input type="checkbox" id="pdfColorLinks" checked> 彩色链接
+                                    </label>
+                                    <div class="args-row">
+                                        <label for="pdfLinkColor">链接颜色</label>
+                                        <input type="color" id="pdfLinkColor" value="#2980B9">
+                                    </div>
+                                    <div class="args-row">
+                                        <label for="pdfUrlColor">URL颜色</label>
+                                        <input type="color" id="pdfUrlColor" value="#3498DB">
+                                    </div>
+                                </div>
+                                <!-- 代码块设置 -->
+                                <div class="args-category">
+                                    <h4>代码块设置</h4>
+                                    <label class="checkbox-label">
+                                        <input type="checkbox" id="pdfListings" checked> 使用 listings 包
+                                    </label>
+                                    <label class="checkbox-label">
+                                        <input type="checkbox" id="pdfListingsNoBreak" checked> 代码块不跨页
+                                    </label>
+                                    <div class="args-row">
+                                        <label for="pdfCodeFontSize">代码字体大小</label>
+                                        <select id="pdfCodeFontSize">
+                                            <option value="">默认</option>
+                                            <option value="\\tiny">tiny</option>
+                                            <option value="\\scriptsize">scriptsize</option>
+                                            <option value="\\footnotesize">footnotesize</option>
+                                            <option value="\\small" selected>small</option>
+                                            <option value="\\normalsize">normalsize</option>
+                                        </select>
+                                    </div>
+                                </div>
+                                <!-- 页眉页脚 -->
+                                <div class="args-category">
+                                    <h4>页眉页脚</h4>
+                                    <div class="args-row">
+                                        <label for="pdfHeaderLeft">左页眉</label>
+                                        <select id="pdfHeaderLeft">
+                                            <option value="">无</option>
+                                            <option value="\\leftmark" selected>章节名</option>
+                                            <option value="\\rightmark">小节名</option>
+                                        </select>
+                                    </div>
+                                    <div class="args-row">
+                                        <label for="pdfHeaderRight">右页眉</label>
+                                        <select id="pdfHeaderRight">
+                                            <option value="">无</option>
+                                            <option value="\\thepage" selected>页码</option>
+                                            <option value="\\leftmark">章节名</option>
+                                        </select>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Tab 内容：文档模块 -->
+                    <div id="tabModules" class="tab-content">
+                        <div class="form-group">
+                            <label>选择文档模块 * <small>(拖拽排序)</small></label>
+                            <div id="moduleList" class="module-list">
+                                <div class="list-empty">加载中...</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="form-group" style="margin-top: 15px;">
                         <label>文件名预览</label>
                         <div id="filenamePreview" class="filename-preview">-</div>
                     </div>

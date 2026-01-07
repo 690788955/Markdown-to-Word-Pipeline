@@ -277,10 +277,10 @@ function Read-PdfOptions {
         footer_left = ""
         footer_center = ""
         footer_right = ""
-        # 字体设置
-        CJKmainfont = "Noto Sans CJK SC"
-        mainfont = "Noto Sans"
-        monofont = "Noto Sans Mono"
+        # 字体设置 - 使用更通用的字体名称
+        CJKmainfont = "Microsoft YaHei"
+        mainfont = "Microsoft YaHei"
+        monofont = "Consolas"
         # 目录设置
         toc = $true
         toc_depth = 3
@@ -634,6 +634,9 @@ function Invoke-Build {
         # PDF 格式参数
         $pandocCmdArgs += "--pdf-engine=xelatex"
         $pandocCmdArgs += "--template=eisvogel"
+        # 表格兼容性设置 - 禁用表格标题以避免 longtable 兼容性问题
+        $pandocCmdArgs += "-V", "disable-caption=true"
+        $pandocCmdArgs += "-V", "table-use-row-colors=true"
         
         # 应用 PDF 选项
         if ($pdfOptions.titlepage) {

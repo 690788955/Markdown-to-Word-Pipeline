@@ -1,5 +1,5 @@
-// 运维文档生成系统 - 前端逻辑 v6
-// 支持 Word 和 PDF 格式输出，支持自定义配置
+// 运维文档生成系统 - 前端逻辑 v8
+// 支持 Word 和 PDF 格式输出，支持自定义配置，支持完整 PDF 选项配置
 
 let documentTypes = [];
 let generatedFiles = [];
@@ -35,7 +35,26 @@ document.addEventListener('DOMContentLoaded', function() {
     if (cfgClientName) cfgClientName.addEventListener('input', updateFilenamePreview);
     if (cfgDocTypeName) cfgDocTypeName.addEventListener('input', updateFilenamePreview);
     if (cfgOutputPattern) cfgOutputPattern.addEventListener('input', updateFilenamePreview);
+    
+    // Tab 切换事件
+    initTabs();
 });
+
+// 初始化 Tab 切换
+function initTabs() {
+    document.querySelectorAll('.tab-btn').forEach(function(btn) {
+        btn.addEventListener('click', function() {
+            const tabId = this.dataset.tab;
+            // 移除所有 active
+            document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+            document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+            // 添加 active
+            this.classList.add('active');
+            const tabContent = document.getElementById(tabId);
+            if (tabContent) tabContent.classList.add('active');
+        });
+    });
+}
 
 // 获取当前选择的输出格式
 function getSelectedFormat() {
@@ -57,21 +76,21 @@ async function loadClients() {
         const clients = data.data.clients || [];
         clientSelect.innerHTML = '<option value="">请选择客户配置</option>';
         
-        // 分组：预置配置和自定义配置
-        const presetClients = clients.filter(c => !c.isCustom);
+        // 分组：标准文档和自定义配置
+        const standardClients = clients.filter(c => !c.isCustom);
         const customClients = clients.filter(c => c.isCustom);
         
-        if (presetClients.length > 0) {
-            const presetGroup = document.createElement('optgroup');
-            presetGroup.label = '预置配置';
-            presetClients.forEach(function(c) {
+        if (standardClients.length > 0) {
+            const standardGroup = document.createElement('optgroup');
+            standardGroup.label = '标准文档';
+            standardClients.forEach(function(c) {
                 const opt = document.createElement('option');
                 opt.value = c.name;
                 opt.textContent = c.displayName || c.name;
                 opt.dataset.isCustom = 'false';
-                presetGroup.appendChild(opt);
+                standardGroup.appendChild(opt);
             });
-            clientSelect.appendChild(presetGroup);
+            clientSelect.appendChild(standardGroup);
         }
         
         if (customClients.length > 0) {
@@ -440,8 +459,10 @@ async function loadTemplates() {
         if (!data.success) throw new Error(data.error);
         
         availableTemplates = data.data.templates || [];
-        templateSelect.innerHTML = '<option value="">使用默认模板</option>';
+        templateSelect.innerHTML = '<option value="">使用默认模板 (default.docx)</option>';
         availableTemplates.forEach(function(t) {
+            // 跳过 default.docx，因为已经作为默认选项
+            if (t.fileName === 'default.docx') return;
             const opt = document.createElement('option');
             opt.value = t.fileName;
             opt.textContent = t.displayName || t.fileName;
@@ -485,6 +506,7 @@ function renderModuleList() {
         item.className = 'module-item' + (mod.selected ? ' selected' : '');
         item.draggable = true;
         item.dataset.fileName = mod.fileName;
+        item.dataset.index = index;
         
         const checkbox = document.createElement('input');
         checkbox.type = 'checkbox';
@@ -503,14 +525,105 @@ function renderModuleList() {
         item.appendChild(label);
         item.appendChild(handle);
         
-        // 拖拽事件
-        item.ondragstart = function(e) { onDragStart(e, index); };
-        item.ondragover = function(e) { onDragOver(e); };
-        item.ondrop = function(e) { onDrop(e, index); };
-        item.ondragend = function(e) { onDragEnd(e); };
+        // 拖拽事件 - 自由拖拽，支持上下位置指示
+        item.addEventListener('dragstart', function(e) {
+            draggedItem = item;
+            draggedIndex = index;
+            item.classList.add('dragging');
+            e.dataTransfer.effectAllowed = 'move';
+            e.dataTransfer.setData('text/plain', index);
+        });
+        
+        item.addEventListener('dragend', function() {
+            item.classList.remove('dragging');
+            draggedItem = null;
+            draggedIndex = null;
+            // 移除所有拖拽指示样式
+            moduleList.querySelectorAll('.drag-over-top, .drag-over-bottom').forEach(el => {
+                el.classList.remove('drag-over-top', 'drag-over-bottom');
+            });
+        });
+        
+        item.addEventListener('dragover', function(e) {
+            e.preventDefault();
+            e.dataTransfer.dropEffect = 'move';
+            if (!draggedItem || draggedItem === item) return;
+            
+            // 计算鼠标位置，判断插入上方还是下方
+            const rect = item.getBoundingClientRect();
+            const midY = rect.top + rect.height / 2;
+            
+            item.classList.remove('drag-over-top', 'drag-over-bottom');
+            if (e.clientY < midY) {
+                item.classList.add('drag-over-top');
+            } else {
+                item.classList.add('drag-over-bottom');
+            }
+        });
+        
+        item.addEventListener('dragleave', function() {
+            item.classList.remove('drag-over-top', 'drag-over-bottom');
+        });
+        
+        item.addEventListener('drop', function(e) {
+            e.preventDefault();
+            
+            const isTop = item.classList.contains('drag-over-top');
+            item.classList.remove('drag-over-top', 'drag-over-bottom');
+            
+            if (!draggedItem || draggedItem === item) return;
+            
+            const fromIndex = parseInt(draggedItem.dataset.index);
+            let toIndex = parseInt(item.dataset.index);
+            
+            // 根据插入位置调整目标索引
+            if (!isTop && fromIndex < toIndex) {
+                // 插入下方，且从上往下拖，不需要调整
+            } else if (isTop && fromIndex > toIndex) {
+                // 插入上方，且从下往上拖，不需要调整
+            } else if (!isTop) {
+                // 插入下方
+                toIndex = toIndex + 1;
+            }
+            
+            // 重新排序模块
+            reorderModules(fromIndex, toIndex);
+        });
         
         moduleList.appendChild(item);
     });
+}
+
+// 重新排序模块
+function reorderModules(fromIndex, toIndex) {
+    const moduleList = document.getElementById('moduleList');
+    const items = Array.from(moduleList.querySelectorAll('.module-item'));
+    
+    // 获取当前顺序
+    const currentOrder = items.map(item => ({
+        fileName: item.dataset.fileName,
+        selected: item.querySelector('input').checked
+    }));
+    
+    // 移动元素
+    const [movedItem] = currentOrder.splice(fromIndex, 1);
+    currentOrder.splice(toIndex, 0, movedItem);
+    
+    // 更新 selectedModules 顺序
+    selectedModules = currentOrder
+        .filter(item => item.selected)
+        .map(item => 'src/' + item.fileName);
+    
+    // 更新 availableModules 顺序以保持一致
+    const newAvailableModules = [];
+    currentOrder.forEach(item => {
+        const mod = availableModules.find(m => m.fileName === item.fileName);
+        if (mod) newAvailableModules.push(mod);
+    });
+    availableModules = newAvailableModules;
+    
+    // 重新渲染
+    renderModuleList();
 }
 
 // 切换模块选中状态
@@ -528,80 +641,148 @@ function toggleModule(fileName, checked) {
 
 // 拖拽相关
 let draggedIndex = null;
-
-function onDragStart(e, index) {
-    draggedIndex = index;
-    e.target.classList.add('dragging');
-}
-
-function onDragOver(e) {
-    e.preventDefault();
-}
-
-function onDrop(e, targetIndex) {
-    e.preventDefault();
-    if (draggedIndex === null || draggedIndex === targetIndex) return;
-    
-    // 重新排序已选模块
-    const moduleList = document.getElementById('moduleList');
-    const items = moduleList.querySelectorAll('.module-item');
-    const newOrder = [];
-    
-    items.forEach(function(item) {
-        if (item.querySelector('input').checked) {
-            newOrder.push('src/' + item.dataset.fileName);
-        }
-    });
-    
-    // 移动元素
-    if (draggedIndex < targetIndex) {
-        newOrder.splice(targetIndex + 1, 0, newOrder[draggedIndex]);
-        newOrder.splice(draggedIndex, 1);
-    } else {
-        const item = newOrder.splice(draggedIndex, 1)[0];
-        newOrder.splice(targetIndex, 0, item);
-    }
-    
-    selectedModules = newOrder.filter(m => selectedModules.includes(m) || selectedModules.includes(m.replace('src/', '')));
-    renderModuleList();
-}
-
-function onDragEnd(e) {
-    e.target.classList.remove('dragging');
-    draggedIndex = null;
-}
+let draggedItem = null;
 
 // 重置配置表单
 function resetConfigForm() {
-    document.getElementById('cfgClientName').value = '';
-    document.getElementById('cfgDocTypeName').value = '';
-    document.getElementById('cfgTemplate').value = '';
-    document.getElementById('cfgOutputPattern').value = '';
-    document.getElementById('argToc').checked = true;
-    document.getElementById('argNumberSections').checked = true;
-    document.getElementById('argStandalone').checked = true;
-    document.getElementById('cfgCustomArgs').value = '';
+    const setVal = (id, val) => { const el = document.getElementById(id); if (el) el.value = val; };
+    const setChecked = (id, val) => { const el = document.getElementById(id); if (el) el.checked = val; };
+    
+    setVal('cfgClientName', '');
+    setVal('cfgDocTypeName', '');
+    setVal('cfgTemplate', '');
+    setVal('cfgOutputPattern', '');
+    
+    // 基础参数
+    setChecked('argToc', true);
+    setChecked('argNumberSections', true);
+    setChecked('argStandalone', true);
+    setChecked('argFileScope', false);
+    setChecked('argPreserveTabs', false);
+    setChecked('argStripComments', false);
+    setChecked('argNoHighlight', false);
+    
+    // 下拉选项
+    setVal('argTocDepth', '');
+    setVal('argShiftHeading', '');
+    setVal('argTopLevelDiv', '');
+    setVal('argHighlightStyle', '');
+    setVal('argWrap', '');
+    setVal('argColumns', '');
+    setVal('argTabStop', '');
+    
+    // 自定义参数
+    setVal('cfgCustomArgs', '');
+    
+    // PDF 设置重置
+    setVal('pdfMainFont', 'Microsoft YaHei');
+    setVal('pdfMonoFont', 'Consolas');
+    setVal('pdfFontSize', '');
+    setVal('pdfLineStretch', '');
+    setChecked('pdfTitlePage', true);
+    setVal('pdfTitleBgColor', '#2C3E50');
+    setVal('pdfTitleTextColor', '#FFFFFF');
+    setVal('pdfTitleRuleColor', '#3498DB');
+    setVal('pdfGeometry', '');
+    setVal('pdfPaperSize', '');
+    setChecked('pdfTocOwnPage', true);
+    setChecked('pdfColorLinks', true);
+    setVal('pdfLinkColor', '#2980B9');
+    setVal('pdfUrlColor', '#3498DB');
+    setChecked('pdfListings', true);
+    setChecked('pdfListingsNoBreak', true);
+    setVal('pdfCodeFontSize', '');
+    setVal('pdfHeaderLeft', '\\leftmark');
+    setVal('pdfHeaderRight', '\\thepage');
+    
     selectedModules = [];
     renderModuleList();
 }
 
 // 填充配置表单（编辑模式）
 function fillConfigForm(config) {
-    document.getElementById('cfgClientName').value = config.clientName || '';
-    document.getElementById('cfgDocTypeName').value = config.docTypeName || '';
-    document.getElementById('cfgTemplate').value = config.template || '';
-    document.getElementById('cfgOutputPattern').value = config.outputPattern || '';
+    const setVal = (id, val) => { const el = document.getElementById(id); if (el) el.value = val; };
+    const setChecked = (id, val) => { const el = document.getElementById(id); if (el) el.checked = val; };
+    
+    setVal('cfgClientName', config.clientName || '');
+    setVal('cfgDocTypeName', config.docTypeName || '');
+    setVal('cfgTemplate', config.template || '');
+    setVal('cfgOutputPattern', config.outputPattern || '');
     
     // 解析 Pandoc 参数
     const args = config.pandocArgs || [];
-    document.getElementById('argToc').checked = args.includes('--toc');
-    document.getElementById('argNumberSections').checked = args.includes('--number-sections');
-    document.getElementById('argStandalone').checked = args.includes('--standalone');
     
-    // 其他参数
-    const standardArgs = ['--toc', '--number-sections', '--standalone'];
-    const customArgs = args.filter(a => !standardArgs.includes(a));
-    document.getElementById('cfgCustomArgs').value = customArgs.join(' ');
+    // 基础复选框参数
+    setChecked('argToc', args.includes('--toc'));
+    setChecked('argNumberSections', args.includes('--number-sections'));
+    setChecked('argStandalone', args.includes('--standalone'));
+    setChecked('argFileScope', args.includes('--file-scope'));
+    setChecked('argPreserveTabs', args.includes('--preserve-tabs'));
+    setChecked('argStripComments', args.includes('--strip-comments'));
+    setChecked('argNoHighlight', args.includes('--no-highlight'));
+    
+    // 解析带值的参数
+    let tocDepth = '', shiftHeading = '', topLevelDiv = '', highlightStyle = '';
+    let wrap = '', columns = '', tabStop = '';
+    const customArgs = [];
+    
+    const standardArgs = [
+        '--toc', '--number-sections', '--standalone', '--file-scope',
+        '--preserve-tabs', '--strip-comments', '--no-highlight'
+    ];
+    
+    args.forEach(function(arg) {
+        if (standardArgs.includes(arg)) return;
+        
+        if (arg.startsWith('--toc-depth=')) {
+            tocDepth = arg.split('=')[1];
+        } else if (arg.startsWith('--shift-heading-level-by=')) {
+            shiftHeading = arg.split('=')[1];
+        } else if (arg.startsWith('--top-level-division=')) {
+            topLevelDiv = arg.split('=')[1];
+        } else if (arg.startsWith('--highlight-style=')) {
+            highlightStyle = arg.split('=')[1];
+        } else if (arg.startsWith('--wrap=')) {
+            wrap = arg.split('=')[1];
+        } else if (arg.startsWith('--columns=')) {
+            columns = arg.split('=')[1];
+        } else if (arg.startsWith('--tab-stop=')) {
+            tabStop = arg.split('=')[1];
+        } else {
+            customArgs.push(arg);
+        }
+    });
+    
+    setVal('argTocDepth', tocDepth);
+    setVal('argShiftHeading', shiftHeading);
+    setVal('argTopLevelDiv', topLevelDiv);
+    setVal('argHighlightStyle', highlightStyle);
+    setVal('argWrap', wrap);
+    setVal('argColumns', columns);
+    setVal('argTabStop', tabStop);
+    setVal('cfgCustomArgs', customArgs.join(' '));
+    
+    // PDF 设置
+    const pdf = config.pdfOptions || {};
+    setVal('pdfMainFont', pdf.mainfont || 'Microsoft YaHei');
+    setVal('pdfMonoFont', pdf.monofont || 'Consolas');
+    setVal('pdfFontSize', pdf.fontsize || '');
+    setVal('pdfLineStretch', pdf.linestretch ? String(pdf.linestretch) : '');
+    setChecked('pdfTitlePage', pdf.titlepage !== false);
+    setVal('pdfTitleBgColor', '#' + (pdf['titlepage-color'] || '2C3E50'));
+    setVal('pdfTitleTextColor', '#' + (pdf['titlepage-text-color'] || 'FFFFFF'));
+    setVal('pdfTitleRuleColor', '#' + (pdf['titlepage-rule-color'] || '3498DB'));
+    setVal('pdfGeometry', pdf.geometry || '');
+    setVal('pdfPaperSize', pdf.papersize || '');
+    setChecked('pdfTocOwnPage', pdf['toc-own-page'] !== false);
+    setChecked('pdfColorLinks', pdf.colorlinks !== false);
+    setVal('pdfLinkColor', '#' + (pdf.linkcolor || '2980B9'));
+    setVal('pdfUrlColor', '#' + (pdf.urlcolor || '3498DB'));
+    setChecked('pdfListings', pdf.listings !== false);
+    setChecked('pdfListingsNoBreak', pdf['listings-no-page-break'] !== false);
+    setVal('pdfCodeFontSize', pdf['code-block-font-size'] || '');
+    setVal('pdfHeaderLeft', pdf['header-left'] || '\\leftmark');
+    setVal('pdfHeaderRight', pdf['header-right'] || '\\thepage');
     
     // 模块列表
     selectedModules = config.modules || [];
@@ -633,23 +814,86 @@ function updateFilenamePreview() {
 
 // 提交配置
 async function submitConfig() {
-    const clientName = document.getElementById('cfgClientName').value.trim();
-    const docTypeName = document.getElementById('cfgDocTypeName').value.trim();
-    const template = document.getElementById('cfgTemplate').value;
-    const outputPattern = document.getElementById('cfgOutputPattern').value.trim();
+    const getVal = (id) => { const el = document.getElementById(id); return el ? el.value.trim() : ''; };
+    const isChecked = (id) => { const el = document.getElementById(id); return el ? el.checked : false; };
+    const getColor = (id) => { const el = document.getElementById(id); return el ? el.value.replace('#', '') : ''; };
+    
+    const clientName = getVal('cfgClientName');
+    const docTypeName = getVal('cfgDocTypeName');
+    const template = getVal('cfgTemplate');
+    const outputPattern = getVal('cfgOutputPattern');
     
     // 收集 Pandoc 参数
     const pandocArgs = [];
-    if (document.getElementById('argToc').checked) pandocArgs.push('--toc');
-    if (document.getElementById('argNumberSections').checked) pandocArgs.push('--number-sections');
-    if (document.getElementById('argStandalone').checked) pandocArgs.push('--standalone');
     
-    const customArgs = document.getElementById('cfgCustomArgs').value.trim();
+    // 基础复选框参数
+    if (isChecked('argToc')) pandocArgs.push('--toc');
+    if (isChecked('argNumberSections')) pandocArgs.push('--number-sections');
+    if (isChecked('argStandalone')) pandocArgs.push('--standalone');
+    if (isChecked('argFileScope')) pandocArgs.push('--file-scope');
+    if (isChecked('argPreserveTabs')) pandocArgs.push('--preserve-tabs');
+    if (isChecked('argStripComments')) pandocArgs.push('--strip-comments');
+    if (isChecked('argNoHighlight')) pandocArgs.push('--no-highlight');
+    
+    // 带值的参数
+    const tocDepth = getVal('argTocDepth');
+    if (tocDepth) pandocArgs.push('--toc-depth=' + tocDepth);
+    
+    const shiftHeading = getVal('argShiftHeading');
+    if (shiftHeading) pandocArgs.push('--shift-heading-level-by=' + shiftHeading);
+    
+    const topLevelDiv = getVal('argTopLevelDiv');
+    if (topLevelDiv) pandocArgs.push('--top-level-division=' + topLevelDiv);
+    
+    const highlightStyle = getVal('argHighlightStyle');
+    if (highlightStyle) pandocArgs.push('--highlight-style=' + highlightStyle);
+    
+    const wrap = getVal('argWrap');
+    if (wrap) pandocArgs.push('--wrap=' + wrap);
+    
+    const columns = getVal('argColumns');
+    if (columns) pandocArgs.push('--columns=' + columns);
+    
+    const tabStop = getVal('argTabStop');
+    if (tabStop) pandocArgs.push('--tab-stop=' + tabStop);
+    
+    // 自定义参数
+    const customArgs = getVal('cfgCustomArgs');
     if (customArgs) {
         customArgs.split(/\s+/).forEach(function(arg) {
             if (arg && !pandocArgs.includes(arg)) pandocArgs.push(arg);
         });
     }
+    
+    // 收集 PDF 选项
+    const pdfOptions = {
+        mainfont: getVal('pdfMainFont'),
+        monofont: getVal('pdfMonoFont'),
+        fontsize: getVal('pdfFontSize'),
+        linestretch: getVal('pdfLineStretch') ? parseFloat(getVal('pdfLineStretch')) : null,
+        titlepage: isChecked('pdfTitlePage'),
+        'titlepage-color': getColor('pdfTitleBgColor'),
+        'titlepage-text-color': getColor('pdfTitleTextColor'),
+        'titlepage-rule-color': getColor('pdfTitleRuleColor'),
+        geometry: getVal('pdfGeometry'),
+        papersize: getVal('pdfPaperSize'),
+        'toc-own-page': isChecked('pdfTocOwnPage'),
+        colorlinks: isChecked('pdfColorLinks'),
+        linkcolor: getColor('pdfLinkColor'),
+        urlcolor: getColor('pdfUrlColor'),
+        listings: isChecked('pdfListings'),
+        'listings-no-page-break': isChecked('pdfListingsNoBreak'),
+        'code-block-font-size': getVal('pdfCodeFontSize'),
+        'header-left': getVal('pdfHeaderLeft'),
+        'header-right': getVal('pdfHeaderRight')
+    };
+    
+    // 清理空值
+    Object.keys(pdfOptions).forEach(key => {
+        if (pdfOptions[key] === '' || pdfOptions[key] === null) {
+            delete pdfOptions[key];
+        }
+    });
     
     // 验证
     if (!clientName) {
@@ -672,7 +916,8 @@ async function submitConfig() {
         template: template,
         modules: selectedModules,
         pandocArgs: pandocArgs,
-        outputPattern: outputPattern || '{client}_' + docTypeName + '_{date}.docx'
+        outputPattern: outputPattern || '{client}_' + docTypeName + '_{date}.docx',
+        pdfOptions: pdfOptions
     };
     
     const submitBtn = document.querySelector('.modal-footer .btn-primary');
@@ -698,12 +943,24 @@ async function submitConfig() {
         
         alert(currentEditConfig ? '配置更新成功' : '配置创建成功');
         hideConfigModal();
-        loadClients(); // 刷新客户列表
         
-        // 如果当前选中的是这个客户，刷新文档列表
+        // 保存新建的客户名称（用于后续自动选中）
+        const isNewConfig = !currentEditConfig;
+        const newClientName = clientName;
+        
+        // 刷新客户列表，并在完成后自动选中新建的客户
+        await loadClients();
+        
         const clientSelect = document.getElementById('clientSelect');
-        if (clientSelect && clientSelect.value === clientName) {
-            onClientChange();
+        if (clientSelect) {
+            if (isNewConfig) {
+                // 新建配置：自动选中新创建的客户
+                clientSelect.value = newClientName;
+                await onClientChange();
+            } else if (clientSelect.value === clientName) {
+                // 编辑配置：如果当前选中的是这个客户，刷新文档列表
+                await onClientChange();
+            }
         }
     } catch (e) {
         alert('保存失败: ' + e.message);

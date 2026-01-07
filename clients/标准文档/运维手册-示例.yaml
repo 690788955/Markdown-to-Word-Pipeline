@@ -1,0 +1,70 @@
+# 运维手册 - 完整版
+# 包含所有运维相关章节
+
+title: "XX系统运维手册"
+subtitle: "标准文档模板"
+author: "运维团队"
+date: "2026年1月"
+version: "v1.0"
+
+
+client_name: "标准文档"
+template: "default.docx"
+
+modules:
+  - src/metadata.yaml
+  - src/01-概述.md
+  - src/02-系统架构.md
+  - src/03-日常运维.md
+  - src/04-故障处理.md
+  - src/05-监控告警.md
+  - src/06-备份恢复.md
+  - src/07-安全规范.md
+  - src/08-部署上线.md
+  - src/09-应急预案.md
+  - src/10-项目背景.md
+  - src/11-联系人.md
+
+# Pandoc 参数说明
+# ================
+# 基础参数:
+#   --toc                          生成目录
+#   --toc-depth=N                  目录深度 (1-6，默认3)
+#   --number-sections              章节自动编号
+#   --standalone                   生成完整独立文档
+#   --file-scope                   每个文件独立处理引用
+#   --preserve-tabs                保留 Tab 字符
+#   --strip-comments               移除 HTML 注释
+#
+# 标题设置:
+#   --shift-heading-level-by=N     标题级别偏移 (-2 到 +2)
+#   --top-level-division=TYPE      顶级分区类型 (section/chapter/part)
+#
+# 代码高亮:
+#   --highlight-style=STYLE        高亮样式
+#     可选: pygments, kate, monochrome, espresso, zenburn, haddock, tango, breezedark
+#   --no-highlight                 禁用代码高亮
+#   --syntax-definition=FILE       自定义语法定义文件
+#
+# 文本格式:
+#   --wrap=MODE                    文本换行 (auto/none/preserve)
+#   --columns=N                    换行列数 (默认72)
+#   --tab-stop=N                   Tab 宽度 (默认4)
+#
+# 元数据:
+#   --metadata=KEY:VALUE           设置元数据
+#   --metadata-file=FILE           元数据文件
+#
+# 其他:
+#   --resource-path=DIR            资源搜索路径
+#   --extract-media=DIR            提取媒体文件到目录
+#   --abbreviations=FILE           缩写定义文件
+
+pandoc_args:
+  - "--toc"
+  - "--toc-depth=3"
+  - "--number-sections"
+  - "--standalone"
+  - "--highlight-style=tango"
+
+output_pattern: "{client}_运维手册_{date}.docx"

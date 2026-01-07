@@ -18,9 +18,12 @@ client:
 # 这些选项会传递给 Pandoc 的 Eisvogel 模板
 pdf_options:
   # 字体设置（使用系统已安装的中文字体）
-  mainfont: "Noto Sans CJK SC"
-  CJKmainfont: "Noto Sans CJK SC"
-  monofont: "Noto Sans Mono CJK SC"
+  # Windows 推荐: Microsoft YaHei, SimSun, SimHei
+  # Linux 推荐: Noto Sans CJK SC, WenQuanYi Micro Hei
+  # macOS 推荐: PingFang SC, Hiragino Sans GB
+  mainfont: "Microsoft YaHei"
+  CJKmainfont: "Microsoft YaHei"
+  monofont: "Consolas"
   
   # 封面设置
   titlepage: true

@@ -375,7 +375,7 @@ footer {
     background: white;
     border-radius: 12px;
     width: 90%;
-    max-width: 700px;
+    max-width: 800px;
     max-height: 90vh;
     overflow: hidden;
     display: flex;
@@ -436,8 +436,8 @@ footer {
 /* 表单样式 */
 .form-row {
     display: flex;
-    gap: 15px;
-    margin-bottom: 15px;
+    gap: 20px;
+    margin-bottom: 20px;
 }
 
 .form-row .form-group {
@@ -445,40 +445,44 @@ footer {
 }
 
 .form-group {
-    margin-bottom: 15px;
+    margin-bottom: 20px;
 }
 
 .form-group label {
     display: block;
     font-size: 0.9rem;
-    font-weight: 500;
-    color: #333;
-    margin-bottom: 6px;
+    font-weight: 600;
+    color: #2c3e50;
+    margin-bottom: 8px;
 }
 
 .form-group label small {
     font-weight: normal;
-    color: #999;
+    color: #7f8c8d;
+    font-size: 0.8rem;
 }
 
 .form-group input,
 .form-group select {
     width: 100%;
-    padding: 10px 12px;
-    border: 1px solid #ddd;
-    border-radius: 6px;
+    padding: 12px 15px;
+    border: 2px solid #ecf0f1;
+    border-radius: 8px;
     font-size: 0.95rem;
+    transition: all 0.2s;
 }
 
 .form-group input:focus,
 .form-group select:focus {
     outline: none;
     border-color: #3498db;
+    box-shadow: 0 0 0 3px rgba(52, 152, 219, 0.1);
 }
 
 .form-group input:disabled {
-    background: #f5f5f5;
-    color: #999;
+    background: #f8f9fa;
+    color: #6c757d;
+    border-color: #e9ecef;
 }
 
 .form-hint {
@@ -493,70 +497,191 @@ footer {
     display: flex;
     flex-wrap: wrap;
     gap: 15px;
-    margin-bottom: 10px;
+    margin-bottom: 15px;
+    padding: 12px;
+    background: #f8f9fa;
+    border-radius: 8px;
+    border: 1px solid #e9ecef;
 }
 
 .checkbox-label {
     display: flex;
     align-items: center;
-    gap: 6px;
-    font-size: 0.9rem;
-    color: #555;
+    gap: 8px;
+    font-size: 0.85rem;
+    color: #495057;
     cursor: pointer;
+    padding: 4px 8px;
+    border-radius: 5px;
+    transition: all 0.2s;
+}
+
+.checkbox-label:hover {
+    background: white;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
 }
 
 .checkbox-label input[type="checkbox"] {
     width: auto;
+    margin: 0;
+}
+
+/* Pandoc 参数区域 */
+.pandoc-args-section {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+    gap: 15px;
+    margin-bottom: 10px;
+}
+
+.args-category {
+    background: #f8f9fa;
+    border: 1px solid #e9ecef;
+    border-radius: 8px;
+    padding: 12px;
+}
+
+.args-category h4 {
+    font-size: 0.85rem;
+    color: #495057;
+    margin-bottom: 10px;
+    padding-bottom: 8px;
+    border-bottom: 1px solid #dee2e6;
+}
+
+.args-category .checkbox-group {
+    margin-bottom: 0;
+    padding: 0;
+    background: transparent;
+    border: none;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.args-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 10px;
+}
+
+.args-row:last-child {
+    margin-bottom: 0;
+}
+
+.args-row label {
+    font-size: 0.85rem;
+    color: #666;
+    min-width: 90px;
+    margin-bottom: 0 !important;
+    font-weight: normal !important;
+}
+
+.args-row select,
+.args-row input {
+    flex: 1;
+    padding: 8px 10px;
+    font-size: 0.85rem;
+    border: 1px solid #ddd;
+    border-radius: 5px;
+}
+
+.args-row input[type="number"] {
+    width: 80px;
+    flex: none;
 }
 
 /* 模块列表 */
 .module-list {
     border: 1px solid #ddd;
-    border-radius: 6px;
-    max-height: 250px;
+    border-radius: 8px;
+    max-height: 350px;
     overflow-y: auto;
+    background: #f8f9fa;
+    padding: 8px;
 }
 
 .module-item {
     display: flex;
     align-items: center;
     padding: 10px 12px;
-    border-bottom: 1px solid #f0f0f0;
-    cursor: move;
-    transition: background 0.2s;
+    cursor: grab;
+    transition: all 0.2s;
+    background: white;
+    margin-bottom: 4px;
+    border-radius: 6px;
+    border: 1px solid #e9ecef;
+    box-shadow: 0 1px 2px rgba(0,0,0,0.04);
 }
 
 .module-item:last-child {
-    border-bottom: none;
+    margin-bottom: 0;
 }
 
 .module-item:hover {
-    background: #f8f9fa;
+    background: #fff;
+    border-color: #3498db;
+    box-shadow: 0 2px 8px rgba(52,152,219,0.15);
 }
 
 .module-item.selected {
     background: #e8f4fd;
+    border-color: #3498db;
+    border-left: 4px solid #3498db;
 }
 
 .module-item.dragging {
-    opacity: 0.5;
+    opacity: 0.9;
+    background: #fff3cd;
+    border-color: #ffc107;
+    box-shadow: 0 8px 20px rgba(0,0,0,0.15);
+    transform: scale(1.02);
+    cursor: grabbing;
+}
+
+.module-item.drag-over {
+    border-color: #28a745;
     background: #d4edda;
 }
 
+.module-item.drag-over-top {
+    border-top: 3px solid #3498db;
+    margin-top: -1px;
+}
+
+.module-item.drag-over-bottom {
+    border-bottom: 3px solid #3498db;
+    margin-bottom: -1px;
+}
+
 .module-item input[type="checkbox"] {
-    margin-right: 10px;
+    width: 18px;
+    height: 18px;
+    margin-right: 12px;
+    cursor: pointer;
+    flex-shrink: 0;
+    accent-color: #3498db;
 }
 
 .module-label {
     flex: 1;
     font-size: 0.9rem;
+    color: #333;
+    word-break: break-all;
+    line-height: 1.3;
 }
 
 .drag-handle {
-    color: #ccc;
-    font-size: 1.2rem;
+    color: #bbb;
+    font-size: 1.1rem;
     cursor: grab;
-    padding: 0 5px;
+    padding: 0 6px;
+    flex-shrink: 0;
+    user-select: none;
+}
+
+.drag-handle:hover {
+    color: #666;
 }
 
 .drag-handle:active {
@@ -565,13 +690,21 @@ footer {
 
 /* 文件名预览 */
 .filename-preview {
-    padding: 10px 12px;
-    background: #f8f9fa;
-    border: 1px solid #ddd;
-    border-radius: 6px;
-    font-family: monospace;
+    padding: 15px;
+    background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+    border: 2px solid #dee2e6;
+    border-radius: 8px;
+    font-family: 'Consolas', 'Monaco', 'Courier New', monospace;
     font-size: 0.9rem;
-    color: #666;
+    color: #495057;
+    font-weight: 500;
+    text-align: center;
+    position: relative;
+}
+
+.filename-preview::before {
+    content: "📄";
+    margin-right: 8px;
 }
 
 /* 次要按钮 */
@@ -653,10 +786,12 @@ footer {
     
     .module-list {
         border-color: #333;
+        background: #0f3460;
     }
     
     .module-item {
         border-color: #333;
+        background: #16213e;
     }
     
     .module-item:hover {
@@ -671,6 +806,33 @@ footer {
         background: #0f3460;
         border-color: #333;
         color: #aaa;
+    }
+    
+    /* Pandoc 参数区域深色模式 */
+    .pandoc-args-section .args-category {
+        background: #0f3460;
+        border-color: #333;
+    }
+    
+    .args-category h4 {
+        color: #aaa;
+        border-color: #444;
+    }
+    
+    .args-row label {
+        color: #aaa;
+    }
+    
+    .args-row select,
+    .args-row input {
+        background: #16213e;
+        border-color: #444;
+        color: #eee;
+    }
+    
+    .checkbox-group {
+        background: transparent;
+        border-color: transparent;
     }
 }
 
@@ -689,5 +851,144 @@ footer {
     .checkbox-group {
         flex-direction: column;
         gap: 10px;
+    }
+}
+
+
+/* ==================== Tab 导航样式 ==================== */
+.config-tabs {
+    display: flex;
+    gap: 0;
+    border-bottom: 2px solid #e9ecef;
+    margin-bottom: 20px;
+}
+
+.tab-btn {
+    padding: 12px 20px;
+    border: none;
+    background: transparent;
+    color: #666;
+    font-size: 0.95rem;
+    cursor: pointer;
+    border-bottom: 2px solid transparent;
+    margin-bottom: -2px;
+    transition: all 0.2s;
+}
+
+.tab-btn:hover {
+    color: #3498db;
+    background: #f8f9fa;
+}
+
+.tab-btn.active {
+    color: #3498db;
+    border-bottom-color: #3498db;
+    font-weight: 600;
+}
+
+.tab-content {
+    display: none;
+    animation: fadeIn 0.3s ease;
+}
+
+.tab-content.active {
+    display: block;
+}
+
+@keyframes fadeIn {
+    from { opacity: 0; transform: translateY(-5px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+/* 大模态框 */
+.modal-lg {
+    max-width: 950px;
+}
+
+/* PDF 设置网格 */
+.pdf-settings-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+    gap: 15px;
+}
+
+/* 颜色选择器 */
+input[type="color"] {
+    width: 60px;
+    height: 32px;
+    padding: 2px;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    cursor: pointer;
+}
+
+/* 信息文本 */
+.info-text {
+    color: #666;
+    font-size: 0.9rem;
+    margin-bottom: 8px;
+}
+
+.info-list {
+    color: #666;
+    font-size: 0.85rem;
+    margin-left: 20px;
+    margin-top: 8px;
+}
+
+.info-list li {
+    margin-bottom: 4px;
+}
+
+/* 格式设置区域 */
+.format-settings {
+    padding: 10px 0;
+}
+
+/* 深色模式 - Tab */
+@media (prefers-color-scheme: dark) {
+    .config-tabs {
+        border-color: #333;
+    }
+    
+    .tab-btn {
+        color: #aaa;
+    }
+    
+    .tab-btn:hover {
+        background: #1a4a7a;
+    }
+    
+    .tab-btn.active {
+        color: #5dade2;
+        border-bottom-color: #5dade2;
+    }
+    
+    input[type="color"] {
+        border-color: #444;
+        background: #16213e;
+    }
+    
+    .info-text, .info-list {
+        color: #aaa;
+    }
+}
+
+/* 响应式 - Tab */
+@media (max-width: 600px) {
+    .config-tabs {
+        flex-wrap: wrap;
+    }
+    
+    .tab-btn {
+        flex: 1;
+        min-width: 80px;
+        padding: 10px 12px;
+        font-size: 0.85rem;
+        text-align: center;
+    }
+    
+    .pdf-settings-grid {
+        grid-template-columns: 1fr;
     }
 }

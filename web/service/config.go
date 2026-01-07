@@ -12,24 +12,49 @@ import (
 	"gopkg.in/yaml.v3"
 )
 
+// PdfOptions PDF 输出选项
+type PdfOptions struct {
+	Mainfont            string  `json:"mainfont,omitempty" yaml:"mainfont,omitempty"`
+	Monofont            string  `json:"monofont,omitempty" yaml:"monofont,omitempty"`
+	Fontsize            string  `json:"fontsize,omitempty" yaml:"fontsize,omitempty"`
+	Linestretch         float64 `json:"linestretch,omitempty" yaml:"linestretch,omitempty"`
+	Titlepage           bool    `json:"titlepage" yaml:"titlepage"`
+	TitlepageColor      string  `json:"titlepage-color,omitempty" yaml:"titlepage-color,omitempty"`
+	TitlepageTextColor  string  `json:"titlepage-text-color,omitempty" yaml:"titlepage-text-color,omitempty"`
+	TitlepageRuleColor  string  `json:"titlepage-rule-color,omitempty" yaml:"titlepage-rule-color,omitempty"`
+	Geometry            string  `json:"geometry,omitempty" yaml:"geometry,omitempty"`
+	Papersize           string  `json:"papersize,omitempty" yaml:"papersize,omitempty"`
+	TocOwnPage          bool    `json:"toc-own-page" yaml:"toc-own-page"`
+	Colorlinks          bool    `json:"colorlinks" yaml:"colorlinks"`
+	Linkcolor           string  `json:"linkcolor,omitempty" yaml:"linkcolor,omitempty"`
+	Urlcolor            string  `json:"urlcolor,omitempty" yaml:"urlcolor,omitempty"`
+	Listings            bool    `json:"listings" yaml:"listings"`
+	ListingsNoPageBreak bool    `json:"listings-no-page-break" yaml:"listings-no-page-break"`
+	CodeBlockFontSize   string  `json:"code-block-font-size,omitempty" yaml:"code-block-font-size,omitempty"`
+	HeaderLeft          string  `json:"header-left,omitempty" yaml:"header-left,omitempty"`
+	HeaderRight         string  `json:"header-right,omitempty" yaml:"header-right,omitempty"`
+}
+
 // CustomConfig 自定义配置
 type CustomConfig struct {
-	ClientName    string   `json:"clientName"`    // 客户名称（目录名）
-	DocTypeName   string   `json:"docTypeName"`   // 文档类型名称（配置文件名）
-	DisplayName   string   `json:"displayName"`   // 显示名称
-	Template      string   `json:"template"`      // 模板文件名
-	Modules       []string `json:"modules"`       // 模块列表（有序）
-	PandocArgs    []string `json:"pandocArgs"`    // Pandoc 参数
-	OutputPattern string   `json:"outputPattern"` // 输出文件名模式
+	ClientName    string      `json:"clientName"`              // 客户名称（目录名）
+	DocTypeName   string      `json:"docTypeName"`             // 文档类型名称（配置文件名）
+	DisplayName   string      `json:"displayName"`             // 显示名称
+	Template      string      `json:"template"`                // 模板文件名
+	Modules       []string    `json:"modules"`                 // 模块列表（有序）
+	PandocArgs    []string    `json:"pandocArgs"`              // Pandoc 参数
+	OutputPattern string      `json:"outputPattern"`           // 输出文件名模式
+	PdfOptions    *PdfOptions `json:"pdfOptions,omitempty"`    // PDF 输出选项
 }
 
 // ConfigYAML 配置文件的 YAML 结构
 type ConfigYAML struct {
-	ClientName    string   `yaml:"client_name"`
-	Template      string   `yaml:"template"`
-	Modules       []string `yaml:"modules"`
-	PandocArgs    []string `yaml:"pandoc_args"`
-	OutputPattern string   `yaml:"output_pattern"`
+	ClientName    string      `yaml:"client_name"`
+	Template      string      `yaml:"template"`
+	Modules       []string    `yaml:"modules"`
+	PandocArgs    []string    `yaml:"pandoc_args"`
+	OutputPattern string      `yaml:"output_pattern"`
+	PdfOptions    *PdfOptions `yaml:"pdf_options,omitempty"`
 }
 
 // ConfigManager 配置管理器
@@ -186,11 +211,18 @@ func (m *ConfigManager) writeConfigFile(path string, config CustomConfig) error 
 		Modules:       config.Modules,
 		PandocArgs:    config.PandocArgs,
 		OutputPattern: config.OutputPattern,
+		PdfOptions:    config.PdfOptions,
 	}
 
 	// 如果 PandocArgs 为空，设置默认值
 	if len(yamlConfig.PandocArgs) == 0 {
-		yamlConfig.PandocArgs = []string{"--toc", "--number-sections", "--standalone"}
+		yamlConfig.PandocArgs = []string{
+			"--toc",
+			"--toc-depth=3",
+			"--number-sections",
+			"--standalone",
+			"--highlight-style=tango",
+		}
 	}
 
 	data, err := yaml.Marshal(yamlConfig)
@@ -228,6 +260,7 @@ func (m *ConfigManager) GetConfig(clientName, docTypeName string) (*CustomConfig
 		Modules:       yamlConfig.Modules,
 		PandocArgs:    yamlConfig.PandocArgs,
 		OutputPattern: yamlConfig.OutputPattern,
+		PdfOptions:    yamlConfig.PdfOptions,
 	}, nil
 }
 

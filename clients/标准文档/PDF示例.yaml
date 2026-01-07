@@ -15,11 +15,14 @@ output_pattern: "{client}_{title}_{version}_{date}.docx"
 
 # PDF 输出选项
 pdf_options:
-  # 字体设置
-  mainfont: "Noto Sans CJK SC"           # 正文字体
-  sansfont: "Noto Sans CJK SC"           # 无衬线字体
-  monofont: "Noto Sans Mono CJK SC"      # 等宽字体（代码）
-  CJKmainfont: "Noto Sans CJK SC"        # 中文主字体
+  # 字体设置（根据系统安装的字体选择）
+  # Windows 推荐: Microsoft YaHei, SimSun, SimHei
+  # Linux 推荐: Noto Sans CJK SC, WenQuanYi Micro Hei
+  # macOS 推荐: PingFang SC, Hiragino Sans GB
+  mainfont: "Microsoft YaHei"            # 正文字体
+  sansfont: "Microsoft YaHei"            # 无衬线字体
+  monofont: "Consolas"                   # 等宽字体（代码）
+  CJKmainfont: "Microsoft YaHei"         # 中文主字体
   
   # 封面设置
   titlepage: true                         # 启用封面
