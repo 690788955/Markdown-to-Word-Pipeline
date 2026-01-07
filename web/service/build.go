@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"context"
 	"fmt"
+	"log"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -41,6 +42,10 @@ type BuildService struct {
 
 // NewBuildService 创建构建服务实例
 func NewBuildService(workDir, buildDir string) *BuildService {
+	log.Printf("[BuildService] 初始化构建服务")
+	log.Printf("[BuildService] 工作目录: %s", workDir)
+	log.Printf("[BuildService] 构建目录: %s", buildDir)
+	
 	svc := &BuildService{
 		workDir:    workDir,
 		buildDir:   buildDir,
@@ -50,6 +55,7 @@ func NewBuildService(workDir, buildDir string) *BuildService {
 	
 	// 启动定期清理
 	svc.startCleanup()
+	log.Printf("[BuildService] 构建服务初始化完成")
 	
 	return svc
 }
@@ -101,11 +107,22 @@ func (s *BuildService) CleanOldFiles() error {
 
 // Build 执行文档构建
 func (s *BuildService) Build(req BuildRequest) (*BuildResult, error) {
+	startTime := time.Now()
+	
 	// 默认格式为 word
 	format := req.Format
 	if format == "" {
 		format = "word"
 	}
+	
+	log.Printf("[BuildService] ==========================================")
+	log.Printf("[BuildService] 开始构建文档")
+	log.Printf("[BuildService] 客户: %s", req.ClientName)
+	log.Printf("[BuildService] 文档类型: %s", req.DocumentType)
+	log.Printf("[BuildService] 自定义名称: %s", req.CustomName)
+	log.Printf("[BuildService] 输出格式: %s", format)
+	log.Printf("[BuildService] 工作目录: %s", s.workDir)
+	log.Printf("[BuildService] ==========================================")
 	
 	// 构建命令
 	args := s.buildCommandArgs(req.ClientName, req.DocumentType, req.CustomName, format)
@@ -116,30 +133,40 @@ func (s *BuildService) Build(req BuildRequest) (*BuildResult, error) {
 
 	// 根据操作系统选择构建命令
 	var cmd *exec.Cmd
+	var scriptPath string
 	if runtime.GOOS == "windows" {
 		// Windows 使用 PowerShell 脚本，优先查找 bin 目录
-		scriptPath := s.findScript("build.ps1")
+		scriptPath = s.findScript("build.ps1")
 		if scriptPath == "" {
+			log.Printf("[BuildService] 错误: 找不到构建脚本 build.ps1")
 			return &BuildResult{
 				Success: false,
-				Error:   "找不到构建脚本 build.ps1\n请确保 bin/build.ps1 或 build.ps1 存在",
+				Error:   fmt.Sprintf("找不到构建脚本 build.ps1\n已检查路径:\n  - %s\n  - %s\n请确保脚本存在", 
+					filepath.Join(s.workDir, "bin", "build.ps1"),
+					filepath.Join(s.workDir, "build.ps1")),
 			}, nil
 		}
 		
 		psArgs := []string{"-ExecutionPolicy", "Bypass", "-File", scriptPath}
 		psArgs = append(psArgs, args...)
 		cmd = exec.CommandContext(ctx, "powershell", psArgs...)
+		log.Printf("[BuildService] 执行命令: powershell %s", strings.Join(psArgs, " "))
 	} else {
 		// Linux/macOS 使用 bash 脚本
-		scriptPath := s.findScript("build.sh")
+		scriptPath = s.findScript("build.sh")
 		if scriptPath == "" {
+			log.Printf("[BuildService] 错误: 找不到构建脚本 build.sh")
 			return &BuildResult{
 				Success: false,
-				Error:   "找不到构建脚本 build.sh\n请确保 bin/build.sh 存在",
+				Error:   fmt.Sprintf("找不到构建脚本 build.sh\n已检查路径:\n  - %s\n  - %s\n请确保脚本存在", 
+					filepath.Join(s.workDir, "bin", "build.sh"),
+					filepath.Join(s.workDir, "build.sh")),
 			}, nil
 		}
 		
-		cmd = exec.CommandContext(ctx, "bash", append([]string{scriptPath}, args...)...)
+		cmdArgs := append([]string{scriptPath}, args...)
+		cmd = exec.CommandContext(ctx, "bash", cmdArgs...)
+		log.Printf("[BuildService] 执行命令: bash %s", strings.Join(cmdArgs, " "))
 	}
 
 	cmd.Dir = s.workDir
@@ -147,8 +174,11 @@ func (s *BuildService) Build(req BuildRequest) (*BuildResult, error) {
 	// 捕获输出
 	output, err := cmd.CombinedOutput()
 	outputStr := string(output)
+	
+	elapsed := time.Since(startTime)
 
 	if ctx.Err() == context.DeadlineExceeded {
+		log.Printf("[BuildService] 构建超时 (耗时: %v)", elapsed)
 		return &BuildResult{
 			Success: false,
 			Error:   "构建超时，请稍后重试",
@@ -157,9 +187,11 @@ func (s *BuildService) Build(req BuildRequest) (*BuildResult, error) {
 	}
 
 	if err != nil {
+		log.Printf("[BuildService] 构建失败: %v (耗时: %v)", err, elapsed)
+		log.Printf("[BuildService] 错误输出: %s", outputStr)
 		return &BuildResult{
 			Success: false,
-			Error:   fmt.Sprintf("构建失败: %v\n工作目录: %s", err, s.workDir),
+			Error:   fmt.Sprintf("构建失败: %v\n工作目录: %s\n请检查脚本权限和依赖", err, s.workDir),
 			Output:  outputStr,
 		}, nil
 	}
@@ -168,16 +200,24 @@ func (s *BuildService) Build(req BuildRequest) (*BuildResult, error) {
 	filePath, fileName := s.parseOutputFile(outputStr, req.ClientName, format)
 	if filePath == "" {
 		// 尝试从 build 目录查找最新文件
+		log.Printf("[BuildService] 从输出解析文件路径失败，尝试查找最新文件")
 		filePath, fileName = s.findLatestFile(req.ClientName, format)
 	}
 
 	if filePath == "" {
+		log.Printf("[BuildService] 构建完成但未找到输出文件 (耗时: %v)", elapsed)
 		return &BuildResult{
 			Success: false,
 			Error:   "构建完成但未找到输出文件",
 			Output:  outputStr,
 		}, nil
 	}
+
+	log.Printf("[BuildService] ==========================================")
+	log.Printf("[BuildService] 构建成功!")
+	log.Printf("[BuildService] 输出文件: %s", filePath)
+	log.Printf("[BuildService] 耗时: %v", elapsed)
+	log.Printf("[BuildService] ==========================================")
 
 	return &BuildResult{
 		Success:  true,
@@ -189,18 +229,25 @@ func (s *BuildService) Build(req BuildRequest) (*BuildResult, error) {
 
 // findScript 查找构建脚本，优先 bin 目录
 func (s *BuildService) findScript(name string) string {
+	log.Printf("[BuildService] 查找脚本: %s", name)
+	
 	// 优先查找 bin 目录
 	binPath := filepath.Join(s.workDir, "bin", name)
-	if _, err := os.Stat(binPath); err == nil {
+	log.Printf("[BuildService] 检查路径: %s", binPath)
+	if info, err := os.Stat(binPath); err == nil {
+		log.Printf("[BuildService] 找到脚本: %s (权限: %s)", binPath, info.Mode().String())
 		return binPath
 	}
 	
 	// 其次查找工作目录根
 	rootPath := filepath.Join(s.workDir, name)
-	if _, err := os.Stat(rootPath); err == nil {
+	log.Printf("[BuildService] 检查路径: %s", rootPath)
+	if info, err := os.Stat(rootPath); err == nil {
+		log.Printf("[BuildService] 找到脚本: %s (权限: %s)", rootPath, info.Mode().String())
 		return rootPath
 	}
 	
+	log.Printf("[BuildService] 未找到脚本: %s", name)
 	return ""
 }
 
@@ -243,8 +290,8 @@ func (s *BuildService) BuildCommand(clientName, docType, format string) string {
 // buildCommandArgs 构建命令参数
 func (s *BuildService) buildCommandArgs(clientName, docType, customName, format string) []string {
 	if runtime.GOOS == "windows" {
-		// PowerShell 参数格式
-		args := []string{"-Client", clientName}
+		// PowerShell 参数格式，包含 WorkDir
+		args := []string{"-Client", clientName, "-WorkDir", s.workDir}
 		if docType != "" && docType != "config" {
 			args = append(args, "-Doc", docType)
 		}
@@ -257,16 +304,16 @@ func (s *BuildService) buildCommandArgs(clientName, docType, customName, format 
 		return args
 	}
 	
-	// Make 参数格式
-	args := []string{fmt.Sprintf("client=%s", clientName)}
+	// Bash 脚本参数格式，包含 -w workdir
+	args := []string{"-c", clientName, "-w", s.workDir}
 	if docType != "" && docType != "config" {
-		args = append(args, fmt.Sprintf("doc=%s", docType))
+		args = append(args, "-d", docType)
 	}
 	if customName != "" {
-		args = append(args, fmt.Sprintf("client_name=%s", customName))
+		args = append(args, "-n", customName)
 	}
 	if format == "pdf" {
-		args = append(args, "format=pdf")
+		args = append(args, "-f", "pdf")
 	}
 	return args
 }

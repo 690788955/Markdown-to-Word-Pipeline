@@ -23,6 +23,13 @@ variables:
   - fc-cache -fv || true
 
 # ==========================================
+# 脚本权限设置
+# ==========================================
+.set_script_permissions: &set_script_permissions
+  - chmod +x bin/*.sh 2>/dev/null || true
+  - echo "[CI] bin 目录脚本权限已设置"
+
+# ==========================================
 # Word 文档构建
 # ==========================================
 
@@ -32,7 +39,7 @@ build-document:
   image: pandoc/latex:latest
   
   before_script:
-    - chmod +x bin/build.sh
+    - *set_script_permissions
     - mkdir -p build templates
   
   script:
@@ -64,7 +71,7 @@ build-pdf:
   image: pandoc/latex:latest
   
   before_script:
-    - chmod +x bin/build.sh
+    - *set_script_permissions
     - mkdir -p build templates
     # 安装 PDF 依赖
     - *install_pdf_deps
@@ -88,7 +95,7 @@ build-pdf-for-client:
   image: pandoc/latex:latest
   
   before_script:
-    - chmod +x bin/build.sh
+    - *set_script_permissions
     - mkdir -p build templates
     - *install_pdf_deps
   
@@ -115,7 +122,7 @@ build-for-client:
   image: pandoc/latex:latest
   
   before_script:
-    - chmod +x bin/build.sh
+    - *set_script_permissions
     - mkdir -p build templates
   
   script:
@@ -142,7 +149,7 @@ build-all-clients:
   image: pandoc/latex:latest
   
   before_script:
-    - chmod +x bin/build.sh
+    - *set_script_permissions
     - mkdir -p build templates
     - *install_pdf_deps
   

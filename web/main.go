@@ -3,7 +3,6 @@ package main
 
 import (
 	"flag"
-	"fmt"
 	"log"
 	"net/http"
 	"os"
@@ -74,10 +73,25 @@ func main() {
 
 	// 确保 build 目录存在
 	if err := os.MkdirAll(cfg.BuildDir, 0755); err != nil {
-		log.Printf("警告: 无法创建 build 目录: %v", err)
+		log.Printf("[WebService] 警告: 无法创建 build 目录: %v", err)
+	}
+
+	// 检查 bin 目录脚本
+	binDir := filepath.Join(cfg.WorkDir, "bin")
+	log.Printf("[WebService] 检查脚本目录: %s", binDir)
+	if entries, err := os.ReadDir(binDir); err == nil {
+		for _, entry := range entries {
+			if !entry.IsDir() {
+				info, _ := entry.Info()
+				log.Printf("[WebService] 脚本文件: %s (权限: %s)", entry.Name(), info.Mode().String())
+			}
+		}
+	} else {
+		log.Printf("[WebService] 警告: 无法读取 bin 目录: %v", err)
 	}
 
 	// 创建服务
+	log.Printf("[WebService] 初始化服务...")
 	clientSvc := service.NewClientService(cfg.ClientsDir)
 	docSvc := service.NewDocumentService(cfg.ClientsDir)
 	buildSvc := service.NewBuildService(cfg.WorkDir, cfg.BuildDir)
@@ -106,19 +120,22 @@ func main() {
 
 	// 启动服务器
 	addr := ":" + cfg.Port
-	fmt.Printf("========================================\n")
-	fmt.Printf("运维文档生成系统 Web 服务\n")
-	fmt.Printf("========================================\n")
-	fmt.Printf("服务地址: http://localhost%s\n", addr)
-	fmt.Printf("工作目录: %s\n", cfg.WorkDir)
-	fmt.Printf("静态目录: %s\n", staticDir)
-	fmt.Printf("客户目录: %s\n", cfg.ClientsDir)
-	fmt.Printf("构建目录: %s\n", cfg.BuildDir)
-	fmt.Printf("========================================\n")
-	fmt.Printf("命令行参数:\n")
-	fmt.Printf("  -port <端口>     指定监听端口\n")
-	fmt.Printf("  -workdir <目录>  指定工作目录\n")
-	fmt.Printf("========================================\n")
+	log.Printf("[WebService] ==========================================")
+	log.Printf("[WebService] 运维文档生成系统 Web 服务")
+	log.Printf("[WebService] ==========================================")
+	log.Printf("[WebService] 服务地址: http://localhost%s", addr)
+	log.Printf("[WebService] 工作目录: %s", cfg.WorkDir)
+	log.Printf("[WebService] 静态目录: %s", staticDir)
+	log.Printf("[WebService] 客户目录: %s", cfg.ClientsDir)
+	log.Printf("[WebService] 模板目录: %s", cfg.TemplatesDir)
+	log.Printf("[WebService] 源文档目录: %s", cfg.SrcDir)
+	log.Printf("[WebService] 构建目录: %s", cfg.BuildDir)
+	log.Printf("[WebService] ==========================================")
+	log.Printf("[WebService] 命令行参数:")
+	log.Printf("[WebService]   -port <端口>     指定监听端口")
+	log.Printf("[WebService]   -workdir <目录>  指定工作目录")
+	log.Printf("[WebService] ==========================================")
+	log.Printf("[WebService] 服务启动中...")
 
 	log.Fatal(http.ListenAndServe(addr, mux))
 }

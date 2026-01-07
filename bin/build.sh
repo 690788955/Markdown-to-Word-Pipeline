@@ -6,27 +6,166 @@
 
 set -e
 
-# 参数
-CLIENT="${1:-default}"
-DOC_TYPE="${2:-}"
-CUSTOM_CLIENT_NAME="${3:-}"
-FORMAT="${4:-word}"  # 输出格式：word 或 pdf
+# 确定脚本所在目录和工作目录
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+if [ "$(basename "$SCRIPT_DIR")" = "bin" ]; then
+    BASE_DIR="$(dirname "$SCRIPT_DIR")"
+else
+    BASE_DIR="$SCRIPT_DIR"
+fi
 
-# 配置
+# 默认参数
+CLIENT="default"
+DOC_TYPE=""
+CUSTOM_CLIENT_NAME=""
+FORMAT="word"
+WORK_DIR=""
+SHOW_HELP=false
+LIST_CLIENTS=false
+LIST_DOCS=false
+CHECK_PDF_DEPS=false
+
+# 解析命名参数
+while [[ $# -gt 0 ]]; do
+    case $1 in
+        -c|--client)
+            CLIENT="$2"
+            shift 2
+            ;;
+        -d|--doc)
+            DOC_TYPE="$2"
+            shift 2
+            ;;
+        -n|--name)
+            CUSTOM_CLIENT_NAME="$2"
+            shift 2
+            ;;
+        -f|--format)
+            FORMAT="$2"
+            shift 2
+            ;;
+        -w|--workdir)
+            WORK_DIR="$2"
+            shift 2
+            ;;
+        -h|--help)
+            SHOW_HELP=true
+            shift
+            ;;
+        --list-clients)
+            LIST_CLIENTS=true
+            shift
+            ;;
+        --list-docs)
+            LIST_DOCS=true
+            shift
+            ;;
+        --check-pdf-deps)
+            CHECK_PDF_DEPS=true
+            shift
+            ;;
+        *)
+            # 兼容旧的位置参数
+            if [ -z "$CLIENT" ] || [ "$CLIENT" = "default" ]; then
+                CLIENT="$1"
+            elif [ -z "$DOC_TYPE" ]; then
+                DOC_TYPE="$1"
+            elif [ -z "$CUSTOM_CLIENT_NAME" ]; then
+                CUSTOM_CLIENT_NAME="$1"
+            elif [ "$FORMAT" = "word" ]; then
+                FORMAT="$1"
+            fi
+            shift
+            ;;
+    esac
+done
+
+# 设置工作目录
+if [ -n "$WORK_DIR" ]; then
+    BASE_DIR="$WORK_DIR"
+fi
+
+cd "$BASE_DIR"
+
+# 配置（相对于工作目录）
 SRC_DIR="src"
 CLIENTS_DIR="clients"
 TEMPLATES_DIR="templates"
 BUILD_DIR="build"
 
-CLIENT_DIR="${CLIENTS_DIR}/${CLIENT}"
-CLIENT_META="${CLIENT_DIR}/metadata.yaml"
+# ==========================================
+# 帮助信息
+# ==========================================
+show_help() {
+    cat << EOF
+==========================================
+运维文档生成系统 (Linux/macOS)
+==========================================
 
-# 确定配置文件
-if [ -n "$DOC_TYPE" ]; then
-    CONFIG_FILE="${CLIENT_DIR}/${DOC_TYPE}.yaml"
-else
-    CONFIG_FILE="${CLIENT_DIR}/config.yaml"
-fi
+用法: ./build.sh [选项]
+
+选项:
+  -c, --client <名称>    指定客户配置（默认: default）
+  -d, --doc <文档类型>   指定文档类型（如：运维手册、部署手册）
+  -n, --name <名称>      自定义客户名称（覆盖配置）
+  -f, --format <格式>    输出格式：word 或 pdf（默认: word）
+  -w, --workdir <目录>   指定工作目录
+  -h, --help             显示帮助信息
+  --list-clients         列出所有可用客户配置
+  --list-docs            列出指定客户的所有文档类型
+  --check-pdf-deps       检查 PDF 生成所需依赖
+
+示例:
+  ./build.sh                                      # 默认构建 Word
+  ./build.sh -f pdf                               # 生成 PDF
+  ./build.sh -c 标准文档                          # 使用 config.yaml
+  ./build.sh -c 标准文档 -d 运维手册              # 构建运维手册
+  ./build.sh -c 标准文档 -f pdf                   # 生成 PDF 格式
+  ./build.sh --list-clients                       # 列出所有客户
+  ./build.sh -c 标准文档 --list-docs              # 列出文档类型
+  ./build.sh --check-pdf-deps                     # 检查 PDF 依赖
+
+工作目录: $BASE_DIR
+
+EOF
+}
+
+# ==========================================
+# 列出客户
+# ==========================================
+list_clients() {
+    echo "可用客户配置:"
+    for dir in ${CLIENTS_DIR}/*/; do
+        if [ -d "$dir" ]; then
+            echo "  - $(basename "$dir")"
+        fi
+    done
+}
+
+# ==========================================
+# 列出文档类型
+# ==========================================
+list_docs() {
+    local client_dir="${CLIENTS_DIR}/${CLIENT}"
+    if [ ! -d "$client_dir" ]; then
+        echo "[错误] 客户不存在: $CLIENT"
+        return 1
+    fi
+    
+    echo "客户 [$CLIENT] 的文档类型:"
+    for f in ${client_dir}/*.yaml; do
+        if [ -f "$f" ]; then
+            name=$(basename "$f" .yaml)
+            if [ "$name" = "metadata" ]; then
+                continue
+            elif [ "$name" = "config" ]; then
+                echo "  - (默认)"
+            else
+                echo "  - $name"
+            fi
+        fi
+    done
+}
 
 # ==========================================
 # 辅助函数
@@ -117,6 +256,9 @@ replace_placeholders() {
 check_pdf_dependencies() {
     local all_ok=true
     
+    echo "检查 PDF 生成依赖..."
+    echo ""
+    
     # 检查 Pandoc
     if command -v pandoc &> /dev/null; then
         echo "[OK] Pandoc 已安装: $(which pandoc)"
@@ -179,6 +321,38 @@ check_pdf_dependencies() {
 # 主逻辑
 # ==========================================
 
+# 处理特殊命令
+if [ "$SHOW_HELP" = true ]; then
+    show_help
+    exit 0
+fi
+
+if [ "$LIST_CLIENTS" = true ]; then
+    list_clients
+    exit 0
+fi
+
+if [ "$LIST_DOCS" = true ]; then
+    list_docs
+    exit 0
+fi
+
+if [ "$CHECK_PDF_DEPS" = true ]; then
+    check_pdf_dependencies
+    exit 0
+fi
+
+# 设置路径
+CLIENT_DIR="${CLIENTS_DIR}/${CLIENT}"
+CLIENT_META="${CLIENT_DIR}/metadata.yaml"
+
+# 确定配置文件
+if [ -n "$DOC_TYPE" ]; then
+    CONFIG_FILE="${CLIENT_DIR}/${DOC_TYPE}.yaml"
+else
+    CONFIG_FILE="${CLIENT_DIR}/config.yaml"
+fi
+
 echo "=========================================="
 if [ -n "$DOC_TYPE" ]; then
     echo "构建文档 - 客户: ${CLIENT} [${DOC_TYPE}] [${FORMAT^^}]"
@@ -189,7 +363,6 @@ echo "=========================================="
 
 # PDF 格式需要额外检查依赖
 if [ "$FORMAT" = "pdf" ]; then
-    echo "检查 PDF 生成依赖..."
     if ! check_pdf_dependencies; then
         echo ""
         echo "[错误] PDF 依赖检查失败，请先安装所需依赖"
@@ -203,10 +376,7 @@ fi
 if [ ! -d "$CLIENT_DIR" ]; then
     echo "[错误] 客户目录不存在: $CLIENT_DIR"
     echo ""
-    echo "可用客户:"
-    for dir in ${CLIENTS_DIR}/*/; do
-        echo "  - $(basename "$dir")"
-    done
+    list_clients
     exit 1
 fi
 
@@ -214,20 +384,13 @@ fi
 if [ ! -f "$CONFIG_FILE" ]; then
     echo "[错误] 配置文件不存在: $CONFIG_FILE"
     if [ -n "$DOC_TYPE" ]; then
-        echo "可用的文档类型:"
-        for f in ${CLIENT_DIR}/*.yaml; do
-            name=$(basename "$f" .yaml)
-            [ "$name" = "metadata" ] && continue
-            [ "$name" = "config" ] && echo "  - (默认)" || echo "  - $name"
-        done
+        list_docs
     fi
     exit 1
 fi
 
-# 验证 YAML 格式（基础检查）
-if ! grep -q "^modules:" "$CONFIG_FILE" 2>/dev/null; then
-    echo "[警告] 配置中未找到 'modules' 键，使用默认值"
-fi
+# 创建构建目录
+mkdir -p "$BUILD_DIR"
 
 # 读取配置
 client_name=$(read_yaml_value "$CONFIG_FILE" "client_name")
@@ -246,38 +409,20 @@ while IFS= read -r line; do
     [ -n "$line" ] && pandoc_args+=("$line")
 done < <(read_yaml_list "$CONFIG_FILE" "pandoc_args")
 
-# 读取 PDF 选项（从配置文件，使用默认值）
+# 读取 PDF 选项
 pdf_titlepage=$(read_pdf_option "$CONFIG_FILE" "titlepage" "true")
 pdf_titlepage_color=$(read_pdf_option "$CONFIG_FILE" "titlepage_color" "2C3E50")
 pdf_titlepage_text_color=$(read_pdf_option "$CONFIG_FILE" "titlepage_text_color" "FFFFFF")
-pdf_titlepage_rule_color=$(read_pdf_option "$CONFIG_FILE" "titlepage_rule_color" "3498DB")
-pdf_logo=$(read_pdf_option "$CONFIG_FILE" "logo" "")
-pdf_logo_width=$(read_pdf_option "$CONFIG_FILE" "logo_width" "100")
-pdf_listings=$(read_pdf_option "$CONFIG_FILE" "listings" "true")
 pdf_CJKmainfont=$(read_pdf_option "$CONFIG_FILE" "CJKmainfont" "Noto Sans CJK SC")
 pdf_mainfont=$(read_pdf_option "$CONFIG_FILE" "mainfont" "Noto Sans")
 pdf_monofont=$(read_pdf_option "$CONFIG_FILE" "monofont" "Noto Sans Mono")
 pdf_toc=$(read_pdf_option "$CONFIG_FILE" "toc" "true")
 pdf_toc_depth=$(read_pdf_option "$CONFIG_FILE" "toc_depth" "3")
-pdf_number_sections=$(read_pdf_option "$CONFIG_FILE" "number_sections" "true")
-pdf_colorlinks=$(read_pdf_option "$CONFIG_FILE" "colorlinks" "true")
-pdf_linkcolor=$(read_pdf_option "$CONFIG_FILE" "linkcolor" "blue")
-
-# 从 metadata.yaml 覆盖 PDF 选项
-if [ -f "$CLIENT_META" ]; then
-    meta_titlepage=$(read_pdf_option "$CLIENT_META" "titlepage" "")
-    [ -n "$meta_titlepage" ] && pdf_titlepage="$meta_titlepage"
-    meta_titlepage_color=$(read_pdf_option "$CLIENT_META" "titlepage_color" "")
-    [ -n "$meta_titlepage_color" ] && pdf_titlepage_color="$meta_titlepage_color"
-    meta_CJKmainfont=$(read_pdf_option "$CLIENT_META" "CJKmainfont" "")
-    [ -n "$meta_CJKmainfont" ] && pdf_CJKmainfont="$meta_CJKmainfont"
-fi
 
 # 默认值
 [ -z "$client_name" ] && client_name="$CLIENT"
 [ -z "$template" ] && template="default.docx"
 [ -z "$output_pattern" ] && output_pattern="{title}_{date}.docx"
-[ ${#modules[@]} -eq 0 ] && modules=("${SRC_DIR}/metadata.yaml" "${SRC_DIR}/01-overview.md")
 
 # 如果传入了自定义客户名称，使用它覆盖配置
 if [ -n "$CUSTOM_CLIENT_NAME" ]; then
@@ -287,22 +432,7 @@ fi
 
 echo "客户名称: $client_name"
 echo "输出格式: $FORMAT"
-if [ "$FORMAT" = "word" ]; then
-    echo "模板: $template"
-fi
 echo "模块: ${modules[*]}"
-
-# 检查模板文件（仅 Word 格式需要）
-template_path=""
-if [ "$FORMAT" = "word" ]; then
-    template_path="${TEMPLATES_DIR}/${template}"
-    if [ ! -f "$template_path" ]; then
-        echo "[警告] 模板不存在: $template_path"
-        echo "运行 'make init-template' 生成默认模板"
-        echo "继续构建（不使用模板）..."
-        template_path=""
-    fi
-fi
 
 # 检查模块文件
 valid_modules=()
@@ -319,22 +449,7 @@ if [ ${#valid_modules[@]} -eq 0 ]; then
     exit 1
 fi
 
-# 检查图片引用
-echo "检查图片引用..."
-for module in "${valid_modules[@]}"; do
-    if [[ "$module" == *.md ]]; then
-        grep -oE '!\[[^]]*\]\([^)]+\)' "$module" 2>/dev/null | while read -r img_ref; do
-            img_path=$(echo "$img_ref" | sed 's/.*](\([^)]*\)).*/\1/')
-            full_path="${SRC_DIR}/${img_path}"
-            if [[ ! "$img_path" =~ ^http ]] && [ ! -f "$full_path" ] && [ ! -f "$img_path" ]; then
-                echo "[警告] 图片不存在: $img_path (在 $module 中)"
-            fi
-        done
-    fi
-done
-echo ""
-
-# 读取元数据用于文件名
+# 读取元数据
 title=$(read_yaml_value "${SRC_DIR}/metadata.yaml" "title")
 version=$(read_yaml_value "${SRC_DIR}/metadata.yaml" "version")
 date=$(date +%Y-%m-%d)
@@ -347,20 +462,16 @@ if [ -f "$CLIENT_META" ]; then
     [ -n "$client_version" ] && version="$client_version"
 fi
 
-# 默认值
 [ -z "$title" ] && title="Document"
 [ -z "$version" ] && version="v1.0"
 
-# 清理文件名中的空格
+# 清理文件名
 client_name_clean=$(echo "$client_name" | tr ' ' '_')
 title_clean=$(echo "$title" | tr ' ' '_')
 
-# 根据格式调整输出文件扩展名
+# 调整输出扩展名
 if [ "$FORMAT" = "pdf" ]; then
     output_pattern_adjusted=$(echo "$output_pattern" | sed 's/\.docx$/.pdf/')
-    if [[ ! "$output_pattern_adjusted" =~ \.pdf$ ]]; then
-        output_pattern_adjusted=$(echo "$output_pattern_adjusted" | sed 's/\.[^.]*$/.pdf/')
-    fi
 else
     output_pattern_adjusted="$output_pattern"
 fi
@@ -376,7 +487,6 @@ echo ""
 pandoc_cmd=(pandoc)
 pandoc_cmd+=("${valid_modules[@]}")
 
-# 添加客户元数据文件
 if [ -f "$CLIENT_META" ]; then
     pandoc_cmd+=("$CLIENT_META")
 fi
@@ -384,56 +494,27 @@ fi
 pandoc_cmd+=(-o "$output_path")
 
 if [ "$FORMAT" = "word" ]; then
-    # Word 格式参数
-    if [ -n "$template_path" ]; then
+    template_path="${TEMPLATES_DIR}/${template}"
+    if [ -f "$template_path" ]; then
         pandoc_cmd+=(--reference-doc="$template_path")
     fi
 else
-    # PDF 格式参数
     pandoc_cmd+=(--pdf-engine=xelatex)
     pandoc_cmd+=(--template=eisvogel)
-    
-    # 应用 PDF 选项
     [ "$pdf_titlepage" = "true" ] && pandoc_cmd+=(-V titlepage=true)
     [ -n "$pdf_titlepage_color" ] && pandoc_cmd+=(-V "titlepage-color=$pdf_titlepage_color")
-    [ -n "$pdf_titlepage_text_color" ] && pandoc_cmd+=(-V "titlepage-text-color=$pdf_titlepage_text_color")
-    [ -n "$pdf_titlepage_rule_color" ] && pandoc_cmd+=(-V "titlepage-rule-color=$pdf_titlepage_rule_color")
-    
-    if [ -n "$pdf_logo" ] && [ -f "${SRC_DIR}/${pdf_logo}" ]; then
-        pandoc_cmd+=(-V "logo=$pdf_logo")
-        pandoc_cmd+=(-V "logo-width=$pdf_logo_width")
-    fi
-    
-    [ "$pdf_listings" = "true" ] && pandoc_cmd+=(-V listings=true)
     [ -n "$pdf_CJKmainfont" ] && pandoc_cmd+=(-V "CJKmainfont=$pdf_CJKmainfont")
     [ -n "$pdf_mainfont" ] && pandoc_cmd+=(-V "mainfont=$pdf_mainfont")
-    [ -n "$pdf_monofont" ] && pandoc_cmd+=(-V "monofont=$pdf_monofont")
-    
-    if [ "$pdf_toc" = "true" ]; then
-        pandoc_cmd+=(--toc)
-        pandoc_cmd+=(--toc-depth="$pdf_toc_depth")
-    fi
-    
-    [ "$pdf_number_sections" = "true" ] && pandoc_cmd+=(--number-sections)
-    
-    if [ "$pdf_colorlinks" = "true" ]; then
-        pandoc_cmd+=(-V colorlinks=true)
-        pandoc_cmd+=(-V "linkcolor=$pdf_linkcolor")
-    fi
+    [ "$pdf_toc" = "true" ] && pandoc_cmd+=(--toc --toc-depth="$pdf_toc_depth")
 fi
 
-# 添加资源路径
 pandoc_cmd+=(--resource-path="$SRC_DIR")
-
-# 添加额外参数
-for arg in "${pandoc_args[@]}"; do
-    pandoc_cmd+=("$arg")
-done
+pandoc_cmd+=("${pandoc_args[@]}")
 
 echo "执行: ${pandoc_cmd[*]}"
 echo ""
 
-# 执行 Pandoc
+# 执行
 if "${pandoc_cmd[@]}"; then
     echo "=========================================="
     echo "构建成功！"

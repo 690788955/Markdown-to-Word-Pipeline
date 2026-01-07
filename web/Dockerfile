@@ -80,8 +80,10 @@ COPY clients/ /app/clients/
 # 创建 build 目录（用于输出，建议挂载）
 RUN mkdir -p /app/build
 
-# 设置脚本执行权限
-RUN chmod +x /app/bin/*.sh 2>/dev/null || true
+# 设置脚本执行权限并验证
+RUN chmod +x /app/bin/*.sh 2>/dev/null || true && \
+    echo "[Docker] bin 目录脚本权限已设置" && \
+    ls -la /app/bin/*.sh 2>/dev/null || echo "[Docker] 无 .sh 脚本文件"
 
 # 设置环境变量
 ENV PORT=8080

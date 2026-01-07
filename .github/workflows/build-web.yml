@@ -30,6 +30,8 @@ jobs:
           cp doc-generator-web ../dist/doc-generator-web-linux-amd64/
           cp -r static ../dist/doc-generator-web-linux-amd64/
           cp -r ../bin ../dist/doc-generator-web-linux-amd64/
+          # 设置脚本可执行权限
+          chmod +x ../dist/doc-generator-web-linux-amd64/bin/*.sh
           cp -r ../src ../dist/doc-generator-web-linux-amd64/
           cp -r ../clients ../dist/doc-generator-web-linux-amd64/
           cp -r ../templates ../dist/doc-generator-web-linux-amd64/
@@ -43,6 +45,8 @@ jobs:
           cp doc-generator-web ../dist/doc-generator-web-linux-arm64/
           cp -r static ../dist/doc-generator-web-linux-arm64/
           cp -r ../bin ../dist/doc-generator-web-linux-arm64/
+          # 设置脚本可执行权限
+          chmod +x ../dist/doc-generator-web-linux-arm64/bin/*.sh
           cp -r ../src ../dist/doc-generator-web-linux-arm64/
           cp -r ../clients ../dist/doc-generator-web-linux-arm64/
           cp -r ../templates ../dist/doc-generator-web-linux-arm64/
@@ -80,6 +84,8 @@ jobs:
           cp doc-generator-web ../dist/doc-generator-web-darwin-amd64/
           cp -r static ../dist/doc-generator-web-darwin-amd64/
           cp -r ../bin ../dist/doc-generator-web-darwin-amd64/
+          # 设置脚本可执行权限
+          chmod +x ../dist/doc-generator-web-darwin-amd64/bin/*.sh
           cp -r ../src ../dist/doc-generator-web-darwin-amd64/
           cp -r ../clients ../dist/doc-generator-web-darwin-amd64/
           cp -r ../templates ../dist/doc-generator-web-darwin-amd64/
@@ -93,6 +99,8 @@ jobs:
           cp doc-generator-web ../dist/doc-generator-web-darwin-arm64/
           cp -r static ../dist/doc-generator-web-darwin-arm64/
           cp -r ../bin ../dist/doc-generator-web-darwin-arm64/
+          # 设置脚本可执行权限
+          chmod +x ../dist/doc-generator-web-darwin-arm64/bin/*.sh
           cp -r ../src ../dist/doc-generator-web-darwin-arm64/
           cp -r ../clients ../dist/doc-generator-web-darwin-arm64/
           cp -r ../templates ../dist/doc-generator-web-darwin-arm64/
