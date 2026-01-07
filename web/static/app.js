@@ -1,4 +1,4 @@
-// 运维文档生成系统 - 前端逻辑 v5
+// 运维文档生成系统 - 前端逻辑 v6
 // 支持 Word 和 PDF 格式输出，支持自定义配置
 
 let documentTypes = [];
@@ -8,9 +8,6 @@ let availableTemplates = [];
 let selectedModules = [];
 let currentEditConfig = null; // 当前编辑的配置
 let currentClient = null; // 当前选中的客户信息
-
-// 全局函数声明（稍后会被实际函数覆盖）
-let showConfigModal, hideConfigModal, hideConfirmModal, submitConfig;
 
 // 初始化
 document.addEventListener('DOMContentLoaded', function() {
@@ -378,7 +375,6 @@ function setLoading(btn, loading) {
     if (load) load.style.display = loading ? 'inline-flex' : 'none';
 }
 
-
 // ==================== 自定义配置功能 ====================
 
 // 显示配置模态框
@@ -551,7 +547,7 @@ function onDrop(e, targetIndex) {
     const items = moduleList.querySelectorAll('.module-item');
     const newOrder = [];
     
-    items.forEach(function(item, i) {
+    items.forEach(function(item) {
         if (item.querySelector('input').checked) {
             newOrder.push('src/' + item.dataset.fileName);
         }
