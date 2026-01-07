@@ -110,11 +110,26 @@ wget -O ~/.local/share/pandoc/templates/eisvogel.latex \
 **检查 PDF 依赖**:
 ```bash
 # Windows
-.\bin\check-pdf-deps.ps1
+.\build.ps1 -CheckPdfDeps
 
 # Linux/macOS
-./bin/check-pdf-deps.sh
+./bin/build.sh --check-pdf-deps
 ```
+
+**更新 Eisvogel 模板** (解决版本兼容性问题):
+```bash
+# Windows
+.\bin\update-eisvogel.ps1
+
+# Linux/macOS
+./bin/update-eisvogel.sh
+```
+
+> **关于模板路径**: Eisvogel 模板需要放在 Pandoc 的用户模板目录中：
+> - Windows: `%APPDATA%\pandoc\templates\eisvogel.latex`
+> - Linux/macOS: `~/.local/share/pandoc/templates/eisvogel.latex`
+> 
+> 这是 Pandoc 的标准模板搜索路径，所有项目都可以共用同一个模板。
 
 ### 2. 构建文档
 
@@ -356,28 +371,78 @@ clients/某客户/
 
 ```yaml
 pdf_options:
-  # 字体设置
+  # 字体设置（根据系统选择）
+  # Windows: Microsoft YaHei, SimSun, SimHei
+  # Linux: Noto Sans CJK SC, WenQuanYi Micro Hei
+  # macOS: PingFang SC, Hiragino Sans GB
   mainfont: "Noto Sans CJK SC"
   CJKmainfont: "Noto Sans CJK SC"
-  monofont: "Noto Sans Mono CJK SC"
+  monofont: "Consolas"
   
   # 封面设置
   titlepage: true
   titlepage-color: "2C3E50"
   titlepage-text-color: "FFFFFF"
+  titlepage-rule-color: "3498DB"
   # titlepage-logo: "images/logo.png"
+  # logo-width: 100
   
   # 页面设置
   geometry: "margin=2.5cm"
   fontsize: "11pt"
   linestretch: 1.25
   
+  # 代码块设置
+  listings: true
+  listings-no-page-break: true
+  code-block-font-size: "\\small"
+  
   # 目录设置
   toc: true
   toc-depth: 3
+  toc-own-page: true
+  
+  # 链接设置
+  colorlinks: true
+  linkcolor: "2980B9"
+  urlcolor: "3498DB"
 ```
 
 完整配置示例见 `clients/标准文档/PDF示例.yaml`。
+
+### PDF 常见问题
+
+**Q: 报错 "No counter 'none' defined"**
+
+A: Eisvogel 模板版本与 Pandoc 不兼容，运行更新脚本：
+```bash
+# Windows
+.\bin\update-eisvogel.ps1
+
+# Linux/macOS
+./bin/update-eisvogel.sh
+```
+
+**Q: 中文显示为方块或乱码**
+
+A: 需要安装中文字体，并在配置中指定正确的字体名称：
+```bash
+# Ubuntu/Debian
+sudo apt install fonts-noto-cjk
+
+# CentOS/RHEL
+sudo yum install google-noto-sans-cjk-fonts
+
+# macOS (系统自带 PingFang SC)
+```
+
+**Q: 找不到 Eisvogel 模板**
+
+A: 模板需要放在 Pandoc 的用户模板目录：
+- Windows: `%APPDATA%\pandoc\templates\eisvogel.latex`
+- Linux/macOS: `~/.local/share/pandoc/templates/eisvogel.latex`
+
+运行 `.\bin\update-eisvogel.ps1` 或 `./bin/update-eisvogel.sh` 自动下载安装。
 
 ## 许可证
 

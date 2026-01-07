@@ -14,51 +14,50 @@ modules:
 output_pattern: "{client}_{title}_{version}_{date}.docx"
 
 # PDF 输出选项
+# 字体设置（根据系统安装的字体选择）
+# Windows 推荐: Microsoft YaHei, SimSun, SimHei
+# Linux 推荐: Noto Sans CJK SC, WenQuanYi Micro Hei
+# macOS 推荐: PingFang SC, Hiragino Sans GB
 pdf_options:
-  # 字体设置（根据系统安装的字体选择）
-  # Windows 推荐: Microsoft YaHei, SimSun, SimHei
-  # Linux 推荐: Noto Sans CJK SC, WenQuanYi Micro Hei
-  # macOS 推荐: PingFang SC, Hiragino Sans GB
-  mainfont: "Microsoft YaHei"            # 正文字体
-  sansfont: "Microsoft YaHei"            # 无衬线字体
-  monofont: "Consolas"                   # 等宽字体（代码）
-  CJKmainfont: "Microsoft YaHei"         # 中文主字体
+  # 字体
+  mainfont: "Noto Sans CJK SC"
+  sansfont: "Noto Sans CJK SC"
+  monofont: "Noto Sans Mono"
+  CJKmainfont: "Noto Sans CJK SC"
   
-  # 封面设置
-  titlepage: true                         # 启用封面
-  titlepage-color: "2C3E50"              # 封面背景色（深蓝灰）
-  titlepage-text-color: "FFFFFF"         # 封面文字颜色（白色）
-  titlepage-rule-color: "3498DB"         # 封面装饰线颜色（蓝色）
-  titlepage-rule-height: 4               # 装饰线高度
-  # titlepage-logo: "images/logo.png"    # 封面 Logo（可选）
-  # logo-width: 100                       # Logo 宽度（mm）
+  # 封面
+  titlepage: true
+  titlepage-color: "2C3E50"
+  titlepage-text-color: "FFFFFF"
+  titlepage-rule-color: "3498DB"
+  titlepage-rule-height: 4
   
-  # 页面设置
-  geometry: "margin=2.5cm"               # 页边距
-  fontsize: "11pt"                       # 字体大小
-  linestretch: 1.25                      # 行间距
+  # 页面
+  geometry: "margin=2.5cm"
+  fontsize: "11pt"
+  linestretch: 1.25
   
-  # 代码块设置
-  listings: true                         # 使用 listings 包
-  listings-no-page-break: true           # 代码块不跨页
-  code-block-font-size: "\\small"        # 代码字体大小
+  # 代码块
+  listings: true
+  listings-no-page-break: true
+  code-block-font-size: "\\small"
   
-  # 目录设置
-  toc: true                              # 生成目录
-  toc-depth: 3                           # 目录深度
-  toc-own-page: true                     # 目录单独一页
+  # 目录
+  toc: true
+  toc-depth: 3
+  toc-own-page: true
   
   # 页眉页脚
-  header-left: "\\leftmark"              # 左页眉（章节名）
-  header-right: "\\thepage"              # 右页眉（页码）
-  footer-center: ""                      # 页脚居中
+  header-left: "\\leftmark"
+  header-right: "\\thepage"
+  footer-center: ""
   
-  # 其他设置
-  colorlinks: true                       # 彩色链接
-  linkcolor: "2980B9"                    # 内部链接颜色
-  urlcolor: "3498DB"                     # URL 颜色
-  book: false                            # 非书籍模式
-  classoption: "oneside"                 # 单面打印
+  # 链接
+  colorlinks: true
+  linkcolor: "2980B9"
+  urlcolor: "3498DB"
+  book: false
+  classoption: "oneside"
 
 # Pandoc 额外参数
 pandoc_args:
