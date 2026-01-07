@@ -76,8 +76,8 @@ func main() {
 		log.Printf("[WebService] 警告: 无法创建 build 目录: %v", err)
 	}
 
-	// 检查 bin 目录脚本
-	binDir := filepath.Join(cfg.WorkDir, "bin")
+	// 检查 bin 目录脚本（在可执行文件目录）
+	binDir := filepath.Join(exeDir, "bin")
 	log.Printf("[WebService] 检查脚本目录: %s", binDir)
 	if entries, err := os.ReadDir(binDir); err == nil {
 		for _, entry := range entries {

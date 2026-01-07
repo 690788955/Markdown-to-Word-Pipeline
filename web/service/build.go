@@ -35,6 +35,7 @@ type BuildResult struct {
 type BuildService struct {
 	workDir       string
 	buildDir      string
+	exeDir        string        // 可执行文件所在目录（用于查找 bin 脚本）
 	timeout       time.Duration
 	cleanupAge    time.Duration // 文件清理年龄
 	cleanupTicker *time.Ticker
@@ -46,9 +47,17 @@ func NewBuildService(workDir, buildDir string) *BuildService {
 	log.Printf("[BuildService] 工作目录: %s", workDir)
 	log.Printf("[BuildService] 构建目录: %s", buildDir)
 	
+	// 获取可执行文件所在目录
+	exeDir := ""
+	if exePath, err := os.Executable(); err == nil {
+		exeDir = filepath.Dir(exePath)
+		log.Printf("[BuildService] 可执行文件目录: %s", exeDir)
+	}
+	
 	svc := &BuildService{
 		workDir:    workDir,
 		buildDir:   buildDir,
+		exeDir:     exeDir,
 		timeout:    60 * time.Second,  // 默认 60 秒超时
 		cleanupAge: 24 * time.Hour,    // 默认 24 小时后清理
 	}
@@ -227,11 +236,29 @@ func (s *BuildService) Build(req BuildRequest) (*BuildResult, error) {
 	}, nil
 }
 
-// findScript 查找构建脚本，优先 bin 目录
+// findScript 查找构建脚本，优先可执行文件目录的 bin，其次 workDir
 func (s *BuildService) findScript(name string) string {
 	log.Printf("[BuildService] 查找脚本: %s", name)
 	
-	// 优先查找 bin 目录
+	// 1. 优先查找可执行文件目录的 bin 目录
+	if s.exeDir != "" {
+		exeBinPath := filepath.Join(s.exeDir, "bin", name)
+		log.Printf("[BuildService] 检查路径: %s", exeBinPath)
+		if info, err := os.Stat(exeBinPath); err == nil {
+			log.Printf("[BuildService] 找到脚本: %s (权限: %s)", exeBinPath, info.Mode().String())
+			return exeBinPath
+		}
+		
+		// 可执行文件目录根
+		exeRootPath := filepath.Join(s.exeDir, name)
+		log.Printf("[BuildService] 检查路径: %s", exeRootPath)
+		if info, err := os.Stat(exeRootPath); err == nil {
+			log.Printf("[BuildService] 找到脚本: %s (权限: %s)", exeRootPath, info.Mode().String())
+			return exeRootPath
+		}
+	}
+	
+	// 2. 其次查找 workDir 的 bin 目录（兼容旧部署方式）
 	binPath := filepath.Join(s.workDir, "bin", name)
 	log.Printf("[BuildService] 检查路径: %s", binPath)
 	if info, err := os.Stat(binPath); err == nil {
@@ -239,7 +266,7 @@ func (s *BuildService) findScript(name string) string {
 		return binPath
 	}
 	
-	// 其次查找工作目录根
+	// 3. 最后查找 workDir 根目录
 	rootPath := filepath.Join(s.workDir, name)
 	log.Printf("[BuildService] 检查路径: %s", rootPath)
 	if info, err := os.Stat(rootPath); err == nil {
