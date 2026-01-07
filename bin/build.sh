@@ -480,18 +480,39 @@ if [ ${#valid_modules[@]} -eq 0 ]; then
     exit 1
 fi
 
-# 读取元数据
+# 读取元数据（优先级：文档配置 > 客户 metadata.yaml > src/metadata.yaml）
+# 1. 基础元数据
 title=$(read_yaml_value "${SRC_DIR}/metadata.yaml" "title")
 version=$(read_yaml_value "${SRC_DIR}/metadata.yaml" "version")
+subtitle=$(read_yaml_value "${SRC_DIR}/metadata.yaml" "subtitle")
+author=$(read_yaml_value "${SRC_DIR}/metadata.yaml" "author")
 date=$(date +%Y-%m-%d)
 
-# 客户元数据覆盖
+# 2. 客户元数据覆盖
 if [ -f "$CLIENT_META" ]; then
     client_title=$(read_yaml_value "$CLIENT_META" "title")
     client_version=$(read_yaml_value "$CLIENT_META" "version")
+    client_subtitle=$(read_yaml_value "$CLIENT_META" "subtitle")
+    client_author=$(read_yaml_value "$CLIENT_META" "author")
+    client_date=$(read_yaml_value "$CLIENT_META" "date")
     [ -n "$client_title" ] && title="$client_title"
     [ -n "$client_version" ] && version="$client_version"
+    [ -n "$client_subtitle" ] && subtitle="$client_subtitle"
+    [ -n "$client_author" ] && author="$client_author"
+    [ -n "$client_date" ] && date="$client_date"
 fi
+
+# 3. 文档配置覆盖（最高优先级）
+doc_title=$(read_yaml_value "$CONFIG_FILE" "title")
+doc_version=$(read_yaml_value "$CONFIG_FILE" "version")
+doc_subtitle=$(read_yaml_value "$CONFIG_FILE" "subtitle")
+doc_author=$(read_yaml_value "$CONFIG_FILE" "author")
+doc_date=$(read_yaml_value "$CONFIG_FILE" "date")
+[ -n "$doc_title" ] && title="$doc_title"
+[ -n "$doc_version" ] && version="$doc_version"
+[ -n "$doc_subtitle" ] && subtitle="$doc_subtitle"
+[ -n "$doc_author" ] && author="$doc_author"
+[ -n "$doc_date" ] && date="$doc_date"
 
 [ -z "$title" ] && title="Document"
 [ -z "$version" ] && version="v1.0"

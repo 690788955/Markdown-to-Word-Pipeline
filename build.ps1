@@ -553,18 +553,39 @@ function Invoke-Build {
         exit 1
     }
     
-    # 读取元数据
+    # 读取元数据（优先级：文档配置 > 客户 metadata.yaml > src/metadata.yaml）
+    # 1. 基础元数据
     $title = Read-YamlValue -FilePath "$SrcDir\metadata.yaml" -Key "title"
     $version = Read-YamlValue -FilePath "$SrcDir\metadata.yaml" -Key "version"
+    $subtitle = Read-YamlValue -FilePath "$SrcDir\metadata.yaml" -Key "subtitle"
+    $author = Read-YamlValue -FilePath "$SrcDir\metadata.yaml" -Key "author"
     $date = Get-Date -Format "yyyy-MM-dd"
     
-    # 客户元数据覆盖
+    # 2. 客户元数据覆盖
     if (Test-Path $clientMeta) {
         $clientTitle = Read-YamlValue -FilePath $clientMeta -Key "title"
         $clientVersion = Read-YamlValue -FilePath $clientMeta -Key "version"
+        $clientSubtitle = Read-YamlValue -FilePath $clientMeta -Key "subtitle"
+        $clientAuthor = Read-YamlValue -FilePath $clientMeta -Key "author"
+        $clientDate = Read-YamlValue -FilePath $clientMeta -Key "date"
         if ($clientTitle) { $title = $clientTitle }
         if ($clientVersion) { $version = $clientVersion }
+        if ($clientSubtitle) { $subtitle = $clientSubtitle }
+        if ($clientAuthor) { $author = $clientAuthor }
+        if ($clientDate) { $date = $clientDate }
     }
+    
+    # 3. 文档配置覆盖（最高优先级）
+    $docTitle = Read-YamlValue -FilePath $configFile -Key "title"
+    $docVersion = Read-YamlValue -FilePath $configFile -Key "version"
+    $docSubtitle = Read-YamlValue -FilePath $configFile -Key "subtitle"
+    $docAuthor = Read-YamlValue -FilePath $configFile -Key "author"
+    $docDate = Read-YamlValue -FilePath $configFile -Key "date"
+    if ($docTitle) { $title = $docTitle }
+    if ($docVersion) { $version = $docVersion }
+    if ($docSubtitle) { $subtitle = $docSubtitle }
+    if ($docAuthor) { $author = $docAuthor }
+    if ($docDate) { $date = $docDate }
     
     if (-not $title) { $title = "Document" }
     if (-not $version) { $version = "v1.0" }
