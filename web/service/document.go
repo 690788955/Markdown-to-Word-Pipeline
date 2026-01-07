@@ -43,7 +43,6 @@ func (s *DocumentService) ListDocumentTypes(clientName string) ([]DocumentType, 
 	}
 
 	var docTypes []DocumentType
-	hasDefault := false
 
 	for _, entry := range entries {
 		if entry.IsDir() {
