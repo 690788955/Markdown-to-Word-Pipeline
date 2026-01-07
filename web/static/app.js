@@ -1,248 +1,296 @@
-// 运维文档生成系统 - 前端交互逻辑
+// 运维文档生成系统 - 前端逻辑 v2
 
-// DOM 元素
-const clientSelect = document.getElementById('clientSelect');
-const clientNameInput = document.getElementById('clientNameInput');
-const docTypeList = document.getElementById('docTypeList');
-const generateBtn = document.getElementById('generateBtn');
-const refreshClients = document.getElementById('refreshClients');
-const selectAll = document.getElementById('selectAll');
-const selectNone = document.getElementById('selectNone');
-const result = document.getElementById('result');
-const resultSuccess = document.getElementById('resultSuccess');
-const resultError = document.getElementById('resultError');
-const downloadLinks = document.getElementById('downloadLinks');
-const errorMessage = document.getElementById('errorMessage');
-const retryBtn = document.getElementById('retryBtn');
-
-// 状态
-let clients = [];
 let documentTypes = [];
+let generatedFiles = [];
 
 // 初始化
-document.addEventListener('DOMContentLoaded', () => {
+document.addEventListener('DOMContentLoaded', function() {
     loadClients();
-    bindEvents();
+    
+    const clientSelect = document.getElementById('clientSelect');
+    const generateAllBtn = document.getElementById('generateAllBtn');
+    const downloadAllBtn = document.getElementById('downloadAllBtn');
+    
+    if (clientSelect) {
+        clientSelect.addEventListener('change', onClientChange);
+    }
+    if (generateAllBtn) {
+        generateAllBtn.addEventListener('click', generateAll);
+    }
+    if (downloadAllBtn) {
+        downloadAllBtn.addEventListener('click', downloadAll);
+    }
 });
-
-// 绑定事件
-function bindEvents() {
-    clientSelect.addEventListener('change', onClientChange);
-    generateBtn.addEventListener('click', onGenerate);
-    refreshClients.addEventListener('click', loadClients);
-    retryBtn.addEventListener('click', onGenerate);
-    selectAll.addEventListener('click', () => toggleAllCheckboxes(true));
-    selectNone.addEventListener('click', () => toggleAllCheckboxes(false));
-}
 
 // 加载客户列表
 async function loadClients() {
+    const clientSelect = document.getElementById('clientSelect');
+    if (!clientSelect) return;
+    
     try {
-        clientSelect.disabled = true;
-        clientSelect.innerHTML = '<option value="">加载中...</option>';
-        resetDocTypeList();
-        hideResult();
-
         const response = await fetch('/api/clients');
         const data = await response.json();
-
-        if (!data.success) {
-            throw new Error(data.error || '加载失败');
-        }
-
-        clients = data.data.clients || [];
         
+        if (!data.success) throw new Error(data.error);
+        
+        const clients = data.data.clients || [];
         clientSelect.innerHTML = '<option value="">请选择客户配置</option>';
-        clients.forEach(client => {
-            const option = document.createElement('option');
-            option.value = client.name;
-            option.textContent = client.displayName || client.name;
-            clientSelect.appendChild(option);
+        clients.forEach(function(c) {
+            const opt = document.createElement('option');
+            opt.value = c.name;
+            opt.textContent = c.displayName || c.name;
+            clientSelect.appendChild(opt);
         });
-
-        clientSelect.disabled = false;
-    } catch (error) {
-        clientSelect.innerHTML = '<option value="">加载失败，请刷新</option>';
-        console.error('加载客户列表失败:', error);
+    } catch (e) {
+        clientSelect.innerHTML = '<option value="">加载失败</option>';
+        console.error('加载客户列表失败:', e);
     }
 }
 
-// 客户选择变化
+// 客户变化
 async function onClientChange() {
-    const clientName = clientSelect.value;
+    const clientSelect = document.getElementById('clientSelect');
+    const generateAllBtn = document.getElementById('generateAllBtn');
+    const docList = document.getElementById('docList');
     
-    resetDocTypeList();
-    generateBtn.disabled = true;
+    const client = clientSelect ? clientSelect.value : '';
+    
+    if (generateAllBtn) generateAllBtn.disabled = true;
     hideResult();
-
-    if (!clientName) {
+    
+    if (!client) {
+        if (docList) docList.innerHTML = '<div class="list-empty">请先选择客户配置</div>';
         return;
     }
-
+    
+    if (docList) docList.innerHTML = '<div class="list-empty">加载中...</div>';
+    
     try {
-        docTypeList.innerHTML = '<p class="placeholder">加载中...</p>';
-        
-        const response = await fetch(`/api/clients/${encodeURIComponent(clientName)}/docs`);
+        const url = '/api/clients/' + encodeURIComponent(client) + '/docs';
+        const response = await fetch(url);
         const data = await response.json();
-
-        if (!data.success) {
-            throw new Error(data.error || '加载失败');
-        }
-
+        
+        if (!data.success) throw new Error(data.error);
+        
         documentTypes = data.data.documentTypes || [];
-        renderDocTypeList();
-    } catch (error) {
-        docTypeList.innerHTML = '<p class="placeholder">加载失败</p>';
-        console.error('加载文档类型失败:', error);
+        renderDocList();
+        if (generateAllBtn) generateAllBtn.disabled = documentTypes.length === 0;
+    } catch (e) {
+        if (docList) docList.innerHTML = '<div class="list-empty">加载失败</div>';
+        console.error('加载文档类型失败:', e);
     }
 }
 
-// 渲染文档类型列表
-function renderDocTypeList() {
+// 渲染文档列表
+function renderDocList() {
+    const docList = document.getElementById('docList');
+    if (!docList) return;
+    
     if (documentTypes.length === 0) {
-        docTypeList.innerHTML = '<p class="placeholder">该客户没有可用的文档类型</p>';
-        selectAll.style.display = 'none';
-        selectNone.style.display = 'none';
+        docList.innerHTML = '<div class="list-empty">没有可用的文档类型</div>';
         return;
     }
-
-    docTypeList.innerHTML = '';
-    documentTypes.forEach(docType => {
+    
+    docList.innerHTML = '';
+    documentTypes.forEach(function(doc) {
         const item = document.createElement('div');
-        item.className = 'checkbox-item';
+        item.className = 'doc-item';
         
-        const checkbox = document.createElement('input');
-        checkbox.type = 'checkbox';
-        checkbox.id = `doc-${docType.name}`;
-        checkbox.value = docType.name;
-        checkbox.addEventListener('change', updateGenerateButton);
-        
-        const label = document.createElement('label');
-        label.htmlFor = `doc-${docType.name}`;
-        label.textContent = docType.displayName || docType.name;
-        
-        if (docType.isDefault) {
+        const name = document.createElement('div');
+        name.className = 'doc-name';
+        name.textContent = doc.displayName || doc.name;
+        if (doc.isDefault) {
             const badge = document.createElement('span');
-            badge.className = 'doc-default';
+            badge.className = 'badge';
             badge.textContent = '(默认)';
-            label.appendChild(badge);
+            name.appendChild(badge);
         }
         
-        item.appendChild(checkbox);
-        item.appendChild(label);
-        docTypeList.appendChild(item);
+        const actions = document.createElement('div');
+        actions.className = 'doc-actions';
+        
+        const genBtn = document.createElement('button');
+        genBtn.className = 'btn btn-outline btn-sm';
+        genBtn.innerHTML = '<span class="btn-text">生成</span><span class="btn-loading" style="display:none;">生成中</span>';
+        genBtn.onclick = function() { generateSingle(doc.name, genBtn); };
+        
+        actions.appendChild(genBtn);
+        item.appendChild(name);
+        item.appendChild(actions);
+        docList.appendChild(item);
     });
-
-    selectAll.style.display = 'inline';
-    selectNone.style.display = 'inline';
 }
 
-// 重置文档类型列表
-function resetDocTypeList() {
-    docTypeList.innerHTML = '<p class="placeholder">请先选择客户配置</p>';
-    selectAll.style.display = 'none';
-    selectNone.style.display = 'none';
-    documentTypes = [];
-}
-
-// 切换所有复选框
-function toggleAllCheckboxes(checked) {
-    const checkboxes = docTypeList.querySelectorAll('input[type="checkbox"]');
-    checkboxes.forEach(cb => cb.checked = checked);
-    updateGenerateButton();
-}
-
-// 更新生成按钮状态
-function updateGenerateButton() {
-    const checkboxes = docTypeList.querySelectorAll('input[type="checkbox"]:checked');
-    generateBtn.disabled = checkboxes.length === 0;
-}
-
-// 获取选中的文档类型
-function getSelectedDocTypes() {
-    const checkboxes = docTypeList.querySelectorAll('input[type="checkbox"]:checked');
-    return Array.from(checkboxes).map(cb => cb.value);
-}
-
-// 生成文档
-async function onGenerate() {
-    const clientConfig = clientSelect.value;
-    const selectedDocs = getSelectedDocTypes();
-    const customClientName = clientNameInput.value.trim();
-
-    if (!clientConfig || selectedDocs.length === 0) {
-        return;
-    }
-
-    setLoading(generateBtn, true);
-    hideResult();
-
+// 生成单个文档
+async function generateSingle(docType, btn) {
+    const clientSelect = document.getElementById('clientSelect');
+    const clientNameInput = document.getElementById('clientNameInput');
+    
+    const client = clientSelect ? clientSelect.value : '';
+    const customName = clientNameInput ? clientNameInput.value.trim() : '';
+    
+    if (!client) return;
+    
+    setLoading(btn, true);
+    
     try {
         const response = await fetch('/api/generate', {
             method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-            },
+            headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
-                clientConfig: clientConfig,
-                documentTypes: selectedDocs,
-                clientName: customClientName || '',
-            }),
+                clientConfig: client,
+                documentTypes: [docType],
+                clientName: customName
+            })
         });
-
+        
         const data = await response.json();
-
-        if (!data.success) {
-            throw new Error(data.error || '生成失败');
+        if (!data.success) throw new Error(data.error);
+        
+        const files = data.data.files || [];
+        if (files.length > 0) {
+            addToResult(files);
         }
-
-        // 显示成功结果和下载链接
-        showSuccess(data.data.files || []);
-    } catch (error) {
-        showError(error.message);
+    } catch (e) {
+        alert('生成失败: ' + e.message);
     } finally {
-        setLoading(generateBtn, false);
+        setLoading(btn, false);
     }
 }
 
-// 设置按钮加载状态
-function setLoading(button, loading) {
-    const btnText = button.querySelector('.btn-text');
-    const btnLoading = button.querySelector('.btn-loading');
+// 全部生成
+async function generateAll() {
+    const clientSelect = document.getElementById('clientSelect');
+    const clientNameInput = document.getElementById('clientNameInput');
+    const generateAllBtn = document.getElementById('generateAllBtn');
     
-    button.disabled = loading;
-    if (btnText) btnText.style.display = loading ? 'none' : 'inline';
-    if (btnLoading) btnLoading.style.display = loading ? 'inline-flex' : 'none';
+    const client = clientSelect ? clientSelect.value : '';
+    const customName = clientNameInput ? clientNameInput.value.trim() : '';
+    const allDocs = documentTypes.map(function(d) { return d.name; });
+    
+    if (!client || allDocs.length === 0) return;
+    
+    setLoading(generateAllBtn, true);
+    
+    try {
+        const response = await fetch('/api/generate', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                clientConfig: client,
+                documentTypes: allDocs,
+                clientName: customName
+            })
+        });
+        
+        const data = await response.json();
+        if (!data.success) throw new Error(data.error);
+        
+        const files = data.data.files || [];
+        if (files.length > 0) {
+            generatedFiles = files;
+            showResult(files);
+        }
+    } catch (e) {
+        alert('生成失败: ' + e.message);
+    } finally {
+        setLoading(generateAllBtn, false);
+    }
 }
 
-// 显示成功结果
-function showSuccess(files) {
-    result.style.display = 'block';
-    resultSuccess.style.display = 'block';
-    resultError.style.display = 'none';
-    
-    downloadLinks.innerHTML = '';
-    files.forEach(file => {
-        const link = document.createElement('a');
-        link.href = file.downloadUrl;
-        link.className = 'btn btn-success';
-        link.download = file.fileName;
-        link.textContent = '📥 ' + file.fileName;
-        downloadLinks.appendChild(link);
+// 添加到结果
+function addToResult(files) {
+    files.forEach(function(f) {
+        const exists = generatedFiles.find(function(g) { return g.fileName === f.fileName; });
+        if (!exists) generatedFiles.push(f);
     });
+    showResult(generatedFiles);
 }
 
-// 显示错误结果
-function showError(message) {
-    result.style.display = 'block';
-    resultSuccess.style.display = 'none';
-    resultError.style.display = 'block';
-    errorMessage.textContent = message;
+// 显示结果
+function showResult(files) {
+    const resultSection = document.getElementById('resultSection');
+    const resultList = document.getElementById('resultList');
+    const downloadAllBtn = document.getElementById('downloadAllBtn');
+    
+    if (resultSection) resultSection.style.display = 'block';
+    if (resultList) {
+        resultList.innerHTML = '';
+        files.forEach(function(file) {
+            const item = document.createElement('div');
+            item.className = 'result-item';
+            
+            const link = document.createElement('a');
+            link.href = file.downloadUrl;
+            link.download = file.fileName;
+            link.textContent = '📄 ' + file.fileName;
+            
+            const dlBtn = document.createElement('button');
+            dlBtn.className = 'btn btn-outline btn-sm';
+            dlBtn.textContent = '下载';
+            dlBtn.onclick = function() { window.location.href = file.downloadUrl; };
+            
+            item.appendChild(link);
+            item.appendChild(dlBtn);
+            resultList.appendChild(item);
+        });
+    }
+    
+    if (downloadAllBtn) {
+        downloadAllBtn.style.display = files.length > 1 ? 'inline-flex' : 'none';
+    }
 }
 
 // 隐藏结果
 function hideResult() {
-    result.style.display = 'none';
-    resultSuccess.style.display = 'none';
-    resultError.style.display = 'none';
+    const resultSection = document.getElementById('resultSection');
+    if (resultSection) resultSection.style.display = 'none';
+    generatedFiles = [];
+}
+
+// 打包下载
+async function downloadAll() {
+    if (generatedFiles.length === 0) return;
+    
+    const downloadAllBtn = document.getElementById('downloadAllBtn');
+    if (downloadAllBtn) {
+        downloadAllBtn.disabled = true;
+        downloadAllBtn.textContent = '打包中...';
+    }
+    
+    try {
+        const fileNames = generatedFiles.map(function(f) { return f.fileName; });
+        const response = await fetch('/api/download-zip', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ files: fileNames })
+        });
+        
+        if (!response.ok) throw new Error('打包失败');
+        
+        const blob = await response.blob();
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = '文档打包.zip';
+        a.click();
+        URL.revokeObjectURL(url);
+    } catch (e) {
+        alert('打包下载失败: ' + e.message);
+    } finally {
+        if (downloadAllBtn) {
+            downloadAllBtn.disabled = false;
+            downloadAllBtn.textContent = '打包下载';
+        }
+    }
+}
+
+// 设置加载状态
+function setLoading(btn, loading) {
+    if (!btn) return;
+    btn.disabled = loading;
+    const text = btn.querySelector('.btn-text');
+    const load = btn.querySelector('.btn-loading');
+    if (text) text.style.display = loading ? 'none' : 'inline';
+    if (load) load.style.display = loading ? 'inline-flex' : 'none';
 }

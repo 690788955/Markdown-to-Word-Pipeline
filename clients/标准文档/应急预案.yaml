@@ -1,0 +1,18 @@
+# 应急预案
+# 故障处理和应急响应
+
+client_name: "标准文档"
+template: "default.docx"
+
+modules:
+  - src/metadata.yaml
+  - src/01-概述.md
+  - src/04-故障处理.md
+  - src/09-应急预案.md
+
+pandoc_args:
+  - "--toc"
+  - "--number-sections"
+  - "--standalone"
+
+output_pattern: "{client}_应急预案_{date}.docx"

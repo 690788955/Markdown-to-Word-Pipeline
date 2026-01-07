@@ -2,24 +2,30 @@
 package main
 
 import (
-	"embed"
 	"fmt"
-	"io/fs"
 	"log"
 	"net/http"
 	"os"
+	"path/filepath"
 
 	"doc-generator-web/config"
 	"doc-generator-web/handler"
 	"doc-generator-web/service"
 )
 
-//go:embed static/*
-var staticFS embed.FS
-
 func main() {
 	// 加载配置
 	cfg := config.DefaultConfig()
+
+	// 获取可执行文件所在目录
+	exePath, err := os.Executable()
+	if err != nil {
+		log.Fatal("无法获取可执行文件路径:", err)
+	}
+	exeDir := filepath.Dir(exePath)
+
+	// 静态文件目录
+	staticDir := filepath.Join(exeDir, "static")
 
 	// 如果设置了 WORK_DIR 环境变量，使用它；否则使用当前目录
 	if os.Getenv("WORK_DIR") == "" {
@@ -31,6 +37,8 @@ func main() {
 			if _, err := os.Stat("../clients"); err == nil {
 				cfg.WorkDir = ".."
 			}
+			// 静态文件目录使用当前工作目录
+			staticDir = filepath.Join(cwd, "static")
 		}
 		// 重新计算路径
 		cfg.ClientsDir = cfg.WorkDir + "/clients"
@@ -58,12 +66,8 @@ func main() {
 	// 注册 API 路由
 	apiHandler.RegisterRoutes(mux)
 
-	// 静态文件服务
-	staticContent, err := fs.Sub(staticFS, "static")
-	if err != nil {
-		log.Fatal("无法加载静态资源:", err)
-	}
-	fileServer := http.FileServer(http.FS(staticContent))
+	// 静态文件服务 - 直接从文件系统读取
+	fileServer := http.FileServer(http.Dir(staticDir))
 	mux.Handle("/static/", http.StripPrefix("/static/", fileServer))
 
 	// 根路径返回 index.html
@@ -72,13 +76,7 @@ func main() {
 			http.NotFound(w, r)
 			return
 		}
-		data, err := staticFS.ReadFile("static/index.html")
-		if err != nil {
-			http.Error(w, "页面不存在", http.StatusNotFound)
-			return
-		}
-		w.Header().Set("Content-Type", "text/html; charset=utf-8")
-		w.Write(data)
+		http.ServeFile(w, r, filepath.Join(staticDir, "index.html"))
 	})
 
 	// 启动服务器
@@ -88,6 +86,7 @@ func main() {
 	fmt.Printf("========================================\n")
 	fmt.Printf("服务地址: http://localhost%s\n", addr)
 	fmt.Printf("工作目录: %s\n", cfg.WorkDir)
+	fmt.Printf("静态目录: %s\n", staticDir)
 	fmt.Printf("客户目录: %s\n", cfg.ClientsDir)
 	fmt.Printf("构建目录: %s\n", cfg.BuildDir)
 	fmt.Printf("========================================\n")

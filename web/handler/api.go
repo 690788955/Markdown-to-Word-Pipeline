@@ -2,9 +2,12 @@
 package handler
 
 import (
+	"archive/zip"
 	"encoding/json"
+	"io"
 	"net/http"
 	"net/url"
+	"os"
 	"path/filepath"
 	"strings"
 	"sync"
@@ -34,6 +37,7 @@ type GenerateRequest struct {
 	ClientConfig  string   `json:"clientConfig"`  // 客户配置目录名
 	DocumentTypes []string `json:"documentTypes"` // 文档类型列表
 	ClientName    string   `json:"clientName"`    // 自定义客户名称（可选）
+	Format        string   `json:"format"`        // 输出格式：word 或 pdf（默认: word）
 }
 
 // GeneratedFile 生成的文件信息
@@ -64,6 +68,7 @@ func (h *APIHandler) RegisterRoutes(mux *http.ServeMux) {
 	mux.HandleFunc("/api/clients/", h.handleClientDocs)
 	mux.HandleFunc("/api/generate", h.handleGenerate)
 	mux.HandleFunc("/api/download/", h.handleDownload)
+	mux.HandleFunc("/api/download-zip", h.handleDownloadZip)
 }
 
 // handleClients 处理客户列表请求
@@ -162,6 +167,12 @@ func (h *APIHandler) handleGenerate(w http.ResponseWriter, r *http.Request) {
 	var mu sync.Mutex
 	var wg sync.WaitGroup
 
+	// 默认格式为 word
+	format := req.Format
+	if format == "" {
+		format = "word"
+	}
+
 	for _, docType := range req.DocumentTypes {
 		wg.Add(1)
 		go func(dt string) {
@@ -171,6 +182,7 @@ func (h *APIHandler) handleGenerate(w http.ResponseWriter, r *http.Request) {
 				ClientName:   req.ClientConfig,
 				DocumentType: dt,
 				CustomName:   req.ClientName,
+				Format:       format,
 			}
 
 			result, err := h.buildSvc.Build(buildReq)
@@ -240,8 +252,9 @@ func (h *APIHandler) handleDownload(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// 设置响应头
-	w.Header().Set("Content-Type", "application/vnd.openxmlformats-officedocument.wordprocessingml.document")
+	// 设置响应头（根据文件类型）
+	contentType := GetContentType(fileName)
+	w.Header().Set("Content-Type", contentType)
 	w.Header().Set("Content-Disposition", "attachment; filename*=UTF-8''"+url.PathEscape(fileName))
 	w.Header().Set("Cache-Control", "no-cache, no-store, must-revalidate")
 
@@ -286,5 +299,58 @@ func GetContentType(fileName string) string {
 		return "application/pdf"
 	default:
 		return "application/octet-stream"
+	}
+}
+
+// ZipRequest 打包下载请求
+type ZipRequest struct {
+	Files []string `json:"files"`
+}
+
+// handleDownloadZip 处理打包下载请求
+func (h *APIHandler) handleDownloadZip(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		h.methodNotAllowed(w)
+		return
+	}
+
+	var req ZipRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		h.errorResponse(w, http.StatusBadRequest, "无效的请求格式", ErrInvalidInput)
+		return
+	}
+
+	if len(req.Files) == 0 {
+		h.errorResponse(w, http.StatusBadRequest, "文件列表不能为空", ErrInvalidInput)
+		return
+	}
+
+	// 设置响应头
+	w.Header().Set("Content-Type", "application/zip")
+	w.Header().Set("Content-Disposition", "attachment; filename*=UTF-8''"+url.PathEscape("文档打包.zip"))
+
+	// 创建 zip writer
+	zipWriter := zip.NewWriter(w)
+	defer zipWriter.Close()
+
+	for _, fileName := range req.Files {
+		filePath, err := h.buildSvc.GetBuildOutput(fileName)
+		if err != nil {
+			continue
+		}
+
+		file, err := os.Open(filePath)
+		if err != nil {
+			continue
+		}
+
+		writer, err := zipWriter.Create(fileName)
+		if err != nil {
+			file.Close()
+			continue
+		}
+
+		io.Copy(writer, file)
+		file.Close()
 	}
 }

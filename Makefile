@@ -1,5 +1,6 @@
 # ==========================================
 # 运维文档生成系统 - Makefile
+# 支持 Word 和 PDF 格式输出
 # ==========================================
 
 # 配置区域
@@ -11,6 +12,8 @@ client ?= default
 doc ?=
 # 自定义客户名称（可选，覆盖配置中的 client_name）
 client_name ?=
+# 输出格式：word 或 pdf（默认: word）
+format ?= word
 
 # 目录设置
 SRC_DIR := src
@@ -34,9 +37,9 @@ all: build
 .PHONY: build
 build: check-deps check-config dir
 	@echo "=========================================="
-	@echo "构建文档 - 客户: $(client)"
+	@echo "构建文档 - 客户: $(client) [$(format)]"
 	@echo "=========================================="
-	@./scripts/build.sh "$(client)" "$(doc)" "$(client_name)"
+	@./bin/build.sh "$(client)" "$(doc)" "$(client_name)" "$(format)"
 
 # ==========================================
 # 检查和验证
@@ -66,7 +69,7 @@ check-config:
 .PHONY: dir
 dir:
 	@mkdir -p $(BUILD_DIR)
-	@mkdir -p scripts
+	@mkdir -p bin
 
 .PHONY: clean
 clean:
@@ -118,8 +121,26 @@ init-template: check-deps
 
 .PHONY: init
 init: dir
-	@chmod +x scripts/build.sh 2>/dev/null || true
+	@chmod +x bin/build.sh 2>/dev/null || true
+	@chmod +x bin/install-fonts.sh 2>/dev/null || true
+	@chmod +x bin/check-pdf-deps.sh 2>/dev/null || true
 	@echo "项目已初始化。"
+
+# ==========================================
+# PDF 依赖检查
+# ==========================================
+
+.PHONY: check-pdf-deps
+check-pdf-deps:
+	@echo "检查 PDF 生成依赖..."
+	@echo ""
+	@command -v $(PANDOC) >/dev/null 2>&1 && echo "[OK] Pandoc 已安装" || echo "[错误] Pandoc 未安装"
+	@command -v xelatex >/dev/null 2>&1 && echo "[OK] XeLaTeX 已安装" || echo "[错误] XeLaTeX 未安装"
+	@test -f ~/.local/share/pandoc/templates/eisvogel.latex && echo "[OK] Eisvogel 模板已安装" || \
+		(test -f ~/.pandoc/templates/eisvogel.latex && echo "[OK] Eisvogel 模板已安装" || \
+		echo "[错误] Eisvogel 模板未安装")
+	@fc-list :lang=zh 2>/dev/null | head -1 | grep -q . && echo "[OK] 中文字体已安装" || \
+		echo "[警告] 未检测到中文字体"
 
 # ==========================================
 # 帮助信息
@@ -131,16 +152,18 @@ help:
 	@echo "运维文档生成系统"
 	@echo "=========================================="
 	@echo ""
-	@echo "用法: make [目标] [client=客户名] [doc=文档类型] [client_name=自定义名称]"
+	@echo "用法: make [目标] [client=客户名] [doc=文档类型] [format=格式] [client_name=自定义名称]"
 	@echo ""
 	@echo "目标:"
-	@echo "  make                    使用默认配置构建"
+	@echo "  make                    使用默认配置构建 Word"
+	@echo "  make format=pdf         生成 PDF 格式"
 	@echo "  make client=xxx         指定客户构建"
 	@echo "  make client=xxx doc=yyy 构建指定文档类型"
 	@echo "  make client=xxx client_name=zzz  使用自定义客户名称"
 	@echo "  make list-clients       列出所有客户"
 	@echo "  make list-modules       列出所有文档模块"
 	@echo "  make list-docs client=x 列出客户的文档类型"
+	@echo "  make check-pdf-deps     检查 PDF 生成依赖"
 	@echo "  make clean              清理构建目录"
 	@echo "  make init-template      生成默认模板"
 	@echo "  make init               初始化项目"
@@ -148,14 +171,28 @@ help:
 	@echo ""
 	@echo "示例:"
 	@echo "  make"
-	@echo "  make client=example-client"
-	@echo "  make client=example-client doc=运维手册"
-	@echo "  make client=example-client doc=部署手册"
-	@echo "  make client=example-client doc=应急预案"
-	@echo "  make client=example-client doc=日常巡检"
-	@echo "  make client=example-client doc=交接文档"
-	@echo "  make client=example-client client_name=某某公司"
-	@echo "  make list-docs client=example-client"
+	@echo "  make format=pdf                          # 生成 PDF"
+	@echo "  make client=标准文档"
+	@echo "  make client=标准文档 format=pdf          # 指定客户生成 PDF"
+	@echo "  make client=标准文档 doc=运维手册"
+	@echo "  make client=标准文档 doc=运维手册 format=pdf"
+	@echo "  make client=标准文档 doc=部署手册"
+	@echo "  make client=标准文档 doc=应急预案"
+	@echo "  make client=标准文档 doc=日常巡检"
+	@echo "  make client=标准文档 doc=交接文档"
+	@echo "  make client=标准文档 client_name=某某公司"
+	@echo "  make list-docs client=标准文档"
+	@echo "  make check-pdf-deps                      # 检查 PDF 依赖"
+	@echo ""
+	@echo "输出格式:"
+	@echo "  format=word   Word 文档 (.docx) - 默认"
+	@echo "  format=pdf    PDF 文档 (.pdf)"
+	@echo ""
+	@echo "PDF 生成依赖:"
+	@echo "  - Pandoc (必需)"
+	@echo "  - XeLaTeX / TeX Live (必需)"
+	@echo "  - Eisvogel 模板 (必需)"
+	@echo "  - 中文字体如 Noto Sans CJK (推荐)"
 	@echo ""
 	@echo "文档模块:"
 	@echo "  01-概述.md       概述、适用范围"

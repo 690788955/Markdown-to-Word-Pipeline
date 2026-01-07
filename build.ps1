@@ -3,30 +3,35 @@
     运维文档生成系统 - Windows 构建脚本
 
 .DESCRIPTION
-    将 Markdown 运维文档模块组合并转换为 Word 格式
+    将 Markdown 运维文档模块组合并转换为 Word 或 PDF 格式
 
 .EXAMPLE
     .\build.ps1                                    # 使用默认配置构建
     .\build.ps1 -Client example-client             # 指定客户构建
     .\build.ps1 -Client example-client -Doc 运维手册  # 构建运维手册
+    .\build.ps1 -Client example-client -Format pdf # 生成 PDF 格式
     .\build.ps1 -Client example-client -ListDocs   # 列出文档类型
     .\build.ps1 -Client example-client -BuildAll   # 构建所有文档
     .\build.ps1 -ListClients                       # 列出所有客户
     .\build.ps1 -Clean                             # 清理构建目录
+    .\build.ps1 -CheckPdfDeps                      # 检查 PDF 依赖
     .\build.ps1 -Help                              # 显示帮助
 #>
 
 param(
     [string]$Client = "default",
-    [string]$Doc = "",           # 新增：指定文档类型
-    [string]$ClientName = "",    # 新增：自定义客户名称（覆盖配置）
+    [string]$Doc = "",           # 指定文档类型
+    [string]$ClientName = "",    # 自定义客户名称（覆盖配置）
+    [ValidateSet("word", "pdf")]
+    [string]$Format = "word",    # 输出格式：word 或 pdf
     [switch]$ListClients,
-    [switch]$ListDocs,           # 新增：列出客户的所有文档
+    [switch]$ListDocs,           # 列出客户的所有文档
     [switch]$ListModules,
-    [switch]$BuildAll,           # 新增：构建客户的所有文档
+    [switch]$BuildAll,           # 构建客户的所有文档
     [switch]$Clean,
     [switch]$InitTemplate,
     [switch]$InstallFonts,
+    [switch]$CheckPdfDeps,       # 检查 PDF 生成依赖
     [switch]$Help
 )
 
@@ -53,6 +58,7 @@ function Show-Help {
 参数:
   -Client <名称>    指定客户配置（默认: default）
   -Doc <文档类型>   指定文档类型（如：运维手册、部署手册）
+  -Format <格式>    输出格式：word 或 pdf（默认: word）
   -ListClients      列出所有可用客户配置
   -ListDocs         列出指定客户的所有文档类型
   -ListModules      列出所有文档模块
@@ -60,21 +66,25 @@ function Show-Help {
   -Clean            清理构建产物
   -InitTemplate     生成默认 Word 模板
   -InstallFonts     安装项目字体
+  -CheckPdfDeps     检查 PDF 生成所需依赖
   -Help             显示帮助信息
 
 示例:
-  .\build.ps1                                     # 默认构建
-  .\build.ps1 -Client example-client              # 使用 config.yaml
-  .\build.ps1 -Client example-client -Doc 运维手册   # 构建运维手册
-  .\build.ps1 -Client example-client -Doc 部署手册   # 构建部署手册
-  .\build.ps1 -Client example-client -Doc 应急预案   # 构建应急预案
-  .\build.ps1 -Client example-client -Doc 日常巡检   # 构建日常巡检手册
-  .\build.ps1 -Client example-client -Doc 交接文档   # 构建交接文档
-  .\build.ps1 -Client example-client -ListDocs    # 列出文档类型
-  .\build.ps1 -Client example-client -BuildAll    # 构建所有文档
+  .\build.ps1                                     # 默认构建 Word
+  .\build.ps1 -Format pdf                         # 生成 PDF
+  .\build.ps1 -Client 标准文档              # 使用 config.yaml
+  .\build.ps1 -Client 标准文档 -Doc 运维手册   # 构建运维手册
+  .\build.ps1 -Client 标准文档 -Format pdf     # 生成 PDF 格式
+  .\build.ps1 -Client 标准文档 -Doc 部署手册   # 构建部署手册
+  .\build.ps1 -Client 标准文档 -Doc 应急预案   # 构建应急预案
+  .\build.ps1 -Client 标准文档 -Doc 日常巡检   # 构建日常巡检手册
+  .\build.ps1 -Client 标准文档 -Doc 交接文档   # 构建交接文档
+  .\build.ps1 -Client 标准文档 -ListDocs    # 列出文档类型
+  .\build.ps1 -Client 标准文档 -BuildAll    # 构建所有文档
   .\build.ps1 -ListClients                        # 列出所有客户
   .\build.ps1 -ListModules                        # 列出所有模块
   .\build.ps1 -InstallFonts                       # 安装字体
+  .\build.ps1 -CheckPdfDeps                       # 检查 PDF 依赖
   .\build.ps1 -Clean                              # 清理构建目录
 
 文档模块:
@@ -89,6 +99,12 @@ function Show-Help {
   09-应急预案.md   应急响应、灾难恢复
   10-项目背景.md   项目背景、业务说明
   11-联系人.md     联系人清单、值班表
+
+PDF 生成依赖:
+  - Pandoc (必需)
+  - XeLaTeX / TeX Live (必需)
+  - Eisvogel 模板 (必需)
+  - 中文字体如 Noto Sans CJK (推荐)
 
 "@
 }
@@ -220,13 +236,152 @@ function Read-YamlList {
 }
 
 # ==========================================
+# PDF 选项读取函数
+# ==========================================
+function Read-PdfOptions {
+    param([string]$FilePath)
+    
+    $options = @{
+        # 封面设置
+        titlepage = $true
+        titlepage_color = "2C3E50"
+        titlepage_text_color = "FFFFFF"
+        titlepage_rule_color = "3498DB"
+        logo = ""
+        logo_width = "100"
+        # 代码设置
+        listings = $true
+        listings_no_page_break = $true
+        code_block_font_size = "\small"
+        # 页眉页脚
+        header_left = "\leftmark"
+        header_right = "\thepage"
+        footer_left = ""
+        footer_center = ""
+        footer_right = ""
+        # 字体设置
+        CJKmainfont = "Noto Sans CJK SC"
+        mainfont = "Noto Sans"
+        monofont = "Noto Sans Mono"
+        # 目录设置
+        toc = $true
+        toc_depth = 3
+        number_sections = $true
+        # 链接设置
+        colorlinks = $true
+        linkcolor = "blue"
+    }
+    
+    if (-not (Test-Path $FilePath)) { return $options }
+    
+    $content = Get-Content $FilePath -Encoding UTF8
+    $inPdfOptions = $false
+    
+    foreach ($line in $content) {
+        if ($line -match "^pdf_options:") {
+            $inPdfOptions = $true
+            continue
+        }
+        if ($inPdfOptions) {
+            if ($line -match "^\s+(\w+):\s*(.+)$") {
+                $key = $Matches[1].Trim()
+                $value = $Matches[2].Trim().Trim('"').Trim("'")
+                if ($options.ContainsKey($key)) {
+                    # 转换布尔值
+                    if ($value -eq "true") { $value = $true }
+                    elseif ($value -eq "false") { $value = $false }
+                    # 转换数字
+                    elseif ($value -match "^\d+$") { $value = [int]$value }
+                    $options[$key] = $value
+                }
+            }
+            elseif ($line -match "^\S" -and $line -notmatch "^\s*#") {
+                break
+            }
+        }
+    }
+    
+    return $options
+}
+
+# ==========================================
+# PDF 依赖检查
+# ==========================================
+function Test-PdfDependencies {
+    param([switch]$Verbose)
+    
+    $allOk = $true
+    
+    # 检查 Pandoc
+    $pandocPath = Get-Command pandoc -ErrorAction SilentlyContinue
+    if ($pandocPath) {
+        if ($Verbose) { Write-Host "[OK] Pandoc 已安装: $($pandocPath.Source)" -ForegroundColor Green }
+    } else {
+        Write-Host "[错误] Pandoc 未安装" -ForegroundColor Red
+        Write-Host "  安装: choco install pandoc" -ForegroundColor Yellow
+        Write-Host "  或下载: https://pandoc.org/installing.html" -ForegroundColor Yellow
+        $allOk = $false
+    }
+    
+    # 检查 XeLaTeX
+    $xelatexPath = Get-Command xelatex -ErrorAction SilentlyContinue
+    if ($xelatexPath) {
+        if ($Verbose) { Write-Host "[OK] XeLaTeX 已安装: $($xelatexPath.Source)" -ForegroundColor Green }
+    } else {
+        Write-Host "[错误] XeLaTeX 未安装" -ForegroundColor Red
+        Write-Host "  安装: choco install texlive" -ForegroundColor Yellow
+        Write-Host "  或下载: https://www.tug.org/texlive/" -ForegroundColor Yellow
+        $allOk = $false
+    }
+    
+    # 检查 Eisvogel 模板
+    $templatePaths = @(
+        "$env:APPDATA\pandoc\templates\eisvogel.latex",
+        "$env:USERPROFILE\.local\share\pandoc\templates\eisvogel.latex",
+        "$env:USERPROFILE\.pandoc\templates\eisvogel.latex"
+    )
+    $eisvogelFound = $false
+    foreach ($path in $templatePaths) {
+        if (Test-Path $path) {
+            $eisvogelFound = $true
+            if ($Verbose) { Write-Host "[OK] Eisvogel 模板已安装: $path" -ForegroundColor Green }
+            break
+        }
+    }
+    if (-not $eisvogelFound) {
+        Write-Host "[错误] Eisvogel 模板未安装" -ForegroundColor Red
+        Write-Host "  安装步骤:" -ForegroundColor Yellow
+        Write-Host "  1. 创建目录: mkdir `"$env:APPDATA\pandoc\templates`"" -ForegroundColor Yellow
+        Write-Host "  2. 下载模板: Invoke-WebRequest -Uri 'https://raw.githubusercontent.com/Wandmalfarbe/pandoc-latex-template/master/eisvogel.latex' -OutFile `"$env:APPDATA\pandoc\templates\eisvogel.latex`"" -ForegroundColor Yellow
+        $allOk = $false
+    }
+    
+    # 检查中文字体
+    $fontCheckCmd = "fc-list :lang=zh"
+    try {
+        $fonts = & cmd /c $fontCheckCmd 2>$null
+        if ($fonts) {
+            if ($Verbose) { Write-Host "[OK] 中文字体已安装" -ForegroundColor Green }
+        } else {
+            Write-Host "[警告] 未检测到中文字体，PDF 中文可能显示异常" -ForegroundColor Yellow
+            Write-Host "  推荐安装 Noto Sans CJK 字体" -ForegroundColor Yellow
+        }
+    } catch {
+        if ($Verbose) { Write-Host "[警告] 无法检测中文字体" -ForegroundColor Yellow }
+    }
+    
+    return $allOk
+}
+
+# ==========================================
 # 构建
 # ==========================================
 function Invoke-Build {
     param(
         [string]$ClientConfig,
         [string]$DocType = "",
-        [string]$CustomClientName = ""
+        [string]$CustomClientName = "",
+        [string]$OutputFormat = "word"
     )
     
     # 检查 Pandoc
@@ -235,6 +390,19 @@ function Invoke-Build {
         Write-Host "[错误] 未找到 Pandoc，请先安装。" -ForegroundColor Red
         Write-Host "下载地址: https://pandoc.org/installing.html"
         exit 1
+    }
+    
+    # PDF 格式需要额外检查依赖
+    if ($OutputFormat -eq "pdf") {
+        Write-Host "检查 PDF 生成依赖..." -ForegroundColor Cyan
+        $depsOk = Test-PdfDependencies
+        if (-not $depsOk) {
+            Write-Host "[错误] PDF 依赖检查失败，请先安装所需依赖" -ForegroundColor Red
+            Write-Host "运行 '.\build.ps1 -CheckPdfDeps' 查看详细信息" -ForegroundColor Yellow
+            exit 1
+        }
+        Write-Host "PDF 依赖检查通过" -ForegroundColor Green
+        Write-Host ""
     }
     
     # 创建目录
@@ -270,8 +438,9 @@ function Invoke-Build {
     }
     
     $docLabel = if ($DocType -ne "") { "[$DocType]" } else { "" }
+    $formatLabel = if ($OutputFormat -eq "pdf") { "[PDF]" } else { "[Word]" }
     Write-Host "==========================================" -ForegroundColor Cyan
-    Write-Host "构建文档 - 客户: $ClientConfig $docLabel" -ForegroundColor Cyan
+    Write-Host "构建文档 - 客户: $ClientConfig $docLabel $formatLabel" -ForegroundColor Cyan
     Write-Host "==========================================" -ForegroundColor Cyan
     
     # 读取配置
@@ -280,6 +449,17 @@ function Invoke-Build {
     $outputPattern = Read-YamlValue -FilePath $configFile -Key "output_pattern"
     $modules = Read-YamlList -FilePath $configFile -Key "modules"
     $pandocArgs = Read-YamlList -FilePath $configFile -Key "pandoc_args"
+    
+    # 读取 PDF 选项（从配置文件和 metadata 合并）
+    $pdfOptions = Read-PdfOptions -FilePath $configFile
+    if (Test-Path $clientMeta) {
+        $metaPdfOptions = Read-PdfOptions -FilePath $clientMeta
+        foreach ($key in $metaPdfOptions.Keys) {
+            if ($metaPdfOptions[$key] -ne $pdfOptions[$key]) {
+                $pdfOptions[$key] = $metaPdfOptions[$key]
+            }
+        }
+    }
     
     # 如果传入了自定义客户名称，使用它覆盖配置
     if ($CustomClientName -ne "") {
@@ -296,15 +476,21 @@ function Invoke-Build {
     }
     
     Write-Host "客户名称: $clientNameValue"
-    Write-Host "模板: $template"
+    Write-Host "输出格式: $OutputFormat"
+    if ($OutputFormat -eq "word") {
+        Write-Host "模板: $template"
+    }
     Write-Host "模块: $($modules -join ', ')"
     
-    # 检查模板
-    $templatePath = Join-Path $TemplatesDir $template
-    if (-not (Test-Path $templatePath)) {
-        Write-Host "[警告] 模板不存在: $templatePath" -ForegroundColor Yellow
-        Write-Host "运行 '.\build.ps1 -InitTemplate' 生成默认模板"
-        $templatePath = $null
+    # 检查模板（仅 Word 格式需要）
+    $templatePath = $null
+    if ($OutputFormat -eq "word") {
+        $templatePath = Join-Path $TemplatesDir $template
+        if (-not (Test-Path $templatePath)) {
+            Write-Host "[警告] 模板不存在: $templatePath" -ForegroundColor Yellow
+            Write-Host "运行 '.\build.ps1 -InitTemplate' 生成默认模板"
+            $templatePath = $null
+        }
     }
     
     # 检查模块
@@ -343,7 +529,16 @@ function Invoke-Build {
     $clientNameClean = $clientNameValue -replace "\s+", "_"
     $titleClean = $title -replace "\s+", "_"
     
-    $outputFileName = $outputPattern `
+    # 根据格式调整输出文件扩展名
+    $outputPatternAdjusted = $outputPattern
+    if ($OutputFormat -eq "pdf") {
+        $outputPatternAdjusted = $outputPattern -replace "\.docx$", ".pdf"
+        if ($outputPatternAdjusted -notmatch "\.pdf$") {
+            $outputPatternAdjusted = $outputPatternAdjusted -replace "\.[^.]+$", ".pdf"
+        }
+    }
+    
+    $outputFileName = $outputPatternAdjusted `
         -replace "\{client\}", $clientNameClean `
         -replace "\{title\}", $titleClean `
         -replace "\{version\}", $version `
@@ -365,8 +560,68 @@ function Invoke-Build {
     $pandocCmdArgs += "-o"
     $pandocCmdArgs += $outputPath
     
-    if ($templatePath) {
-        $pandocCmdArgs += "--reference-doc=$templatePath"
+    if ($OutputFormat -eq "word") {
+        # Word 格式参数
+        if ($templatePath) {
+            $pandocCmdArgs += "--reference-doc=$templatePath"
+        }
+    } else {
+        # PDF 格式参数
+        $pandocCmdArgs += "--pdf-engine=xelatex"
+        $pandocCmdArgs += "--template=eisvogel"
+        
+        # 应用 PDF 选项
+        if ($pdfOptions.titlepage) {
+            $pandocCmdArgs += "-V", "titlepage=true"
+        }
+        if ($pdfOptions.titlepage_color) {
+            $pandocCmdArgs += "-V", "titlepage-color=$($pdfOptions.titlepage_color)"
+        }
+        if ($pdfOptions.titlepage_text_color) {
+            $pandocCmdArgs += "-V", "titlepage-text-color=$($pdfOptions.titlepage_text_color)"
+        }
+        if ($pdfOptions.titlepage_rule_color) {
+            $pandocCmdArgs += "-V", "titlepage-rule-color=$($pdfOptions.titlepage_rule_color)"
+        }
+        if ($pdfOptions.logo -and (Test-Path (Join-Path $SrcDir $pdfOptions.logo))) {
+            $pandocCmdArgs += "-V", "logo=$($pdfOptions.logo)"
+            $pandocCmdArgs += "-V", "logo-width=$($pdfOptions.logo_width)"
+        }
+        if ($pdfOptions.listings) {
+            $pandocCmdArgs += "-V", "listings=true"
+        }
+        if ($pdfOptions.listings_no_page_break) {
+            $pandocCmdArgs += "-V", "listings-no-page-break=true"
+        }
+        if ($pdfOptions.code_block_font_size) {
+            $pandocCmdArgs += "-V", "code-block-font-size=$($pdfOptions.code_block_font_size)"
+        }
+        if ($pdfOptions.header_left) {
+            $pandocCmdArgs += "-V", "header-left=$($pdfOptions.header_left)"
+        }
+        if ($pdfOptions.header_right) {
+            $pandocCmdArgs += "-V", "header-right=$($pdfOptions.header_right)"
+        }
+        if ($pdfOptions.CJKmainfont) {
+            $pandocCmdArgs += "-V", "CJKmainfont=$($pdfOptions.CJKmainfont)"
+        }
+        if ($pdfOptions.mainfont) {
+            $pandocCmdArgs += "-V", "mainfont=$($pdfOptions.mainfont)"
+        }
+        if ($pdfOptions.monofont) {
+            $pandocCmdArgs += "-V", "monofont=$($pdfOptions.monofont)"
+        }
+        if ($pdfOptions.toc) {
+            $pandocCmdArgs += "--toc"
+            $pandocCmdArgs += "--toc-depth=$($pdfOptions.toc_depth)"
+        }
+        if ($pdfOptions.number_sections) {
+            $pandocCmdArgs += "--number-sections"
+        }
+        if ($pdfOptions.colorlinks) {
+            $pandocCmdArgs += "-V", "colorlinks=true"
+            $pandocCmdArgs += "-V", "linkcolor=$($pdfOptions.linkcolor)"
+        }
     }
     
     $pandocCmdArgs += "--resource-path=$SrcDir"
@@ -403,8 +658,14 @@ if ($ListModules) { Show-Modules; exit 0 }
 if ($ListDocs) { Show-Docs -ClientName $Client; exit 0 }
 if ($Clean) { Invoke-Clean; exit 0 }
 if ($InitTemplate) { Initialize-Template; exit 0 }
+if ($CheckPdfDeps) { 
+    Write-Host "检查 PDF 生成依赖..." -ForegroundColor Cyan
+    Write-Host ""
+    Test-PdfDependencies -Verbose
+    exit 0
+}
 if ($InstallFonts) { 
-    $fontScript = "scripts\install-fonts.ps1"
+    $fontScript = "bin\install-fonts.ps1"
     if (Test-Path $fontScript) {
         & $fontScript
     } else {
@@ -425,9 +686,9 @@ if ($BuildAll) {
         $docName = $_.BaseName
         if ($docName -ne "metadata") {
             if ($docName -eq "config") {
-                Invoke-Build -ClientConfig $Client -DocType "" -CustomClientName $ClientName
+                Invoke-Build -ClientConfig $Client -DocType "" -CustomClientName $ClientName -OutputFormat $Format
             } else {
-                Invoke-Build -ClientConfig $Client -DocType $docName -CustomClientName $ClientName
+                Invoke-Build -ClientConfig $Client -DocType $docName -CustomClientName $ClientName -OutputFormat $Format
             }
             Write-Host ""
         }
@@ -436,4 +697,4 @@ if ($BuildAll) {
 }
 
 # 单个文档构建
-Invoke-Build -ClientConfig $Client -DocType $Doc -CustomClientName $ClientName
+Invoke-Build -ClientConfig $Client -DocType $Doc -CustomClientName $ClientName -OutputFormat $Format

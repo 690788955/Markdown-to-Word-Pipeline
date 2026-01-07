@@ -16,6 +16,13 @@ on:
         description: '构建所有客户'
         type: boolean
         default: false
+      format:
+        description: '输出格式'
+        type: choice
+        options:
+          - word
+          - pdf
+        default: 'word'
 
 jobs:
   # 构建单个客户文档
@@ -32,17 +39,26 @@ jobs:
         with:
           version: 3.1.11
       
+      - name: Install PDF dependencies
+        if: github.event.inputs.format == 'pdf'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y texlive-xetex texlive-fonts-recommended fonts-noto-cjk
+          mkdir -p ~/.local/share/pandoc/templates
+          wget -q -O ~/.local/share/pandoc/templates/eisvogel.latex \
+            https://raw.githubusercontent.com/Wandmalfarbe/pandoc-latex-template/master/eisvogel.latex
+      
       - name: Create directories
         run: |
           mkdir -p build templates
-          chmod +x scripts/build.sh
-          chmod +x scripts/install-fonts.sh 2>/dev/null || true
+          chmod +x bin/build.sh
+          chmod +x bin/install-fonts.sh 2>/dev/null || true
       
       - name: Install fonts
         run: |
           if [ -d "fonts" ] && ls fonts/*.otf fonts/*.ttf 1>/dev/null 2>&1; then
             echo "Installing fonts..."
-            ./scripts/install-fonts.sh
+            ./bin/install-fonts.sh
           else
             echo "No fonts to install"
           fi
@@ -56,16 +72,22 @@ jobs:
       - name: Build document
         run: |
           CLIENT="${{ github.event.inputs.client }}"
+          FORMAT="${{ github.event.inputs.format }}"
           if [ -z "$CLIENT" ]; then
             CLIENT="default"
           fi
-          make client="$CLIENT"
+          if [ -z "$FORMAT" ]; then
+            FORMAT="word"
+          fi
+          make client="$CLIENT" format="$FORMAT"
       
       - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
-          name: document-${{ github.event.inputs.client || 'default' }}-${{ github.sha }}
-          path: build/*.docx
+          name: document-${{ github.event.inputs.client || 'default' }}-${{ github.event.inputs.format || 'word' }}-${{ github.sha }}
+          path: |
+            build/*.docx
+            build/*.pdf
           retention-days: 30
 
   # 构建所有客户文档
@@ -82,17 +104,26 @@ jobs:
         with:
           version: 3.1.11
       
+      - name: Install PDF dependencies
+        if: github.event.inputs.format == 'pdf'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y texlive-xetex texlive-fonts-recommended fonts-noto-cjk
+          mkdir -p ~/.local/share/pandoc/templates
+          wget -q -O ~/.local/share/pandoc/templates/eisvogel.latex \
+            https://raw.githubusercontent.com/Wandmalfarbe/pandoc-latex-template/master/eisvogel.latex
+      
       - name: Create directories
         run: |
           mkdir -p build templates
-          chmod +x scripts/build.sh
-          chmod +x scripts/install-fonts.sh 2>/dev/null || true
+          chmod +x bin/build.sh
+          chmod +x bin/install-fonts.sh 2>/dev/null || true
       
       - name: Install fonts
         run: |
           if [ -d "fonts" ] && ls fonts/*.otf fonts/*.ttf 1>/dev/null 2>&1; then
             echo "Installing fonts..."
-            ./scripts/install-fonts.sh
+            ./bin/install-fonts.sh
           else
             echo "No fonts to install"
           fi
@@ -103,17 +134,23 @@ jobs:
       
       - name: Build all clients
         run: |
+          FORMAT="${{ github.event.inputs.format }}"
+          if [ -z "$FORMAT" ]; then
+            FORMAT="word"
+          fi
           for client_dir in clients/*/; do
             client=$(basename "$client_dir")
             echo "=========================================="
-            echo "Building for client: $client"
+            echo "Building for client: $client (format: $FORMAT)"
             echo "=========================================="
-            make client="$client" || true
+            make client="$client" format="$FORMAT" || true
           done
       
       - name: Upload all artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: all-documents-${{ github.sha }}
-          path: build/*.docx
+          name: all-documents-${{ github.event.inputs.format || 'word' }}-${{ github.sha }}
+          path: |
+            build/*.docx
+            build/*.pdf
           retention-days: 30

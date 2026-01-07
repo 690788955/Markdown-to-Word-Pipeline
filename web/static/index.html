@@ -9,64 +9,58 @@
 <body>
     <div class="container">
         <header>
-            <h1>📄 运维文档生成系统</h1>
-            <p class="subtitle">选择客户和文档类型，一键生成 Word 文档</p>
+            <h1>运维文档生成系统</h1>
         </header>
 
         <main>
-            <section class="card">
-                <h2>生成文档</h2>
-                
-                <div class="form-group">
-                    <label for="clientSelect">选择客户配置</label>
-                    <div class="select-wrapper">
-                        <select id="clientSelect" disabled>
-                            <option value="">加载中...</option>
-                        </select>
-                        <button type="button" id="refreshClients" class="btn-icon" title="刷新客户列表">🔄</button>
-                    </div>
+            <!-- 配置区域 -->
+            <section class="config-bar">
+                <div class="config-item">
+                    <label>客户配置</label>
+                    <select id="clientSelect">
+                        <option value="">加载中...</option>
+                    </select>
                 </div>
+                <div class="config-item">
+                    <label>客户名称</label>
+                    <input type="text" id="clientNameInput" placeholder="可选，覆盖默认名称">
+                </div>
+                <div class="config-item">
+                    <label>输出格式</label>
+                    <select id="formatSelect">
+                        <option value="word" selected>Word (.docx)</option>
+                        <option value="pdf">PDF (.pdf)</option>
+                    </select>
+                </div>
+                <button id="generateAllBtn" class="btn btn-primary" disabled>
+                    <span class="btn-text">全部生成</span>
+                    <span class="btn-loading" style="display:none;">生成中...</span>
+                </button>
+            </section>
 
-                <div class="form-group">
-                    <label for="clientNameInput">客户名称（可选，覆盖配置中的名称）</label>
-                    <input type="text" id="clientNameInput" placeholder="留空则使用配置中的默认名称">
-                    <small>输入后将替换生成文档中的客户名称</small>
+            <!-- 文档列表 -->
+            <section class="doc-list">
+                <div class="list-header">
+                    <span>文档类型</span>
+                    <span>操作</span>
                 </div>
+                <div id="docList" class="list-body">
+                    <div class="list-empty">请先选择客户配置</div>
+                </div>
+            </section>
 
-                <div class="form-group">
-                    <label>选择文档类型（可多选）</label>
-                    <div id="docTypeList" class="checkbox-list">
-                        <p class="placeholder">请先选择客户配置</p>
-                    </div>
-                    <div class="checkbox-actions">
-                        <button type="button" id="selectAll" class="btn-link" style="display:none;">全选</button>
-                        <button type="button" id="selectNone" class="btn-link" style="display:none;">取消全选</button>
-                    </div>
+            <!-- 生成结果 -->
+            <section id="resultSection" class="result-section" style="display:none;">
+                <div class="result-header">
+                    <span>📦 已生成文档</span>
+                    <button id="downloadAllBtn" class="btn btn-success btn-sm">打包下载</button>
                 </div>
-
-                <div class="form-actions">
-                    <button type="button" id="generateBtn" class="btn btn-primary" disabled>
-                        <span class="btn-text">生成文档</span>
-                        <span class="btn-loading" style="display: none;">生成中...</span>
-                    </button>
-                </div>
-
-                <!-- 生成结果 -->
-                <div id="result" class="result" style="display: none;">
-                    <div id="resultSuccess" class="result-success" style="display: none;">
-                        <p>✅ 文档生成成功！</p>
-                        <div id="downloadLinks"></div>
-                    </div>
-                    <div id="resultError" class="result-error" style="display: none;">
-                        <p>❌ <span id="errorMessage"></span></p>
-                        <button type="button" id="retryBtn" class="btn btn-secondary">重试</button>
-                    </div>
-                </div>
+                <div id="resultList" class="result-list"></div>
             </section>
         </main>
 
         <footer>
-            <p>运维文档生成系统 &copy; 2026</p>
+            <p>运维文档生成系统</p>
         </footer>
     </div>
 

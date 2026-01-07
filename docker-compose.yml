@@ -1,0 +1,44 @@
+# ==========================================
+# 运维文档生成系统 - Docker Compose
+# ==========================================
+#
+# 使用方式:
+#   docker compose up -d          # 启动服务（本地构建）
+#   docker compose down           # 停止服务
+#   docker compose logs -f        # 查看日志
+#   docker compose build --no-cache  # 重新构建
+#
+#   # 使用指定镜像（跳过构建）
+#   IMAGE=your-registry/doc-generator:v1.0 docker compose up -d
+#
+# 访问: http://localhost:8080
+
+services:
+  doc-generator:
+    # 优先使用 IMAGE 环境变量指定的镜像，否则本地构建
+    image: ${IMAGE:-doc-generator:latest}
+    build:
+      context: .
+      dockerfile: web/Dockerfile
+    container_name: doc-generator
+    ports:
+      - "8080:8080"
+    volumes:
+      # 挂载文档源文件（按需取消注释）
+      # - ./src:/app/src
+      # 挂载客户配置
+      # - ./clients:/app/clients
+      # 挂载 Word 模板
+      # - ./templates:/app/templates
+      # 挂载输出目录（生成的文档保存在这里）
+      - ./build:/app/build
+    environment:
+      - PORT=8080
+      - TZ=Asia/Shanghai
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "wget", "-q", "--spider", "http://localhost:8080/"]
+      interval: 30s
+      timeout: 3s
+      retries: 3
+      start_period: 10s
