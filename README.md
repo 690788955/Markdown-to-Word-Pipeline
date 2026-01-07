@@ -37,9 +37,10 @@ project-root/
 │
 ├── clients/                    # 客户配置目录
 │   ├── default/                # 默认配置
-│   │   └── config.yaml
+│   │   └── 默认文档.yaml
 │   └── 标准文档/               # 标准文档模板
-│       ├── config.yaml         # 文档配置
+│       ├── 运维手册.yaml       # 运维手册配置
+│       ├── 部署手册.yaml       # 部署手册配置
 │       └── metadata.yaml       # 元数据覆盖
 │
 ├── templates/                  # Word 模板目录
@@ -311,7 +312,7 @@ docker build -t doc-generator -f web/Dockerfile .
 
 1. 复制 `clients/标准文档/` 目录
 2. 重命名为客户名称
-3. 修改 `config.yaml` 选择需要的章节
+3. 修改文档配置文件（如 `运维手册.yaml`）选择需要的章节
 4. 修改 `metadata.yaml` 设置客户信息
 5. 运行构建命令
 
@@ -321,7 +322,6 @@ docker build -t doc-generator -f web/Dockerfile .
 
 ```
 clients/某客户/
-├── config.yaml       # 默认文档
 ├── metadata.yaml     # 共享元数据
 ├── 运维手册.yaml     # 运维手册配置
 ├── 应急预案.yaml     # 应急预案配置

@@ -118,9 +118,8 @@ show_help() {
 示例:
   ./build.sh                                      # 默认构建 Word
   ./build.sh -f pdf                               # 生成 PDF
-  ./build.sh -c 标准文档                          # 使用 config.yaml
   ./build.sh -c 标准文档 -d 运维手册              # 构建运维手册
-  ./build.sh -c 标准文档 -f pdf                   # 生成 PDF 格式
+  ./build.sh -c 标准文档 -d 运维手册 -f pdf       # 生成 PDF 格式
   ./build.sh --list-clients                       # 列出所有客户
   ./build.sh -c 标准文档 --list-docs              # 列出文档类型
   ./build.sh --check-pdf-deps                     # 检查 PDF 依赖
@@ -158,11 +157,8 @@ list_docs() {
             name=$(basename "$f" .yaml)
             if [ "$name" = "metadata" ]; then
                 continue
-            elif [ "$name" = "config" ]; then
-                echo "  - (默认)"
-            else
-                echo "  - $name"
             fi
+            echo "  - $name"
         fi
     done
 }
@@ -196,12 +192,13 @@ read_yaml_list() {
     
     awk -v key="$key" '
         $0 ~ "^"key":" { in_list=1; next }
+        in_list && /^[[:space:]]*#/ { next }  # 跳过注释行
         in_list && /^[[:space:]]+-/ { 
             gsub(/^[[:space:]]+-[[:space:]]*/, "")
             gsub(/["'\'']/, "")
             print
         }
-        in_list && /^[^[:space:]]/ && !/^[[:space:]]*#/ { exit }
+        in_list && /^[^[:space:]]/ { exit }  # 遇到非缩进行退出
     ' "$file"
 }
 
@@ -346,19 +343,26 @@ fi
 CLIENT_DIR="${CLIENTS_DIR}/${CLIENT}"
 CLIENT_META="${CLIENT_DIR}/metadata.yaml"
 
-# 确定配置文件
+# 确定配置文件（必须指定文档类型）
 if [ -n "$DOC_TYPE" ]; then
     CONFIG_FILE="${CLIENT_DIR}/${DOC_TYPE}.yaml"
 else
-    CONFIG_FILE="${CLIENT_DIR}/config.yaml"
+    # 没有指定文档类型时，尝试查找第一个可用的配置文件
+    first_config=$(find "$CLIENT_DIR" -maxdepth 1 -name "*.yaml" ! -name "metadata.yaml" -type f 2>/dev/null | head -1)
+    if [ -n "$first_config" ]; then
+        CONFIG_FILE="$first_config"
+        DOC_TYPE=$(basename "$first_config" .yaml)
+        echo "[提示] 未指定文档类型，使用: $DOC_TYPE"
+    else
+        echo "[错误] 未指定文档类型，且客户目录中没有可用的配置文件"
+        echo "用法: ./build.sh -c $CLIENT -d <文档类型>"
+        list_docs
+        exit 1
+    fi
 fi
 
 echo "=========================================="
-if [ -n "$DOC_TYPE" ]; then
-    echo "构建文档 - 客户: ${CLIENT} [${DOC_TYPE}] [${FORMAT^^}]"
-else
-    echo "构建文档 - 客户: ${CLIENT} [${FORMAT^^}]"
-fi
+echo "构建文档 - 客户: ${CLIENT} [${DOC_TYPE}] [${FORMAT^^}]"
 echo "=========================================="
 
 # PDF 格式需要额外检查依赖

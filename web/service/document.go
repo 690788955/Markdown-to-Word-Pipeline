@@ -74,22 +74,11 @@ func (s *DocumentService) ListDocumentTypes(clientName string) ([]DocumentType, 
 		docType := DocumentType{
 			Name:        baseName,
 			DisplayName: baseName,
-			IsDefault:   baseName == "config",
+			IsDefault:   false,
 			ModifiedAt:  info.ModTime(),
 		}
 
-		// config.yaml 显示为"默认文档"
-		if docType.IsDefault {
-			docType.DisplayName = "默认文档"
-			hasDefault = true
-		}
-
 		docTypes = append(docTypes, docType)
-	}
-
-	// 如果有默认配置，将其放在列表最前面
-	if hasDefault {
-		docTypes = s.sortDocTypes(docTypes)
 	}
 
 	return docTypes, nil

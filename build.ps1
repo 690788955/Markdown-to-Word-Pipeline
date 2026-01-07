@@ -89,9 +89,8 @@ function Show-Help {
 示例:
   .\build.ps1                                     # 默认构建 Word
   .\build.ps1 -Format pdf                         # 生成 PDF
-  .\build.ps1 -Client 标准文档              # 使用 config.yaml
-  .\build.ps1 -Client 标准文档 -Doc 运维手册   # 构建运维手册
-  .\build.ps1 -Client 标准文档 -Format pdf     # 生成 PDF 格式
+  .\build.ps1 -Client 标准文档 -Doc 运维手册      # 构建运维手册
+  .\build.ps1 -Client 标准文档 -Doc 运维手册 -Format pdf  # 生成 PDF 格式
   .\build.ps1 -Client 标准文档 -Doc 部署手册   # 构建部署手册
   .\build.ps1 -Client 标准文档 -Doc 应急预案   # 构建应急预案
   .\build.ps1 -Client 标准文档 -Doc 日常巡检   # 构建日常巡检手册
@@ -159,8 +158,6 @@ function Show-Docs {
         $docName = $_.BaseName
         if ($docName -eq "metadata") {
             # 跳过 metadata.yaml
-        } elseif ($docName -eq "config") {
-            Write-Host "  - (默认)" -ForegroundColor Gray
         } else {
             Write-Host "  - $docName"
         }
@@ -241,10 +238,14 @@ function Read-YamlList {
             continue
         }
         if ($inList) {
+            # 跳过注释行
+            if ($line -match "^\s*#") {
+                continue
+            }
             if ($line -match "^\s+-\s+(.+)$") {
                 $items += $Matches[1].Trim().Trim('"').Trim("'")
             }
-            elseif ($line -match "^\S" -and $line -notmatch "^\s*#") {
+            elseif ($line -match "^\S") {
                 break
             }
         }
@@ -430,11 +431,24 @@ function Invoke-Build {
     $clientDir = Join-Path $ClientsDir $ClientConfig
     $clientMeta = Join-Path $clientDir "metadata.yaml"
     
-    # 确定配置文件
+    # 确定配置文件（必须指定文档类型）
     if ($DocType -ne "") {
         $configFile = Join-Path $clientDir "$DocType.yaml"
     } else {
-        $configFile = Join-Path $clientDir "config.yaml"
+        # 没有指定文档类型时，尝试查找第一个可用的配置文件
+        $firstConfig = Get-ChildItem -Path $clientDir -Filter "*.yaml" -File 2>$null | 
+            Where-Object { $_.Name -ne "metadata.yaml" } | 
+            Select-Object -First 1
+        if ($firstConfig) {
+            $configFile = $firstConfig.FullName
+            $DocType = $firstConfig.BaseName
+            Write-Host "[提示] 未指定文档类型，使用: $DocType" -ForegroundColor Yellow
+        } else {
+            Write-Host "[错误] 未指定文档类型，且客户目录中没有可用的配置文件" -ForegroundColor Red
+            Write-Host "用法: .\build.ps1 -Client $ClientConfig -Doc <文档类型>"
+            Show-Docs -ClientName $ClientConfig
+            exit 1
+        }
     }
     
     # 检查客户配置
@@ -447,17 +461,14 @@ function Invoke-Build {
     
     if (-not (Test-Path $configFile)) {
         Write-Host "[错误] 配置文件不存在: $configFile" -ForegroundColor Red
-        if ($DocType -ne "") {
-            Write-Host "可用的文档类型:"
-            Show-Docs -ClientName $ClientConfig
-        }
+        Write-Host "可用的文档类型:"
+        Show-Docs -ClientName $ClientConfig
         exit 1
     }
     
-    $docLabel = if ($DocType -ne "") { "[$DocType]" } else { "" }
     $formatLabel = if ($OutputFormat -eq "pdf") { "[PDF]" } else { "[Word]" }
     Write-Host "==========================================" -ForegroundColor Cyan
-    Write-Host "构建文档 - 客户: $ClientConfig $docLabel $formatLabel" -ForegroundColor Cyan
+    Write-Host "构建文档 - 客户: $ClientConfig [$DocType] $formatLabel" -ForegroundColor Cyan
     Write-Host "==========================================" -ForegroundColor Cyan
     
     # 读取配置

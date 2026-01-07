@@ -33,7 +33,7 @@
 ```
 feat: 添加客户ABC的配置文件
 
-- 新增 clients/abc/config.yaml
+- 新增 clients/abc/运维手册.yaml
 - 新增 clients/abc/metadata.yaml
 - 使用专属模板 templates/abc.docx
 ```
@@ -93,7 +93,7 @@ mkdir -p clients/new-client
 
 ### 步骤 2: 创建配置文件
 
-创建 `clients/new-client/config.yaml`：
+创建 `clients/new-client/运维手册.yaml`：
 
 ```yaml
 # 客户基本信息
@@ -133,12 +133,12 @@ client:
 
 ### 步骤 4: 添加专属模板（可选）
 
-如需专属排版，在 `templates/` 下添加 Word 模板文件，并在 `config.yaml` 中引用。
+如需专属排版，在 `templates/` 下添加 Word 模板文件，并在文档配置文件中引用。
 
 ### 步骤 5: 测试构建
 
 ```bash
-make client=new-client
+make client=new-client doc=运维手册
 ```
 
 ## 代码审查清单

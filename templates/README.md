@@ -160,7 +160,7 @@ make init-template
 ## 为不同客户使用不同模板
 
 ```yaml
-# clients/某客户/config.yaml
+# clients/某客户/运维手册.yaml
 template: "custom.docx"  # 使用自定义模板
 ```
 

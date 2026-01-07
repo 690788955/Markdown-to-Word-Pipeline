@@ -133,13 +133,7 @@ func (s *ClientService) CreateClient(name, displayName string) error {
 
 // hasValidConfig 检查目录是否包含有效配置文件
 func (s *ClientService) hasValidConfig(clientDir string) bool {
-	// 检查 config.yaml 或任何 .yaml 文件（除了 metadata.yaml）
-	configPath := filepath.Join(clientDir, "config.yaml")
-	if _, err := os.Stat(configPath); err == nil {
-		return true
-	}
-
-	// 检查是否有其他 yaml 配置文件
+	// 检查是否有任何 .yaml 配置文件（除了 metadata.yaml）
 	entries, err := os.ReadDir(clientDir)
 	if err != nil {
 		return false
@@ -246,7 +240,7 @@ func (s *ClientService) copyDefaultTemplate(srcDir, dstDir, clientName, displayN
 
 // createBasicConfig 创建基本配置文件
 func (s *ClientService) createBasicConfig(clientDir, clientName, displayName string) error {
-	// 创建 config.yaml
+	// 创建默认文档配置（使用"默认文档.yaml"而不是"config.yaml"）
 	configContent := fmt.Sprintf(`# %s 配置
 client_name: "%s"
 template: "default.docx"
@@ -263,7 +257,7 @@ pandoc_args:
 output_pattern: "{client}_文档_{date}.docx"
 `, displayName, displayName)
 
-	configPath := filepath.Join(clientDir, "config.yaml")
+	configPath := filepath.Join(clientDir, "默认文档.yaml")
 	if err := os.WriteFile(configPath, []byte(configContent), 0644); err != nil {
 		return err
 	}
