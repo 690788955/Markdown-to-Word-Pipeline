@@ -78,33 +78,103 @@ brew install pandoc
 ```
 
 **PDF 输出依赖** (可选，仅生成 PDF 时需要):
+
+> **推荐方式**: 使用 Docker 镜像（已包含所有依赖），或下载官方 TeX Live 二进制包安装。
+> 系统包管理器（yum/apt）的 texlive 版本较旧，可能缺少必要的 LaTeX 包。
+
+#### 方式一：Docker（推荐，零配置）
+
+使用项目提供的 Docker 镜像，已包含完整的 TeX Live 和所有依赖：
+
 ```bash
-# Windows (PowerShell)
-choco install texlive
-# 安装 Eisvogel 模板
+docker compose up -d
+# 访问 http://localhost:8080 使用 Web 界面生成 PDF
+```
+
+#### 方式二：下载 TeX Live 官方二进制包（推荐）
+
+从 TeX Live 官网下载完整版，包含所有必要的 LaTeX 包：
+
+**Linux:**
+```bash
+# 1. 下载安装包
+cd /tmp
+wget https://mirror.ctan.org/systems/texlive/tlnet/install-tl-unx.tar.gz
+tar -xzf install-tl-unx.tar.gz
+cd install-tl-*
+
+# 2. 运行安装程序（完整安装约 7GB，可选择 scheme-medium 约 2GB）
+sudo ./install-tl
+# 安装过程中可以选择:
+# - scheme-full: 完整安装（推荐，约 7GB）
+# - scheme-medium: 中等安装（约 2GB）
+# - scheme-basic + 手动安装包
+
+# 3. 添加到 PATH（根据安装路径调整）
+echo 'export PATH="/usr/local/texlive/2024/bin/x86_64-linux:$PATH"' >> ~/.bashrc
+source ~/.bashrc
+
+# 4. 安装 Eisvogel 模板
+mkdir -p ~/.local/share/pandoc/templates
+wget -O ~/.local/share/pandoc/templates/eisvogel.latex \
+  https://github.com/Wandmalfarbe/pandoc-latex-template/releases/download/2.4.2/Eisvogel-2.4.2.tar.gz
+cd ~/.local/share/pandoc/templates
+tar -xzf eisvogel.latex && mv Eisvogel-*/eisvogel.latex . && rm -rf Eisvogel-* eisvogel.latex.tar.gz
+# 或直接下载
+wget -O ~/.local/share/pandoc/templates/eisvogel.latex \
+  https://raw.githubusercontent.com/Wandmalfarbe/pandoc-latex-template/master/eisvogel.latex
+
+# 5. 安装中文字体
+sudo yum install -y google-noto-sans-cjk-fonts  # CentOS/RHEL
+sudo apt install -y fonts-noto-cjk              # Debian/Ubuntu
+```
+
+**Windows:**
+```powershell
+# 1. 下载 TeX Live 安装程序
+# 访问 https://www.tug.org/texlive/acquire-netinstall.html
+# 下载 install-tl-windows.exe 并运行
+
+# 2. 安装 Eisvogel 模板
 $templateDir = "$env:APPDATA\pandoc\templates"
 New-Item -ItemType Directory -Path $templateDir -Force
-Invoke-WebRequest -Uri "https://raw.githubusercontent.com/Wandmalfarbe/pandoc-latex-template/master/eisvogel.latex" -OutFile "$templateDir\eisvogel.latex"
+Invoke-WebRequest -Uri "https://raw.githubusercontent.com/Wandmalfarbe/pandoc-latex-template/master/eisvogel.latex" `
+  -OutFile "$templateDir\eisvogel.latex"
+```
 
+**macOS:**
+```bash
+# 1. 下载 MacTeX（完整 TeX Live）
+# 访问 https://www.tug.org/mactex/ 下载 MacTeX.pkg 安装
+# 或使用 Homebrew:
+brew install --cask mactex
+
+# 2. 安装 Eisvogel 模板
+mkdir -p ~/.local/share/pandoc/templates
+curl -L -o ~/.local/share/pandoc/templates/eisvogel.latex \
+  https://raw.githubusercontent.com/Wandmalfarbe/pandoc-latex-template/master/eisvogel.latex
+```
+
+#### 方式三：系统包管理器（可能缺包）
+
+```bash
 # Debian/Ubuntu
-sudo apt install texlive-xetex texlive-fonts-recommended fonts-noto-cjk
-mkdir -p ~/.local/share/pandoc/templates
-wget -O ~/.local/share/pandoc/templates/eisvogel.latex \
-  https://raw.githubusercontent.com/Wandmalfarbe/pandoc-latex-template/master/eisvogel.latex
+sudo apt install texlive-xetex texlive-latex-extra texlive-fonts-extra fonts-noto-cjk
 
-# CentOS/RHEL
-sudo yum install -y epel-release
-sudo yum install -y texlive-xetex texlive-collection-fontsrecommended google-noto-sans-cjk-fonts
-mkdir -p ~/.local/share/pandoc/templates
-wget -O ~/.local/share/pandoc/templates/eisvogel.latex \
-  https://raw.githubusercontent.com/Wandmalfarbe/pandoc-latex-template/master/eisvogel.latex
+# CentOS/RHEL（包较旧，可能需要手动补充 sty 文件）
+sudo yum install -y texlive-xetex texlive-collection-latexextra
 
 # macOS
 brew install --cask mactex
-brew install font-noto-sans-cjk
-mkdir -p ~/.local/share/pandoc/templates
-wget -O ~/.local/share/pandoc/templates/eisvogel.latex \
-  https://raw.githubusercontent.com/Wandmalfarbe/pandoc-latex-template/master/eisvogel.latex
+```
+
+如果遇到 `xxx.sty not found` 错误，需要手动下载缺失的包：
+```bash
+# 例如缺少 footnotebackref.sty
+sudo mkdir -p /usr/share/texlive/texmf-local/tex/latex/footnotebackref
+sudo curl -o /usr/share/texlive/texmf-local/tex/latex/footnotebackref/footnotebackref.sty \
+  https://mirrors.ctan.org/macros/latex/contrib/footnotebackref/footnotebackref.sty
+sudo mktexlsr
 ```
 
 **检查 PDF 依赖**:
@@ -407,42 +477,6 @@ pdf_options:
   linkcolor: "2980B9"
   urlcolor: "3498DB"
 ```
-
-完整配置示例见 `clients/标准文档/PDF示例.yaml`。
-
-### PDF 常见问题
-
-**Q: 报错 "No counter 'none' defined"**
-
-A: Eisvogel 模板版本与 Pandoc 不兼容，运行更新脚本：
-```bash
-# Windows
-.\bin\update-eisvogel.ps1
-
-# Linux/macOS
-./bin/update-eisvogel.sh
-```
-
-**Q: 中文显示为方块或乱码**
-
-A: 需要安装中文字体，并在配置中指定正确的字体名称：
-```bash
-# Ubuntu/Debian
-sudo apt install fonts-noto-cjk
-
-# CentOS/RHEL
-sudo yum install google-noto-sans-cjk-fonts
-
-# macOS (系统自带 PingFang SC)
-```
-
-**Q: 找不到 Eisvogel 模板**
-
-A: 模板需要放在 Pandoc 的用户模板目录：
-- Windows: `%APPDATA%\pandoc\templates\eisvogel.latex`
-- Linux/macOS: `~/.local/share/pandoc/templates/eisvogel.latex`
-
-运行 `.\bin\update-eisvogel.ps1` 或 `./bin/update-eisvogel.sh` 自动下载安装。
 
 ## 许可证
 

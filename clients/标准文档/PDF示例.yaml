@@ -22,7 +22,7 @@ pdf_options:
   # 字体
   mainfont: "Noto Sans CJK SC"
   sansfont: "Noto Sans CJK SC"
-  monofont: "Noto Sans Mono"
+  monofont: "Liberation Mono"
   CJKmainfont: "Noto Sans CJK SC"
   
   # 封面

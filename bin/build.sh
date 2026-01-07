@@ -455,7 +455,8 @@ if [[ "$OSTYPE" == "darwin"* ]]; then
     default_mono_font="Menlo"
 else
     default_cjk_font="Noto Sans CJK SC"
-    default_mono_font="Noto Sans Mono"
+    # Liberation Mono 在大多数 Linux 发行版上预装
+    default_mono_font="Liberation Mono"
 fi
 pdf_CJKmainfont=$(read_pdf_option "$CONFIG_FILE" "CJKmainfont" "$default_cjk_font")
 pdf_mainfont=$(read_pdf_option "$CONFIG_FILE" "mainfont" "$default_cjk_font")
