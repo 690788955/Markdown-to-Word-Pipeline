@@ -2,6 +2,7 @@
 package main
 
 import (
+	"flag"
 	"fmt"
 	"log"
 	"net/http"
@@ -14,6 +15,11 @@ import (
 )
 
 func main() {
+	// 命令行参数
+	port := flag.String("port", "", "监听端口（默认: 8080）")
+	workDir := flag.String("workdir", "", "工作目录（包含 src, clients, templates）")
+	flag.Parse()
+
 	// 加载配置
 	cfg := config.DefaultConfig()
 
@@ -27,24 +33,43 @@ func main() {
 	// 静态文件目录
 	staticDir := filepath.Join(exeDir, "static")
 
-	// 如果设置了 WORK_DIR 环境变量，使用它；否则使用当前目录
-	if os.Getenv("WORK_DIR") == "" {
-		// 默认使用当前工作目录的父目录（假设 web 在项目根目录下）
-		cwd, err := os.Getwd()
-		if err == nil {
-			cfg.WorkDir = cwd
-			// 如果当前目录是 web，则使用父目录
-			if _, err := os.Stat("../clients"); err == nil {
-				cfg.WorkDir = ".."
+	// 确定工作目录优先级: 命令行参数 > 环境变量 > 可执行文件目录 > 当前目录
+	if *workDir != "" {
+		cfg.WorkDir = *workDir
+	} else if os.Getenv("WORK_DIR") != "" {
+		cfg.WorkDir = os.Getenv("WORK_DIR")
+	} else {
+		// 检查可执行文件目录是否包含必要文件
+		if _, err := os.Stat(filepath.Join(exeDir, "clients")); err == nil {
+			cfg.WorkDir = exeDir
+			staticDir = filepath.Join(exeDir, "static")
+		} else {
+			// 使用当前工作目录
+			cwd, err := os.Getwd()
+			if err == nil {
+				cfg.WorkDir = cwd
+				// 如果当前目录是 web，则使用父目录
+				if _, err := os.Stat(filepath.Join(cwd, "..", "clients")); err == nil {
+					if filepath.Base(cwd) == "web" {
+						cfg.WorkDir = filepath.Join(cwd, "..")
+					}
+				}
+				staticDir = filepath.Join(cwd, "static")
 			}
-			// 静态文件目录使用当前工作目录
-			staticDir = filepath.Join(cwd, "static")
 		}
-		// 重新计算路径
-		cfg.ClientsDir = cfg.WorkDir + "/clients"
-		cfg.BuildDir = cfg.WorkDir + "/build"
-		cfg.TemplatesDir = cfg.WorkDir + "/templates"
-		cfg.SrcDir = cfg.WorkDir + "/src"
+	}
+
+	// 重新计算路径
+	cfg.ClientsDir = filepath.Join(cfg.WorkDir, "clients")
+	cfg.BuildDir = filepath.Join(cfg.WorkDir, "build")
+	cfg.TemplatesDir = filepath.Join(cfg.WorkDir, "templates")
+	cfg.SrcDir = filepath.Join(cfg.WorkDir, "src")
+
+	// 确定端口优先级: 命令行参数 > 环境变量 > 默认值
+	if *port != "" {
+		cfg.Port = *port
+	} else if os.Getenv("PORT") != "" {
+		cfg.Port = os.Getenv("PORT")
 	}
 
 	// 确保 build 目录存在
@@ -89,6 +114,10 @@ func main() {
 	fmt.Printf("静态目录: %s\n", staticDir)
 	fmt.Printf("客户目录: %s\n", cfg.ClientsDir)
 	fmt.Printf("构建目录: %s\n", cfg.BuildDir)
+	fmt.Printf("========================================\n")
+	fmt.Printf("命令行参数:\n")
+	fmt.Printf("  -port <端口>     指定监听端口\n")
+	fmt.Printf("  -workdir <目录>  指定工作目录\n")
 	fmt.Printf("========================================\n")
 
 	log.Fatal(http.ListenAndServe(addr, mux))
