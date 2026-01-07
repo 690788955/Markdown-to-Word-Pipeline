@@ -352,3 +352,342 @@ footer {
         border-color: #333;
     }
 }
+
+
+/* ==================== 自定义配置模态框样式 ==================== */
+
+/* 模态框背景 */
+.modal {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.5);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 1000;
+}
+
+/* 模态框内容 */
+.modal-content {
+    background: white;
+    border-radius: 12px;
+    width: 90%;
+    max-width: 700px;
+    max-height: 90vh;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    box-shadow: 0 10px 40px rgba(0, 0, 0, 0.2);
+}
+
+.modal-sm {
+    max-width: 400px;
+}
+
+/* 模态框头部 */
+.modal-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 20px;
+    border-bottom: 1px solid #eee;
+}
+
+.modal-header h2 {
+    font-size: 1.2rem;
+    color: #2c3e50;
+    margin: 0;
+}
+
+.modal-close {
+    background: none;
+    border: none;
+    font-size: 1.5rem;
+    color: #999;
+    cursor: pointer;
+    padding: 0;
+    line-height: 1;
+}
+
+.modal-close:hover {
+    color: #333;
+}
+
+/* 模态框主体 */
+.modal-body {
+    padding: 20px;
+    overflow-y: auto;
+    flex: 1;
+}
+
+/* 模态框底部 */
+.modal-footer {
+    display: flex;
+    justify-content: flex-end;
+    gap: 10px;
+    padding: 15px 20px;
+    border-top: 1px solid #eee;
+    background: #f8f9fa;
+}
+
+/* 表单样式 */
+.form-row {
+    display: flex;
+    gap: 15px;
+    margin-bottom: 15px;
+}
+
+.form-row .form-group {
+    flex: 1;
+}
+
+.form-group {
+    margin-bottom: 15px;
+}
+
+.form-group label {
+    display: block;
+    font-size: 0.9rem;
+    font-weight: 500;
+    color: #333;
+    margin-bottom: 6px;
+}
+
+.form-group label small {
+    font-weight: normal;
+    color: #999;
+}
+
+.form-group input,
+.form-group select {
+    width: 100%;
+    padding: 10px 12px;
+    border: 1px solid #ddd;
+    border-radius: 6px;
+    font-size: 0.95rem;
+}
+
+.form-group input:focus,
+.form-group select:focus {
+    outline: none;
+    border-color: #3498db;
+}
+
+.form-group input:disabled {
+    background: #f5f5f5;
+    color: #999;
+}
+
+.form-hint {
+    display: block;
+    font-size: 0.8rem;
+    color: #999;
+    margin-top: 4px;
+}
+
+/* 复选框组 */
+.checkbox-group {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 15px;
+    margin-bottom: 10px;
+}
+
+.checkbox-label {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 0.9rem;
+    color: #555;
+    cursor: pointer;
+}
+
+.checkbox-label input[type="checkbox"] {
+    width: auto;
+}
+
+/* 模块列表 */
+.module-list {
+    border: 1px solid #ddd;
+    border-radius: 6px;
+    max-height: 250px;
+    overflow-y: auto;
+}
+
+.module-item {
+    display: flex;
+    align-items: center;
+    padding: 10px 12px;
+    border-bottom: 1px solid #f0f0f0;
+    cursor: move;
+    transition: background 0.2s;
+}
+
+.module-item:last-child {
+    border-bottom: none;
+}
+
+.module-item:hover {
+    background: #f8f9fa;
+}
+
+.module-item.selected {
+    background: #e8f4fd;
+}
+
+.module-item.dragging {
+    opacity: 0.5;
+    background: #d4edda;
+}
+
+.module-item input[type="checkbox"] {
+    margin-right: 10px;
+}
+
+.module-label {
+    flex: 1;
+    font-size: 0.9rem;
+}
+
+.drag-handle {
+    color: #ccc;
+    font-size: 1.2rem;
+    cursor: grab;
+    padding: 0 5px;
+}
+
+.drag-handle:active {
+    cursor: grabbing;
+}
+
+/* 文件名预览 */
+.filename-preview {
+    padding: 10px 12px;
+    background: #f8f9fa;
+    border: 1px solid #ddd;
+    border-radius: 6px;
+    font-family: monospace;
+    font-size: 0.9rem;
+    color: #666;
+}
+
+/* 次要按钮 */
+.btn-secondary {
+    background: #6c757d;
+    color: white;
+}
+
+.btn-secondary:hover:not(:disabled) {
+    background: #5a6268;
+}
+
+/* 危险按钮 */
+.btn-danger {
+    background: #dc3545;
+    color: white;
+}
+
+.btn-danger:hover:not(:disabled) {
+    background: #c82333;
+}
+
+.btn-danger-outline {
+    border-color: #dc3545;
+    color: #dc3545;
+}
+
+.btn-danger-outline:hover:not(:disabled) {
+    background: #dc3545;
+    color: white;
+}
+
+/* 深色模式 - 模态框 */
+@media (prefers-color-scheme: dark) {
+    .modal-content {
+        background: #16213e;
+    }
+    
+    .modal-header {
+        border-color: #333;
+    }
+    
+    .modal-header h2 {
+        color: #eee;
+    }
+    
+    .modal-close {
+        color: #666;
+    }
+    
+    .modal-close:hover {
+        color: #eee;
+    }
+    
+    .modal-footer {
+        background: #0f3460;
+        border-color: #333;
+    }
+    
+    .form-group label {
+        color: #ddd;
+    }
+    
+    .form-group input,
+    .form-group select {
+        background: #0f3460;
+        border-color: #333;
+        color: #eee;
+    }
+    
+    .form-group input:disabled {
+        background: #1a1a2e;
+        color: #666;
+    }
+    
+    .checkbox-label {
+        color: #ccc;
+    }
+    
+    .module-list {
+        border-color: #333;
+    }
+    
+    .module-item {
+        border-color: #333;
+    }
+    
+    .module-item:hover {
+        background: #1a4a7a;
+    }
+    
+    .module-item.selected {
+        background: #1e4620;
+    }
+    
+    .filename-preview {
+        background: #0f3460;
+        border-color: #333;
+        color: #aaa;
+    }
+}
+
+/* 响应式 - 模态框 */
+@media (max-width: 600px) {
+    .modal-content {
+        width: 95%;
+        max-height: 95vh;
+    }
+    
+    .form-row {
+        flex-direction: column;
+        gap: 0;
+    }
+    
+    .checkbox-group {
+        flex-direction: column;
+        gap: 10px;
+    }
+}

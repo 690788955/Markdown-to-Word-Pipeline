@@ -482,7 +482,7 @@ function Invoke-Build {
     $expandedModules = @()
     foreach ($module in $modules) {
         if ($module -match '\*') {
-            # 包含通配符，展开它
+            # 包含通配符，展开它（通配符展开时按文件名排序）
             $expanded = Get-ChildItem -Path $module -File -ErrorAction SilentlyContinue | Sort-Object Name
             foreach ($file in $expanded) {
                 $expandedModules += $file.FullName.Replace((Get-Location).Path + "\", "").Replace("\", "/")
@@ -491,7 +491,8 @@ function Invoke-Build {
             $expandedModules += $module
         }
     }
-    $modules = $expandedModules | Sort-Object
+    # 保持配置文件中指定的模块顺序，不进行排序
+    $modules = $expandedModules
     
     # 读取 PDF 选项（从配置文件和 metadata 合并）
     $pdfOptions = Read-PdfOptions -FilePath $configFile

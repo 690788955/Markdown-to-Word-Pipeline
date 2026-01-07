@@ -191,14 +191,19 @@ read_yaml_list() {
     fi
     
     awk -v key="$key" '
+        BEGIN { in_list=0 }
         $0 ~ "^"key":" { in_list=1; next }
+        in_list && /^[[:space:]]*$/ { next }  # 跳过空行
         in_list && /^[[:space:]]*#/ { next }  # 跳过注释行
         in_list && /^[[:space:]]+-/ { 
-            gsub(/^[[:space:]]+-[[:space:]]*/, "")
-            gsub(/["'\'']/, "")
-            print
+            line = $0
+            gsub(/^[[:space:]]+-[[:space:]]*/, "", line)
+            gsub(/["'"'"']/, "", line)
+            gsub(/[[:space:]]*$/, "", line)
+            if (line != "") print line
+            next
         }
-        in_list && /^[^[:space:]]/ { exit }  # 遇到非缩进行退出
+        in_list && /^[^[:space:]-]/ { exit }  # 遇到新的顶级键退出
     ' "$file"
 }
 
@@ -424,9 +429,10 @@ for module in "${modules[@]}"; do
 done
 modules=("${expanded_modules[@]}")
 
-# 对模块进行排序（确保按文件名顺序）
-IFS=$'\n' sorted_modules=($(sort <<<"${modules[*]}")); unset IFS
-modules=("${sorted_modules[@]}")
+# 注意：保持配置文件中指定的模块顺序，不进行排序
+# 如果需要按文件名排序，可以取消下面的注释
+# IFS=$'\n' sorted_modules=($(sort <<<"${modules[*]}")); unset IFS
+# modules=("${sorted_modules[@]}")
 
 # 读取 Pandoc 参数
 pandoc_args=()

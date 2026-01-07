@@ -95,9 +95,12 @@ func main() {
 	clientSvc := service.NewClientService(cfg.ClientsDir)
 	docSvc := service.NewDocumentService(cfg.ClientsDir)
 	buildSvc := service.NewBuildService(cfg.WorkDir, cfg.BuildDir)
+	moduleSvc := service.NewModuleService(cfg.SrcDir)
+	templateSvc := service.NewTemplateService(cfg.TemplatesDir)
+	configMgr := service.NewConfigManager(cfg.ClientsDir)
 
 	// 创建 API 处理器
-	apiHandler := handler.NewAPIHandler(clientSvc, docSvc, buildSvc)
+	apiHandler := handler.NewAPIHandler(clientSvc, docSvc, buildSvc, moduleSvc, templateSvc, configMgr)
 
 	// 创建路由
 	mux := http.NewServeMux()
