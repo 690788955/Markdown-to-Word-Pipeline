@@ -282,9 +282,9 @@ func (s *BuildService) GetBuildOutput(fileName string) (string, error) {
 func (s *BuildService) BuildCommand(clientName, docType, format string) string {
 	args := s.buildCommandArgs(clientName, docType, "", format)
 	if runtime.GOOS == "windows" {
-		return "powershell -ExecutionPolicy Bypass -File build.ps1 " + strings.Join(args, " ")
+		return "powershell -ExecutionPolicy Bypass -File bin/build.ps1 " + strings.Join(args, " ")
 	}
-	return "make " + strings.Join(args, " ")
+	return "bash bin/build.sh " + strings.Join(args, " ")
 }
 
 // buildCommandArgs 构建命令参数
@@ -466,13 +466,31 @@ func (s *BuildService) StreamBuild(req BuildRequest, outputChan chan<- string) (
 	defer cancel()
 
 	var cmd *exec.Cmd
+	var scriptPath string
 	if runtime.GOOS == "windows" {
-		psArgs := []string{"-ExecutionPolicy", "Bypass", "-File", "build.ps1"}
+		scriptPath = s.findScript("build.ps1")
+		if scriptPath == "" {
+			close(outputChan)
+			return &BuildResult{
+				Success: false,
+				Error:   "找不到构建脚本 build.ps1",
+			}, nil
+		}
+		psArgs := []string{"-ExecutionPolicy", "Bypass", "-File", scriptPath}
 		psArgs = append(psArgs, args...)
 		cmd = exec.CommandContext(ctx, "powershell", psArgs...)
 	} else {
-		makeArgs := append([]string{}, args...)
-		cmd = exec.CommandContext(ctx, "make", makeArgs...)
+		// Linux/macOS 使用 bash 脚本（与 Build 函数保持一致）
+		scriptPath = s.findScript("build.sh")
+		if scriptPath == "" {
+			close(outputChan)
+			return &BuildResult{
+				Success: false,
+				Error:   "找不到构建脚本 build.sh",
+			}, nil
+		}
+		cmdArgs := append([]string{scriptPath}, args...)
+		cmd = exec.CommandContext(ctx, "bash", cmdArgs...)
 	}
 
 	cmd.Dir = s.workDir
