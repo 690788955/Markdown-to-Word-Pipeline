@@ -389,14 +389,19 @@ func (h *APIHandler) handleModules(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	modules, err := h.moduleSvc.ListModules()
+	// 获取树形结构
+	tree, err := h.moduleSvc.ListModulesWithTree()
 	if err != nil {
 		h.errorResponse(w, http.StatusInternalServerError, err.Error(), "")
 		return
 	}
 
+	// 同时返回扁平列表（兼容旧版）和树形结构
+	modules, _ := h.moduleSvc.ListModules()
+
 	h.successResponse(w, map[string]interface{}{
 		"modules": modules,
+		"tree":    tree,
 	})
 }
 

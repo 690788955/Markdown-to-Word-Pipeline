@@ -8,6 +8,9 @@ let availableTemplates = [];
 let selectedModules = [];
 let currentEditConfig = null; // 当前编辑的配置
 let currentClient = null; // 当前选中的客户信息
+let moduleTree = null; // 模块树形结构
+let expandedDirs = new Set(); // 展开的目录
+let searchQuery = ''; // 搜索关键词
 
 // 初始化
 document.addEventListener('DOMContentLoaded', function() {
@@ -403,8 +406,16 @@ async function showConfigModal(editMode = false) {
     
     if (!modal) return;
     
+    // 重置搜索
+    searchQuery = '';
+    const searchInput = document.getElementById('moduleSearch');
+    if (searchInput) searchInput.value = '';
+    
     // 加载模块和模板列表
     await Promise.all([loadModules(), loadTemplates()]);
+    
+    // 初始化搜索事件
+    initModuleSearch();
     
     if (editMode && currentEditConfig) {
         modalTitle.textContent = '编辑配置';
@@ -440,11 +451,406 @@ async function loadModules() {
         if (!data.success) throw new Error(data.error);
         
         availableModules = data.data.modules || [];
-        renderModuleList();
+        moduleTree = data.data.tree || { rootModules: [], directories: [] };
+        
+        // 默认展开所有目录
+        expandedDirs = new Set();
+        moduleTree.directories.forEach(dir => expandedDirs.add(dir.name));
+        
+        renderTransferUI();
     } catch (e) {
         console.error('加载模块列表失败:', e);
         availableModules = [];
+        moduleTree = { rootModules: [], directories: [] };
     }
+}
+
+// 渲染穿梭框 UI
+function renderTransferUI() {
+    renderAvailableModules();
+    renderSelectedModules();
+    updateSelectedCount();
+}
+
+// 渲染左侧可选模块列表
+function renderAvailableModules() {
+    const container = document.getElementById('availableModules');
+    if (!container) return;
+    
+    if (!moduleTree || (moduleTree.rootModules.length === 0 && moduleTree.directories.length === 0)) {
+        container.innerHTML = '<div class="list-empty">没有可用的模块</div>';
+        return;
+    }
+    
+    container.innerHTML = '';
+    const query = searchQuery.toLowerCase();
+    
+    // 渲染根目录模块
+    const rootModules = moduleTree.rootModules.filter(mod => {
+        if (selectedModules.includes(mod.path)) return false;
+        if (query && !mod.displayName.toLowerCase().includes(query) && !mod.fileName.toLowerCase().includes(query)) return false;
+        return true;
+    });
+    
+    if (rootModules.length > 0) {
+        const section = document.createElement('div');
+        section.className = 'root-modules-section';
+        
+        const header = document.createElement('div');
+        header.className = 'root-modules-header';
+        header.textContent = '📁 根目录';
+        section.appendChild(header);
+        
+        rootModules.forEach(mod => {
+            section.appendChild(createAvailableModuleItem(mod));
+        });
+        
+        container.appendChild(section);
+    }
+    
+    // 渲染子目录
+    moduleTree.directories.forEach(dir => {
+        const dirModules = dir.modules.filter(mod => {
+            if (selectedModules.includes(mod.path)) return false;
+            if (query && !mod.displayName.toLowerCase().includes(query) && !mod.fileName.toLowerCase().includes(query)) return false;
+            return true;
+        });
+        
+        if (dirModules.length === 0 && query) return; // 搜索时隐藏空目录
+        
+        const group = document.createElement('div');
+        group.className = 'module-group';
+        
+        // 目录头部
+        const header = document.createElement('div');
+        header.className = 'module-group-header' + (expandedDirs.has(dir.name) ? '' : ' collapsed');
+        header.onclick = () => toggleDirectory(dir.name);
+        
+        const toggle = document.createElement('span');
+        toggle.className = 'module-group-toggle';
+        toggle.textContent = '▼';
+        
+        const name = document.createElement('span');
+        name.className = 'module-group-name';
+        name.textContent = '📁 ' + dir.displayName;
+        
+        const count = document.createElement('span');
+        count.className = 'module-group-count';
+        count.textContent = dirModules.length + '/' + dir.modules.length;
+        
+        const selectBtn = document.createElement('button');
+        selectBtn.type = 'button';
+        selectBtn.className = 'module-group-select';
+        selectBtn.textContent = '全选';
+        selectBtn.onclick = (e) => { e.stopPropagation(); selectDirectory(dir.name); };
+        
+        header.appendChild(toggle);
+        header.appendChild(name);
+        header.appendChild(count);
+        header.appendChild(selectBtn);
+        group.appendChild(header);
+        
+        // 目录内容
+        const items = document.createElement('div');
+        items.className = 'module-group-items';
+        
+        dirModules.forEach(mod => {
+            items.appendChild(createAvailableModuleItem(mod));
+        });
+        
+        group.appendChild(items);
+        container.appendChild(group);
+    });
+    
+    if (container.children.length === 0) {
+        container.innerHTML = '<div class="list-empty">没有匹配的模块</div>';
+    }
+}
+
+// 创建可选模块项
+function createAvailableModuleItem(mod) {
+    const item = document.createElement('div');
+    item.className = 'transfer-module-item';
+    item.dataset.path = mod.path;
+    item.onclick = () => addModule(mod.path);
+    
+    const label = document.createElement('span');
+    label.className = 'module-label';
+    label.textContent = mod.displayName || mod.fileName;
+    
+    item.appendChild(label);
+    
+    if (mod.directory) {
+        const path = document.createElement('span');
+        path.className = 'module-path';
+        path.textContent = mod.directory;
+        item.appendChild(path);
+    }
+    
+    return item;
+}
+
+// 渲染右侧已选模块列表
+function renderSelectedModules() {
+    const container = document.getElementById('selectedModules');
+    if (!container) return;
+    
+    if (selectedModules.length === 0) {
+        container.innerHTML = '<div class="list-empty">请从左侧选择模块</div>';
+        return;
+    }
+    
+    container.innerHTML = '';
+    
+    selectedModules.forEach((path, index) => {
+        const mod = findModuleByPath(path);
+        if (!mod) return;
+        
+        const item = document.createElement('div');
+        item.className = 'transfer-module-item';
+        item.draggable = true;
+        item.dataset.path = path;
+        item.dataset.index = index;
+        
+        // 序号
+        const order = document.createElement('span');
+        order.className = 'module-order';
+        order.textContent = index + 1;
+        
+        // 标签
+        const label = document.createElement('span');
+        label.className = 'module-label';
+        label.textContent = mod.displayName || mod.fileName;
+        
+        // 目录标记
+        if (mod.directory) {
+            const dirTag = document.createElement('span');
+            dirTag.className = 'module-path';
+            dirTag.textContent = mod.directory;
+            label.appendChild(dirTag);
+        }
+        
+        // 拖拽手柄
+        const handle = document.createElement('span');
+        handle.className = 'drag-handle';
+        handle.textContent = '⋮⋮';
+        
+        item.appendChild(order);
+        item.appendChild(label);
+        item.appendChild(handle);
+        
+        // 点击移除
+        item.onclick = (e) => {
+            if (e.target.classList.contains('drag-handle')) return;
+            removeModule(path);
+        };
+        
+        // 拖拽事件
+        item.addEventListener('dragstart', onDragStart);
+        item.addEventListener('dragend', onDragEnd);
+        item.addEventListener('dragover', onDragOver);
+        item.addEventListener('dragleave', onDragLeave);
+        item.addEventListener('drop', onDrop);
+        
+        container.appendChild(item);
+    });
+}
+
+// 根据路径查找模块
+function findModuleByPath(path) {
+    // 先在扁平列表中查找
+    let mod = availableModules.find(m => m.path === path);
+    if (mod) return mod;
+    
+    // 兼容旧格式
+    mod = availableModules.find(m => 'src/' + m.fileName === path || m.fileName === path);
+    return mod;
+}
+
+// 更新已选数量
+function updateSelectedCount() {
+    const countEl = document.getElementById('selectedCount');
+    if (countEl) countEl.textContent = selectedModules.length;
+}
+
+// 添加模块到已选
+function addModule(path) {
+    if (!selectedModules.includes(path)) {
+        selectedModules.push(path);
+        renderTransferUI();
+    }
+}
+
+// 从已选移除模块
+function removeModule(path) {
+    selectedModules = selectedModules.filter(p => p !== path);
+    renderTransferUI();
+}
+
+// 切换目录展开/折叠
+function toggleDirectory(dirName) {
+    if (expandedDirs.has(dirName)) {
+        expandedDirs.delete(dirName);
+    } else {
+        expandedDirs.add(dirName);
+    }
+    renderAvailableModules();
+}
+
+// 选择整个目录
+function selectDirectory(dirName) {
+    const dir = moduleTree.directories.find(d => d.name === dirName);
+    if (!dir) return;
+    
+    dir.modules.forEach(mod => {
+        if (!selectedModules.includes(mod.path)) {
+            selectedModules.push(mod.path);
+        }
+    });
+    
+    renderTransferUI();
+}
+
+// 全选所有模块
+function selectAllModules() {
+    // 添加根目录模块
+    moduleTree.rootModules.forEach(mod => {
+        if (!selectedModules.includes(mod.path)) {
+            selectedModules.push(mod.path);
+        }
+    });
+    
+    // 添加所有子目录模块
+    moduleTree.directories.forEach(dir => {
+        dir.modules.forEach(mod => {
+            if (!selectedModules.includes(mod.path)) {
+                selectedModules.push(mod.path);
+            }
+        });
+    });
+    
+    renderTransferUI();
+}
+
+// 清空所有已选模块
+function clearAllModules() {
+    selectedModules = [];
+    renderTransferUI();
+}
+
+// 搜索模块
+function onModuleSearch(e) {
+    searchQuery = e.target.value.trim();
+    renderAvailableModules();
+}
+
+// 初始化搜索事件
+function initModuleSearch() {
+    const searchInput = document.getElementById('moduleSearch');
+    if (searchInput) {
+        searchInput.addEventListener('input', onModuleSearch);
+    }
+}
+
+// 拖拽相关变量
+let draggedIndex = null;
+let draggedItem = null;
+
+// 拖拽开始
+function onDragStart(e) {
+    draggedItem = e.target;
+    draggedIndex = parseInt(e.target.dataset.index);
+    e.target.classList.add('dragging');
+    e.dataTransfer.effectAllowed = 'move';
+}
+
+// 拖拽结束
+function onDragEnd(e) {
+    e.target.classList.remove('dragging');
+    draggedItem = null;
+    draggedIndex = null;
+    
+    // 清除所有拖拽指示
+    document.querySelectorAll('.drag-over-top, .drag-over-bottom').forEach(el => {
+        el.classList.remove('drag-over-top', 'drag-over-bottom');
+    });
+}
+
+// 拖拽经过
+function onDragOver(e) {
+    e.preventDefault();
+    e.dataTransfer.dropEffect = 'move';
+    
+    if (!draggedItem || draggedItem === e.currentTarget) return;
+    
+    const rect = e.currentTarget.getBoundingClientRect();
+    const midY = rect.top + rect.height / 2;
+    
+    e.currentTarget.classList.remove('drag-over-top', 'drag-over-bottom');
+    if (e.clientY < midY) {
+        e.currentTarget.classList.add('drag-over-top');
+    } else {
+        e.currentTarget.classList.add('drag-over-bottom');
+    }
+}
+
+// 拖拽离开
+function onDragLeave(e) {
+    e.currentTarget.classList.remove('drag-over-top', 'drag-over-bottom');
+}
+
+// 放置
+function onDrop(e) {
+    e.preventDefault();
+    
+    const isTop = e.currentTarget.classList.contains('drag-over-top');
+    e.currentTarget.classList.remove('drag-over-top', 'drag-over-bottom');
+    
+    if (!draggedItem || draggedItem === e.currentTarget) return;
+    
+    const fromIndex = draggedIndex;
+    let toIndex = parseInt(e.currentTarget.dataset.index);
+    
+    // 调整目标索引
+    if (!isTop && fromIndex < toIndex) {
+        // 不需要调整
+    } else if (isTop && fromIndex > toIndex) {
+        // 不需要调整
+    } else if (!isTop) {
+        toIndex = toIndex + 1;
+    }
+    
+    // 重新排序
+    const [moved] = selectedModules.splice(fromIndex, 1);
+    selectedModules.splice(toIndex > fromIndex ? toIndex - 1 : toIndex, 0, moved);
+    
+    renderSelectedModules();
+    updateSelectedCount();
+}
+
+// 移动选中到右侧（批量）
+function moveSelectedToRight() {
+    // 获取左侧所有可见模块
+    const items = document.querySelectorAll('#availableModules .transfer-module-item.selected');
+    items.forEach(item => {
+        const path = item.dataset.path;
+        if (path && !selectedModules.includes(path)) {
+            selectedModules.push(path);
+        }
+    });
+    renderTransferUI();
+}
+
+// 移动选中到左侧（批量）
+function moveSelectedToLeft() {
+    const items = document.querySelectorAll('#selectedModules .transfer-module-item.selected');
+    const pathsToRemove = [];
+    items.forEach(item => {
+        const path = item.dataset.path;
+        if (path) pathsToRemove.push(path);
+    });
+    selectedModules = selectedModules.filter(p => !pathsToRemove.includes(p));
+    renderTransferUI();
 }
 
 // 加载可用模板
@@ -473,175 +879,6 @@ async function loadTemplates() {
         templateSelect.innerHTML = '<option value="">加载失败</option>';
     }
 }
-
-// 渲染模块列表
-function renderModuleList() {
-    const moduleList = document.getElementById('moduleList');
-    if (!moduleList) return;
-    
-    if (availableModules.length === 0) {
-        moduleList.innerHTML = '<div class="list-empty">没有可用的模块</div>';
-        return;
-    }
-    
-    moduleList.innerHTML = '';
-    
-    // 如果有已选模块，按顺序显示
-    const orderedModules = [];
-    selectedModules.forEach(function(path) {
-        const mod = availableModules.find(m => 'src/' + m.fileName === path || m.fileName === path);
-        if (mod) orderedModules.push({ ...mod, selected: true });
-    });
-    
-    // 添加未选中的模块
-    availableModules.forEach(function(mod) {
-        const path = 'src/' + mod.fileName;
-        if (!selectedModules.includes(path) && !selectedModules.includes(mod.fileName)) {
-            orderedModules.push({ ...mod, selected: false });
-        }
-    });
-    
-    orderedModules.forEach(function(mod, index) {
-        const item = document.createElement('div');
-        item.className = 'module-item' + (mod.selected ? ' selected' : '');
-        item.draggable = true;
-        item.dataset.fileName = mod.fileName;
-        item.dataset.index = index;
-        
-        const checkbox = document.createElement('input');
-        checkbox.type = 'checkbox';
-        checkbox.checked = mod.selected;
-        checkbox.onchange = function() { toggleModule(mod.fileName, this.checked); };
-        
-        const label = document.createElement('span');
-        label.className = 'module-label';
-        label.textContent = mod.displayName || mod.fileName;
-        
-        const handle = document.createElement('span');
-        handle.className = 'drag-handle';
-        handle.textContent = '⋮⋮';
-        
-        item.appendChild(checkbox);
-        item.appendChild(label);
-        item.appendChild(handle);
-        
-        // 拖拽事件 - 自由拖拽，支持上下位置指示
-        item.addEventListener('dragstart', function(e) {
-            draggedItem = item;
-            draggedIndex = index;
-            item.classList.add('dragging');
-            e.dataTransfer.effectAllowed = 'move';
-            e.dataTransfer.setData('text/plain', index);
-        });
-        
-        item.addEventListener('dragend', function() {
-            item.classList.remove('dragging');
-            draggedItem = null;
-            draggedIndex = null;
-            // 移除所有拖拽指示样式
-            moduleList.querySelectorAll('.drag-over-top, .drag-over-bottom').forEach(el => {
-                el.classList.remove('drag-over-top', 'drag-over-bottom');
-            });
-        });
-        
-        item.addEventListener('dragover', function(e) {
-            e.preventDefault();
-            e.dataTransfer.dropEffect = 'move';
-            if (!draggedItem || draggedItem === item) return;
-            
-            // 计算鼠标位置，判断插入上方还是下方
-            const rect = item.getBoundingClientRect();
-            const midY = rect.top + rect.height / 2;
-            
-            item.classList.remove('drag-over-top', 'drag-over-bottom');
-            if (e.clientY < midY) {
-                item.classList.add('drag-over-top');
-            } else {
-                item.classList.add('drag-over-bottom');
-            }
-        });
-        
-        item.addEventListener('dragleave', function() {
-            item.classList.remove('drag-over-top', 'drag-over-bottom');
-        });
-        
-        item.addEventListener('drop', function(e) {
-            e.preventDefault();
-            
-            const isTop = item.classList.contains('drag-over-top');
-            item.classList.remove('drag-over-top', 'drag-over-bottom');
-            
-            if (!draggedItem || draggedItem === item) return;
-            
-            const fromIndex = parseInt(draggedItem.dataset.index);
-            let toIndex = parseInt(item.dataset.index);
-            
-            // 根据插入位置调整目标索引
-            if (!isTop && fromIndex < toIndex) {
-                // 插入下方，且从上往下拖，不需要调整
-            } else if (isTop && fromIndex > toIndex) {
-                // 插入上方，且从下往上拖，不需要调整
-            } else if (!isTop) {
-                // 插入下方
-                toIndex = toIndex + 1;
-            }
-            
-            // 重新排序模块
-            reorderModules(fromIndex, toIndex);
-        });
-        
-        moduleList.appendChild(item);
-    });
-}
-
-// 重新排序模块
-function reorderModules(fromIndex, toIndex) {
-    const moduleList = document.getElementById('moduleList');
-    const items = Array.from(moduleList.querySelectorAll('.module-item'));
-    
-    // 获取当前顺序
-    const currentOrder = items.map(item => ({
-        fileName: item.dataset.fileName,
-        selected: item.querySelector('input').checked
-    }));
-    
-    // 移动元素
-    const [movedItem] = currentOrder.splice(fromIndex, 1);
-    currentOrder.splice(toIndex, 0, movedItem);
-    
-    // 更新 selectedModules 顺序
-    selectedModules = currentOrder
-        .filter(item => item.selected)
-        .map(item => 'src/' + item.fileName);
-    
-    // 更新 availableModules 顺序以保持一致
-    const newAvailableModules = [];
-    currentOrder.forEach(item => {
-        const mod = availableModules.find(m => m.fileName === item.fileName);
-        if (mod) newAvailableModules.push(mod);
-    });
-    availableModules = newAvailableModules;
-    
-    // 重新渲染
-    renderModuleList();
-}
-
-// 切换模块选中状态
-function toggleModule(fileName, checked) {
-    const path = 'src/' + fileName;
-    if (checked) {
-        if (!selectedModules.includes(path)) {
-            selectedModules.push(path);
-        }
-    } else {
-        selectedModules = selectedModules.filter(m => m !== path && m !== fileName);
-    }
-    renderModuleList();
-}
-
-// 拖拽相关
-let draggedIndex = null;
-let draggedItem = null;
 
 // 重置配置表单
 function resetConfigForm() {
@@ -696,7 +933,7 @@ function resetConfigForm() {
     setVal('pdfHeaderRight', '\\thepage');
     
     selectedModules = [];
-    renderModuleList();
+    renderTransferUI();
 }
 
 // 填充配置表单（编辑模式）
@@ -786,7 +1023,7 @@ function fillConfigForm(config) {
     
     // 模块列表
     selectedModules = config.modules || [];
-    renderModuleList();
+    renderTransferUI();
 }
 
 // 更新文件名预览
@@ -1033,3 +1270,7 @@ window.showConfigModal = showConfigModal;
 window.hideConfigModal = hideConfigModal;
 window.hideConfirmModal = hideConfirmModal;
 window.submitConfig = submitConfig;
+window.selectAllModules = selectAllModules;
+window.clearAllModules = clearAllModules;
+window.moveSelectedToRight = moveSelectedToRight;
+window.moveSelectedToLeft = moveSelectedToLeft;

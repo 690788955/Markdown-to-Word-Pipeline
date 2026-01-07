@@ -992,3 +992,344 @@ input[type="color"] {
         grid-template-columns: 1fr;
     }
 }
+
+
+/* ==================== 穿梭框（Transfer）样式 ==================== */
+.transfer-container {
+    display: flex;
+    gap: 15px;
+    min-height: 400px;
+}
+
+.transfer-panel {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    border: 1px solid #ddd;
+    border-radius: 8px;
+    background: #f8f9fa;
+    overflow: hidden;
+}
+
+.transfer-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 12px 15px;
+    background: #fff;
+    border-bottom: 1px solid #e9ecef;
+    font-weight: 600;
+    color: #2c3e50;
+    font-size: 0.9rem;
+}
+
+.transfer-actions {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+}
+
+.module-search {
+    width: 140px;
+    padding: 6px 10px;
+    border: 1px solid #ddd;
+    border-radius: 5px;
+    font-size: 0.85rem;
+}
+
+.module-search:focus {
+    outline: none;
+    border-color: #3498db;
+}
+
+.transfer-list {
+    flex: 1;
+    overflow-y: auto;
+    padding: 8px;
+}
+
+.transfer-buttons {
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    gap: 10px;
+    padding: 10px 5px;
+}
+
+.transfer-buttons .btn {
+    width: 40px;
+    height: 36px;
+    padding: 0;
+    font-size: 1.2rem;
+    font-weight: bold;
+}
+
+/* 目录分组 */
+.module-group {
+    margin-bottom: 12px;
+}
+
+.module-group:last-child {
+    margin-bottom: 0;
+}
+
+.module-group-header {
+    display: flex;
+    align-items: center;
+    padding: 8px 10px;
+    background: #e9ecef;
+    border-radius: 6px;
+    margin-bottom: 6px;
+    cursor: pointer;
+    user-select: none;
+    transition: all 0.2s;
+}
+
+.module-group-header:hover {
+    background: #dee2e6;
+}
+
+.module-group-toggle {
+    margin-right: 8px;
+    font-size: 0.8rem;
+    color: #666;
+    transition: transform 0.2s;
+}
+
+.module-group-header.collapsed .module-group-toggle {
+    transform: rotate(-90deg);
+}
+
+.module-group-name {
+    flex: 1;
+    font-weight: 600;
+    font-size: 0.85rem;
+    color: #495057;
+}
+
+.module-group-count {
+    font-size: 0.75rem;
+    color: #6c757d;
+    background: #fff;
+    padding: 2px 8px;
+    border-radius: 10px;
+}
+
+.module-group-select {
+    margin-left: 8px;
+    padding: 2px 8px;
+    font-size: 0.75rem;
+    background: #fff;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    cursor: pointer;
+    color: #666;
+}
+
+.module-group-select:hover {
+    background: #3498db;
+    color: #fff;
+    border-color: #3498db;
+}
+
+.module-group-items {
+    padding-left: 0;
+}
+
+.module-group-header.collapsed + .module-group-items {
+    display: none;
+}
+
+/* 穿梭框中的模块项 */
+.transfer-module-item {
+    display: flex;
+    align-items: center;
+    padding: 10px 12px;
+    background: white;
+    margin-bottom: 4px;
+    border-radius: 6px;
+    border: 1px solid #e9ecef;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.transfer-module-item:last-child {
+    margin-bottom: 0;
+}
+
+.transfer-module-item:hover {
+    background: #e8f4fd;
+    border-color: #3498db;
+}
+
+.transfer-module-item.selected {
+    background: #d4edda;
+    border-color: #28a745;
+}
+
+.transfer-module-item .module-label {
+    flex: 1;
+    font-size: 0.9rem;
+    color: #333;
+}
+
+.transfer-module-item .module-path {
+    font-size: 0.75rem;
+    color: #999;
+    margin-left: 8px;
+}
+
+/* 右侧已选列表 - 支持拖拽 */
+.transfer-right .transfer-module-item {
+    cursor: grab;
+}
+
+.transfer-right .transfer-module-item:active {
+    cursor: grabbing;
+}
+
+.transfer-right .transfer-module-item.dragging {
+    opacity: 0.8;
+    background: #fff3cd;
+    border-color: #ffc107;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+}
+
+.transfer-right .transfer-module-item.drag-over-top {
+    border-top: 3px solid #3498db;
+}
+
+.transfer-right .transfer-module-item.drag-over-bottom {
+    border-bottom: 3px solid #3498db;
+}
+
+/* 序号标记 */
+.module-order {
+    width: 24px;
+    height: 24px;
+    background: #3498db;
+    color: white;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.75rem;
+    font-weight: 600;
+    margin-right: 10px;
+    flex-shrink: 0;
+}
+
+/* 拖拽手柄 */
+.transfer-right .drag-handle {
+    color: #bbb;
+    font-size: 1rem;
+    padding: 0 6px;
+    cursor: grab;
+}
+
+.transfer-right .drag-handle:hover {
+    color: #666;
+}
+
+/* 根目录模块 */
+.root-modules-section {
+    margin-bottom: 12px;
+}
+
+.root-modules-header {
+    font-size: 0.8rem;
+    color: #6c757d;
+    padding: 4px 10px;
+    margin-bottom: 6px;
+}
+
+/* 深色模式 - 穿梭框 */
+@media (prefers-color-scheme: dark) {
+    .transfer-panel {
+        background: #0f3460;
+        border-color: #333;
+    }
+    
+    .transfer-header {
+        background: #16213e;
+        border-color: #333;
+        color: #eee;
+    }
+    
+    .module-search {
+        background: #16213e;
+        border-color: #444;
+        color: #eee;
+    }
+    
+    .module-group-header {
+        background: #1a4a7a;
+    }
+    
+    .module-group-header:hover {
+        background: #2a5a8a;
+    }
+    
+    .module-group-name {
+        color: #ddd;
+    }
+    
+    .module-group-count {
+        background: #16213e;
+        color: #aaa;
+    }
+    
+    .module-group-select {
+        background: #16213e;
+        border-color: #444;
+        color: #aaa;
+    }
+    
+    .transfer-module-item {
+        background: #16213e;
+        border-color: #333;
+    }
+    
+    .transfer-module-item:hover {
+        background: #1a4a7a;
+        border-color: #3498db;
+    }
+    
+    .transfer-module-item .module-label {
+        color: #eee;
+    }
+    
+    .transfer-module-item .module-path {
+        color: #666;
+    }
+    
+    .root-modules-header {
+        color: #888;
+    }
+}
+
+/* 响应式 - 穿梭框 */
+@media (max-width: 768px) {
+    .transfer-container {
+        flex-direction: column;
+        min-height: auto;
+    }
+    
+    .transfer-panel {
+        min-height: 200px;
+    }
+    
+    .transfer-buttons {
+        flex-direction: row;
+        justify-content: center;
+        padding: 10px;
+    }
+    
+    .transfer-buttons .btn {
+        transform: rotate(90deg);
+    }
+    
+    .module-search {
+        width: 100px;
+    }
+}

@@ -97,14 +97,51 @@
 
                     <!-- Tab 导航 -->
                     <div class="config-tabs">
-                        <button type="button" class="tab-btn active" data-tab="tabGeneral">通用设置</button>
+                        <button type="button" class="tab-btn active" data-tab="tabModules">文档模块</button>
+                        <button type="button" class="tab-btn" data-tab="tabGeneral">通用设置</button>
                         <button type="button" class="tab-btn" data-tab="tabWord">Word 设置</button>
                         <button type="button" class="tab-btn" data-tab="tabPdf">PDF 设置</button>
-                        <button type="button" class="tab-btn" data-tab="tabModules">文档模块</button>
+                    </div>
+
+                    <!-- Tab 内容：文档模块（穿梭框） -->
+                    <div id="tabModules" class="tab-content active">
+                        <div class="transfer-container">
+                            <!-- 左列：可选模块 -->
+                            <div class="transfer-panel transfer-left">
+                                <div class="transfer-header">
+                                    <span>可选模块</span>
+                                    <div class="transfer-actions">
+                                        <input type="text" id="moduleSearch" class="module-search" placeholder="搜索模块...">
+                                        <button type="button" class="btn btn-sm btn-outline" onclick="selectAllModules()">全选</button>
+                                    </div>
+                                </div>
+                                <div id="availableModules" class="transfer-list">
+                                    <div class="list-empty">加载中...</div>
+                                </div>
+                            </div>
+                            <!-- 中间：操作按钮 -->
+                            <div class="transfer-buttons">
+                                <button type="button" class="btn btn-sm" onclick="moveSelectedToRight()" title="添加选中">→</button>
+                                <button type="button" class="btn btn-sm" onclick="moveSelectedToLeft()" title="移除选中">←</button>
+                            </div>
+                            <!-- 右列：已选模块 -->
+                            <div class="transfer-panel transfer-right">
+                                <div class="transfer-header">
+                                    <span>已选模块 (<span id="selectedCount">0</span>)</span>
+                                    <div class="transfer-actions">
+                                        <button type="button" class="btn btn-sm btn-outline" onclick="clearAllModules()">清空</button>
+                                    </div>
+                                </div>
+                                <div id="selectedModules" class="transfer-list">
+                                    <div class="list-empty">请从左侧选择模块</div>
+                                </div>
+                            </div>
+                        </div>
+                        <small class="form-hint" style="margin-top: 8px; display: block;">提示：右侧列表支持拖拽排序，调整文档章节顺序</small>
                     </div>
 
                     <!-- Tab 内容：通用设置 -->
-                    <div id="tabGeneral" class="tab-content active">
+                    <div id="tabGeneral" class="tab-content">
                         <div class="pandoc-args-section">
                             <div class="args-category">
                                 <h4>基础设置</h4>
@@ -398,16 +435,6 @@
                                         </select>
                                     </div>
                                 </div>
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- Tab 内容：文档模块 -->
-                    <div id="tabModules" class="tab-content">
-                        <div class="form-group">
-                            <label>选择文档模块 * <small>(拖拽排序)</small></label>
-                            <div id="moduleList" class="module-list">
-                                <div class="list-empty">加载中...</div>
                             </div>
                         </div>
                     </div>
