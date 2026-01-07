@@ -566,8 +566,8 @@ if [ "$FORMAT" = "word" ]; then
 else
     pandoc_cmd+=(--pdf-engine=xelatex)
     pandoc_cmd+=(--template=eisvogel)
-    # 表格兼容性设置 - 禁用表格标题以避免 longtable 兼容性问题
-    pandoc_cmd+=(-V disable-caption=true)
+    # 表格兼容性设置 - 使用简单表格格式避免 longtable 兼容性问题
+    pandoc_cmd+=(--from=markdown-implicit_figures)
     pandoc_cmd+=(-V table-use-row-colors=true)
     [ "$pdf_titlepage" = "true" ] && pandoc_cmd+=(-V titlepage=true)
     [ -n "$pdf_titlepage_color" ] && pandoc_cmd+=(-V "titlepage-color=$pdf_titlepage_color")

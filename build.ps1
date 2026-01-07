@@ -634,8 +634,8 @@ function Invoke-Build {
         # PDF 格式参数
         $pandocCmdArgs += "--pdf-engine=xelatex"
         $pandocCmdArgs += "--template=eisvogel"
-        # 表格兼容性设置 - 禁用表格标题以避免 longtable 兼容性问题
-        $pandocCmdArgs += "-V", "disable-caption=true"
+        # 表格兼容性设置 - 使用简单表格格式避免 longtable 兼容性问题
+        $pandocCmdArgs += "--from=markdown-implicit_figures"
         $pandocCmdArgs += "-V", "table-use-row-colors=true"
         
         # 应用 PDF 选项
