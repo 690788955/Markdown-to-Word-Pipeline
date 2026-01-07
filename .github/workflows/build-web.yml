@@ -2,7 +2,7 @@
 # Web 应用构建 - GitHub Actions
 # ==========================================
 # 构建多平台可执行文件（包含 ARM 架构）
-# 每个平台打包成独立 zip，解压即可使用
+# 每个平台打包成独立包，解压即可使用
 
 name: Build Web Application
 
@@ -26,65 +26,116 @@ jobs:
         run: |
           cd web
           CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -ldflags="-w -s" -o doc-generator-web .
-          mkdir -p ../dist/linux-amd64
-          cp doc-generator-web ../dist/linux-amd64/
-          cp -r static ../dist/linux-amd64/
-          cd ../dist && zip -r doc-generator-web-linux-amd64.zip linux-amd64
-          rm -rf linux-amd64
+          mkdir -p ../dist/doc-generator-web-linux-amd64
+          cp doc-generator-web ../dist/doc-generator-web-linux-amd64/
+          cp -r static ../dist/doc-generator-web-linux-amd64/
+          cp -r ../bin ../dist/doc-generator-web-linux-amd64/
+          cp -r ../src ../dist/doc-generator-web-linux-amd64/
+          cp -r ../clients ../dist/doc-generator-web-linux-amd64/
+          cp -r ../templates ../dist/doc-generator-web-linux-amd64/
+          cp ../Makefile ../dist/doc-generator-web-linux-amd64/
       
       - name: Build and package for Linux (arm64)
         run: |
           cd web
           CGO_ENABLED=0 GOOS=linux GOARCH=arm64 go build -ldflags="-w -s" -o doc-generator-web .
-          mkdir -p ../dist/linux-arm64
-          cp doc-generator-web ../dist/linux-arm64/
-          cp -r static ../dist/linux-arm64/
-          cd ../dist && zip -r doc-generator-web-linux-arm64.zip linux-arm64
-          rm -rf linux-arm64
+          mkdir -p ../dist/doc-generator-web-linux-arm64
+          cp doc-generator-web ../dist/doc-generator-web-linux-arm64/
+          cp -r static ../dist/doc-generator-web-linux-arm64/
+          cp -r ../bin ../dist/doc-generator-web-linux-arm64/
+          cp -r ../src ../dist/doc-generator-web-linux-arm64/
+          cp -r ../clients ../dist/doc-generator-web-linux-arm64/
+          cp -r ../templates ../dist/doc-generator-web-linux-arm64/
+          cp ../Makefile ../dist/doc-generator-web-linux-arm64/
       
       - name: Build and package for Windows (amd64)
         run: |
           cd web
           CGO_ENABLED=0 GOOS=windows GOARCH=amd64 go build -ldflags="-w -s" -o doc-generator-web.exe .
-          mkdir -p ../dist/windows-amd64
-          cp doc-generator-web.exe ../dist/windows-amd64/
-          cp -r static ../dist/windows-amd64/
-          cd ../dist && zip -r doc-generator-web-windows-amd64.zip windows-amd64
-          rm -rf windows-amd64
+          mkdir -p ../dist/doc-generator-web-windows-amd64
+          cp doc-generator-web.exe ../dist/doc-generator-web-windows-amd64/
+          cp -r static ../dist/doc-generator-web-windows-amd64/
+          cp -r ../bin ../dist/doc-generator-web-windows-amd64/
+          cp -r ../src ../dist/doc-generator-web-windows-amd64/
+          cp -r ../clients ../dist/doc-generator-web-windows-amd64/
+          cp -r ../templates ../dist/doc-generator-web-windows-amd64/
       
       - name: Build and package for Windows (arm64)
         run: |
           cd web
           CGO_ENABLED=0 GOOS=windows GOARCH=arm64 go build -ldflags="-w -s" -o doc-generator-web.exe .
-          mkdir -p ../dist/windows-arm64
-          cp doc-generator-web.exe ../dist/windows-arm64/
-          cp -r static ../dist/windows-arm64/
-          cd ../dist && zip -r doc-generator-web-windows-arm64.zip windows-arm64
-          rm -rf windows-arm64
+          mkdir -p ../dist/doc-generator-web-windows-arm64
+          cp doc-generator-web.exe ../dist/doc-generator-web-windows-arm64/
+          cp -r static ../dist/doc-generator-web-windows-arm64/
+          cp -r ../bin ../dist/doc-generator-web-windows-arm64/
+          cp -r ../src ../dist/doc-generator-web-windows-arm64/
+          cp -r ../clients ../dist/doc-generator-web-windows-arm64/
+          cp -r ../templates ../dist/doc-generator-web-windows-arm64/
       
       - name: Build and package for macOS (amd64)
         run: |
           cd web
           CGO_ENABLED=0 GOOS=darwin GOARCH=amd64 go build -ldflags="-w -s" -o doc-generator-web .
-          mkdir -p ../dist/darwin-amd64
-          cp doc-generator-web ../dist/darwin-amd64/
-          cp -r static ../dist/darwin-amd64/
-          cd ../dist && zip -r doc-generator-web-darwin-amd64.zip darwin-amd64
-          rm -rf darwin-amd64
+          mkdir -p ../dist/doc-generator-web-darwin-amd64
+          cp doc-generator-web ../dist/doc-generator-web-darwin-amd64/
+          cp -r static ../dist/doc-generator-web-darwin-amd64/
+          cp -r ../bin ../dist/doc-generator-web-darwin-amd64/
+          cp -r ../src ../dist/doc-generator-web-darwin-amd64/
+          cp -r ../clients ../dist/doc-generator-web-darwin-amd64/
+          cp -r ../templates ../dist/doc-generator-web-darwin-amd64/
+          cp ../Makefile ../dist/doc-generator-web-darwin-amd64/
       
       - name: Build and package for macOS (arm64)
         run: |
           cd web
           CGO_ENABLED=0 GOOS=darwin GOARCH=arm64 go build -ldflags="-w -s" -o doc-generator-web .
-          mkdir -p ../dist/darwin-arm64
-          cp doc-generator-web ../dist/darwin-arm64/
-          cp -r static ../dist/darwin-arm64/
-          cd ../dist && zip -r doc-generator-web-darwin-arm64.zip darwin-arm64
-          rm -rf darwin-arm64
+          mkdir -p ../dist/doc-generator-web-darwin-arm64
+          cp doc-generator-web ../dist/doc-generator-web-darwin-arm64/
+          cp -r static ../dist/doc-generator-web-darwin-arm64/
+          cp -r ../bin ../dist/doc-generator-web-darwin-arm64/
+          cp -r ../src ../dist/doc-generator-web-darwin-arm64/
+          cp -r ../clients ../dist/doc-generator-web-darwin-arm64/
+          cp -r ../templates ../dist/doc-generator-web-darwin-arm64/
+          cp ../Makefile ../dist/doc-generator-web-darwin-arm64/
       
-      - name: Upload artifacts
+      - name: Upload Linux amd64
         uses: actions/upload-artifact@v4
         with:
-          name: doc-generator-web-releases
-          path: dist/*.zip
+          name: doc-generator-web-linux-amd64
+          path: dist/doc-generator-web-linux-amd64/
+          retention-days: 30
+      
+      - name: Upload Linux arm64
+        uses: actions/upload-artifact@v4
+        with:
+          name: doc-generator-web-linux-arm64
+          path: dist/doc-generator-web-linux-arm64/
+          retention-days: 30
+      
+      - name: Upload Windows amd64
+        uses: actions/upload-artifact@v4
+        with:
+          name: doc-generator-web-windows-amd64
+          path: dist/doc-generator-web-windows-amd64/
+          retention-days: 30
+      
+      - name: Upload Windows arm64
+        uses: actions/upload-artifact@v4
+        with:
+          name: doc-generator-web-windows-arm64
+          path: dist/doc-generator-web-windows-arm64/
+          retention-days: 30
+      
+      - name: Upload macOS amd64
+        uses: actions/upload-artifact@v4
+        with:
+          name: doc-generator-web-darwin-amd64
+          path: dist/doc-generator-web-darwin-amd64/
+          retention-days: 30
+      
+      - name: Upload macOS arm64
+        uses: actions/upload-artifact@v4
+        with:
+          name: doc-generator-web-darwin-arm64
+          path: dist/doc-generator-web-darwin-arm64/
           retention-days: 30

@@ -9,6 +9,7 @@
 - 🔧 **自动化构建**: 通过命令一键生成 Word 或 PDF 文档
 - 📄 **PDF 输出**: 支持 PDF 格式输出，含代码高亮、封面、目录等专业排版
 - 🌐 **Web 界面**: 提供可视化界面，选择客户和文档类型即可生成
+- � ***Docker 支持**: 提供 Docker 镜像，支持卷挂载自定义文档
 - 🚀 **CI/CD 集成**: 支持 GitHub Actions / GitLab CI 自动构建
 
 ## 目录结构
@@ -67,6 +68,10 @@ choco install pandoc
 # Debian/Ubuntu
 sudo apt install pandoc
 
+# CentOS/RHEL
+sudo yum install -y epel-release
+sudo yum install -y pandoc
+
 # macOS
 brew install pandoc
 ```
@@ -82,6 +87,13 @@ Invoke-WebRequest -Uri "https://raw.githubusercontent.com/Wandmalfarbe/pandoc-la
 
 # Debian/Ubuntu
 sudo apt install texlive-xetex texlive-fonts-recommended fonts-noto-cjk
+mkdir -p ~/.local/share/pandoc/templates
+wget -O ~/.local/share/pandoc/templates/eisvogel.latex \
+  https://raw.githubusercontent.com/Wandmalfarbe/pandoc-latex-template/master/eisvogel.latex
+
+# CentOS/RHEL
+sudo yum install -y epel-release
+sudo yum install -y texlive-xetex texlive-collection-fontsrecommended google-noto-sans-cjk-fonts
 mkdir -p ~/.local/share/pandoc/templates
 wget -O ~/.local/share/pandoc/templates/eisvogel.latex \
   https://raw.githubusercontent.com/Wandmalfarbe/pandoc-latex-template/master/eisvogel.latex
@@ -148,9 +160,50 @@ make check-pdf-deps
 
 ## Web 界面
 
-除了命令行，还可以使用 Web 界面生成文档：
+除了命令行，还可以使用 Web 界面生成文档。
 
-### 启动 Web 服务
+### 方式一：使用预编译二进制
+
+从 [GitHub Releases](../../releases) 下载对应平台的 zip 包，解压后直接运行：
+
+```bash
+# Linux
+unzip doc-generator-web-linux-amd64.zip
+cd linux-amd64
+./doc-generator-web
+
+# Windows
+# 解压 doc-generator-web-windows-amd64.zip
+cd windows-amd64
+doc-generator-web.exe
+```
+
+解压后的目录结构：
+```
+linux-amd64/
+├── doc-generator-web    # 可执行文件
+└── static/              # 静态资源（必需）
+    ├── index.html
+    ├── app.js
+    └── style.css
+```
+
+### 方式二：Docker 运行
+
+```bash
+# 使用 Docker Compose（推荐）
+docker compose up -d
+
+# 或直接运行镜像
+docker run -p 8080:8080 \
+  -v ./src:/app/src \
+  -v ./clients:/app/clients \
+  -v ./templates:/app/templates \
+  -v ./build:/app/build \
+  ghcr.io/<owner>/<repo>:latest
+```
+
+### 方式三：从源码构建
 
 ```bash
 # 进入 web 目录构建
@@ -168,11 +221,57 @@ web\doc-generator-web.exe    # Windows
 ### Web 功能
 
 - 选择客户和文档类型
+- 选择输出格式（Word/PDF）
 - 一键生成并下载文档
 - 创建新客户配置
 - 实时显示配置更新
 
 详细说明见 [web/README.md](web/README.md)
+
+## Docker 部署
+
+### 使用 Docker Compose
+
+```bash
+# 启动服务（本地构建镜像）
+docker compose up -d
+
+# 使用指定镜像
+IMAGE=ghcr.io/<owner>/<repo>:latest docker compose up -d
+
+# 查看日志
+docker compose logs -f
+
+# 停止服务
+docker compose down
+```
+
+### 卷挂载说明
+
+可以挂载以下目录来自定义文档内容：
+
+| 容器路径 | 说明 |
+|---------|------|
+| `/app/src` | 文档源文件 (*.md) |
+| `/app/clients` | 客户配置目录 |
+| `/app/templates` | Word 模板 |
+| `/app/build` | 输出目录（建议挂载） |
+
+示例：
+```bash
+docker run -p 8080:8080 \
+  -v /path/to/your/src:/app/src \
+  -v /path/to/your/clients:/app/clients \
+  -v /path/to/your/templates:/app/templates \
+  -v /path/to/output:/app/build \
+  ghcr.io/<owner>/<repo>:latest
+```
+
+### 构建自定义镜像
+
+```bash
+docker build -t doc-generator -f web/Dockerfile .
+```
 
 ## 常用命令
 

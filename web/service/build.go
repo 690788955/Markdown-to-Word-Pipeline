@@ -117,14 +117,29 @@ func (s *BuildService) Build(req BuildRequest) (*BuildResult, error) {
 	// 根据操作系统选择构建命令
 	var cmd *exec.Cmd
 	if runtime.GOOS == "windows" {
-		// Windows 使用 PowerShell 脚本
-		psArgs := []string{"-ExecutionPolicy", "Bypass", "-File", "build.ps1"}
+		// Windows 使用 PowerShell 脚本，优先查找 bin 目录
+		scriptPath := s.findScript("build.ps1")
+		if scriptPath == "" {
+			return &BuildResult{
+				Success: false,
+				Error:   "找不到构建脚本 build.ps1\n请确保 bin/build.ps1 或 build.ps1 存在",
+			}, nil
+		}
+		
+		psArgs := []string{"-ExecutionPolicy", "Bypass", "-File", scriptPath}
 		psArgs = append(psArgs, args...)
 		cmd = exec.CommandContext(ctx, "powershell", psArgs...)
 	} else {
-		// Linux/macOS 使用 make
-		makeArgs := append([]string{}, args...)
-		cmd = exec.CommandContext(ctx, "make", makeArgs...)
+		// Linux/macOS 使用 bash 脚本
+		scriptPath := s.findScript("build.sh")
+		if scriptPath == "" {
+			return &BuildResult{
+				Success: false,
+				Error:   "找不到构建脚本 build.sh\n请确保 bin/build.sh 存在",
+			}, nil
+		}
+		
+		cmd = exec.CommandContext(ctx, "bash", append([]string{scriptPath}, args...)...)
 	}
 
 	cmd.Dir = s.workDir
@@ -144,7 +159,7 @@ func (s *BuildService) Build(req BuildRequest) (*BuildResult, error) {
 	if err != nil {
 		return &BuildResult{
 			Success: false,
-			Error:   fmt.Sprintf("构建失败: %v", err),
+			Error:   fmt.Sprintf("构建失败: %v\n工作目录: %s", err, s.workDir),
 			Output:  outputStr,
 		}, nil
 	}
@@ -170,6 +185,23 @@ func (s *BuildService) Build(req BuildRequest) (*BuildResult, error) {
 		FileName: fileName,
 		Output:   outputStr,
 	}, nil
+}
+
+// findScript 查找构建脚本，优先 bin 目录
+func (s *BuildService) findScript(name string) string {
+	// 优先查找 bin 目录
+	binPath := filepath.Join(s.workDir, "bin", name)
+	if _, err := os.Stat(binPath); err == nil {
+		return binPath
+	}
+	
+	// 其次查找工作目录根
+	rootPath := filepath.Join(s.workDir, name)
+	if _, err := os.Stat(rootPath); err == nil {
+		return rootPath
+	}
+	
+	return ""
 }
 
 // GetBuildOutput 获取构建输出文件路径
