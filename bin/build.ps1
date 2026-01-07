@@ -478,6 +478,21 @@ function Invoke-Build {
     $modules = Read-YamlList -FilePath $configFile -Key "modules"
     $pandocArgs = Read-YamlList -FilePath $configFile -Key "pandoc_args"
     
+    # 展开通配符模式（如 src/*.md）
+    $expandedModules = @()
+    foreach ($module in $modules) {
+        if ($module -match '\*') {
+            # 包含通配符，展开它
+            $expanded = Get-ChildItem -Path $module -File -ErrorAction SilentlyContinue | Sort-Object Name
+            foreach ($file in $expanded) {
+                $expandedModules += $file.FullName.Replace((Get-Location).Path + "\", "").Replace("\", "/")
+            }
+        } else {
+            $expandedModules += $module
+        }
+    }
+    $modules = $expandedModules | Sort-Object
+    
     # 读取 PDF 选项（从配置文件和 metadata 合并）
     $pdfOptions = Read-PdfOptions -FilePath $configFile
     if (Test-Path $clientMeta) {

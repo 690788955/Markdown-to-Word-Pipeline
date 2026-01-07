@@ -1,0 +1,19 @@
+# 完整知识库 - 包含所有文档模块
+# 使用通配符自动包含 src 目录下所有 .md 文件，无需手动维护
+
+client_name: "完整知识库"
+template: "default.docx"
+
+# 使用通配符自动包含所有模块
+# 文件会按文件名排序（01-xxx.md, 02-xxx.md, ...）
+modules:
+  - src/metadata.yaml
+  - src/*.md
+
+pandoc_args:
+  - "--toc"
+  - "--toc-depth=3"
+  - "--number-sections"
+  - "--standalone"
+
+output_pattern: "完整知识库_{date}.docx"

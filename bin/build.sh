@@ -407,6 +407,27 @@ while IFS= read -r line; do
     [ -n "$line" ] && modules+=("$line")
 done < <(read_yaml_list "$CONFIG_FILE" "modules")
 
+# 展开通配符模式（如 src/*.md）
+expanded_modules=()
+for module in "${modules[@]}"; do
+    if [[ "$module" == *"*"* ]]; then
+        # 包含通配符，展开它
+        # shellcheck disable=SC2086
+        for expanded in $module; do
+            if [ -f "$expanded" ]; then
+                expanded_modules+=("$expanded")
+            fi
+        done
+    else
+        expanded_modules+=("$module")
+    fi
+done
+modules=("${expanded_modules[@]}")
+
+# 对模块进行排序（确保按文件名顺序）
+IFS=$'\n' sorted_modules=($(sort <<<"${modules[*]}")); unset IFS
+modules=("${sorted_modules[@]}")
+
 # 读取 Pandoc 参数
 pandoc_args=()
 while IFS= read -r line; do
