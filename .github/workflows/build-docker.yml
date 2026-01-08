@@ -87,6 +87,45 @@ jobs:
           cache-to: type=gha,mode=max
           platforms: linux/amd64,linux/arm64
 
+      - name: Generate download instructions (Production)
+        run: |
+          cat > download-instructions-production.md << 'EOF'
+          # Docker 镜像下载说明（生产环境）
+
+          ## 方式 1: 从 GitHub Container Registry 拉取（国外）
+          ```bash
+          docker pull ${{ env.REGISTRY }}/${{ steps.image.outputs.name }}:latest
+          ```
+
+          ## 方式 2: 使用国内镜像加速（推荐）
+          ```bash
+          # DockerProxy 镜像加速
+          docker pull ghcr.dockerproxy.com/${{ steps.image.outputs.name }}:latest
+          docker tag ghcr.dockerproxy.com/${{ steps.image.outputs.name }}:latest ${{ env.REGISTRY }}/${{ steps.image.outputs.name }}:latest
+
+          # 南京大学镜像站
+          docker pull ghcr.nju.edu.cn/${{ steps.image.outputs.name }}:latest
+          docker tag ghcr.nju.edu.cn/${{ steps.image.outputs.name }}:latest ${{ env.REGISTRY }}/${{ steps.image.outputs.name }}:latest
+          ```
+
+          ## 验证镜像
+          ```bash
+          docker images | grep doc-generator
+          ```
+
+          ## 运行容器
+          ```bash
+          docker run -d -p 8080:8080 --name doc-generator ${{ env.REGISTRY }}/${{ steps.image.outputs.name }}:latest
+          ```
+          EOF
+
+      - name: Upload download instructions (Production)
+        uses: actions/upload-artifact@v4
+        with:
+          name: download-instructions-production
+          path: download-instructions-production.md
+          retention-days: 90
+
   build-development:
     if: ${{ github.event.inputs.image_type == 'development' || github.event.inputs.image_type == 'both' }}
     runs-on: ubuntu-latest
@@ -135,3 +174,48 @@ jobs:
           cache-from: type=gha
           cache-to: type=gha,mode=max
           platforms: linux/amd64,linux/arm64
+
+      - name: Generate download instructions (Development)
+        run: |
+          cat > download-instructions-development.md << 'EOF'
+          # Docker 镜像下载说明（开发环境）
+
+          ## 方式 1: 从 GitHub Container Registry 拉取（国外）
+          ```bash
+          docker pull ${{ env.REGISTRY }}/${{ steps.image.outputs.name }}:dev
+          ```
+
+          ## 方式 2: 使用国内镜像加速（推荐）
+          ```bash
+          # DockerProxy 镜像加速
+          docker pull ghcr.dockerproxy.com/${{ steps.image.outputs.name }}:dev
+          docker tag ghcr.dockerproxy.com/${{ steps.image.outputs.name }}:dev ${{ env.REGISTRY }}/${{ steps.image.outputs.name }}:dev
+
+          # 南京大学镜像站
+          docker pull ghcr.nju.edu.cn/${{ steps.image.outputs.name }}:dev
+          docker tag ghcr.nju.edu.cn/${{ steps.image.outputs.name }}:dev ${{ env.REGISTRY }}/${{ steps.image.outputs.name }}:dev
+          ```
+
+          ## 验证镜像
+          ```bash
+          docker images | grep doc-generator
+          ```
+
+          ## 运行容器（开发模式）
+          ```bash
+          docker run -d -p 8081:8080 \
+            -v $(pwd)/src:/app/src \
+            -v $(pwd)/clients:/app/clients \
+            -v $(pwd)/templates:/app/templates \
+            -v $(pwd)/build:/app/build \
+            --name doc-generator-dev \
+            ${{ env.REGISTRY }}/${{ steps.image.outputs.name }}:dev
+          ```
+          EOF
+
+      - name: Upload download instructions (Development)
+        uses: actions/upload-artifact@v4
+        with:
+          name: download-instructions-development
+          path: download-instructions-development.md
+          retention-days: 90
