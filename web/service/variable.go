@@ -3,6 +3,7 @@ package service
 
 import (
 	"fmt"
+	"log"
 	"os"
 	"path/filepath"
 	"regexp"
@@ -241,6 +242,10 @@ func parseFrontMatter(content string) (*frontMatter, string, error) {
 
 // ExtractVariables 从多个模块文件提取变量声明
 func (s *VariableService) ExtractVariables(modulePaths []string) ([]VariableDeclaration, []ValidationError) {
+	log.Printf("[VariableService] ExtractVariables 被调用")
+	log.Printf("[VariableService] srcDir: %s", s.srcDir)
+	log.Printf("[VariableService] 模块路径: %v", modulePaths)
+	
 	varsByFile := make(map[string][]VariableDeclaration)
 
 	for _, path := range modulePaths {
@@ -249,11 +254,20 @@ func (s *VariableService) ExtractVariables(modulePaths []string) ([]VariableDecl
 		if !filepath.IsAbs(path) {
 			fullPath = filepath.Join(s.srcDir, "..", path)
 		}
+		log.Printf("[VariableService] 处理模块: %s -> %s", path, fullPath)
+		
+		// 检查文件是否存在
+		if _, err := os.Stat(fullPath); os.IsNotExist(err) {
+			log.Printf("[VariableService] 文件不存在: %s", fullPath)
+			continue
+		}
 
 		decls, err := s.ExtractVariablesFromFile(fullPath)
 		if err != nil {
+			log.Printf("[VariableService] 提取变量失败: %s, 错误: %v", fullPath, err)
 			continue // 跳过无法读取的文件
 		}
+		log.Printf("[VariableService] 从 %s 提取到 %d 个变量", path, len(decls))
 		if len(decls) > 0 {
 			varsByFile[path] = decls
 		}
