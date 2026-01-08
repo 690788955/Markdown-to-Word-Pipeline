@@ -2,16 +2,34 @@
 # 运维文档生成系统 - Docker Compose
 # ==========================================
 #
+# 环境变量配置:
+#   PORT=9000                     # 服务端口 (默认: 8080, 范围: 1024-65535)
+#   DOCS_DIR=/path/to/docs        # 文档根目录 (默认: 当前目录)
+#   SRC_DIR=/path/to/src          # 源文档目录 (默认: ${DOCS_DIR}/src 或 ./src)
+#   CLIENTS_DIR=/path/to/clients  # 客户配置目录 (默认: ${DOCS_DIR}/clients 或 ./clients)
+#   TEMPLATES_DIR=/path/to/templates # 模板目录 (默认: ${DOCS_DIR}/templates 或 ./templates)
+#   OUTPUT_DIR=/path/to/build     # 输出目录 (默认: ./build)
+#   IMAGE=your-registry/doc-generator:v1.0  # 自定义镜像 (默认: doc-generator:latest)
+#
 # 使用方式:
-#   docker compose up -d          # 启动服务（本地构建）
+#   docker compose up -d          # 启动服务（本地构建，默认配置）
 #   docker compose down           # 停止服务
 #   docker compose logs -f        # 查看日志
 #   docker compose build --no-cache  # 重新构建
 #
+#   # 使用自定义端口
+#   PORT=9000 docker compose up -d
+#
+#   # 使用自定义文档目录
+#   DOCS_DIR=/home/user/documents docker compose up -d
+#
 #   # 使用指定镜像（跳过构建）
 #   IMAGE=your-registry/doc-generator:v1.0 docker compose up -d
 #
-# 访问: http://localhost:8080
+#   # 组合配置示例
+#   PORT=9000 DOCS_DIR=/custom/docs OUTPUT_DIR=/custom/output docker compose up -d
+#
+# 访问: http://localhost:${PORT:-8080}
 
 services:
   doc-generator:
@@ -22,22 +40,33 @@ services:
       dockerfile: web/Dockerfile
     container_name: doc-generator
     ports:
-      - "8080:8080"
+      # 使用 PORT 环境变量配置端口映射，默认 8080
+      - "${PORT:-8080}:${PORT:-8080}"
     volumes:
-      # 挂载文档源文件（按需取消注释）
-      # - ./src:/app/src
-      # 挂载客户配置
-      # - ./clients:/app/clients
-      # 挂载 Word 模板
-      # - ./templates:/app/templates
-      # 挂载输出目录（生成的文档保存在这里）
-      - ./build:/app/build
+      # 文档源文件目录 - 支持 SRC_DIR 或 DOCS_DIR/src，默认 ./src
+      - type: bind
+        source: ${SRC_DIR:-${DOCS_DIR:-.}/src}
+        target: /app/src
+      # 客户配置目录 - 支持 CLIENTS_DIR 或 DOCS_DIR/clients，默认 ./clients  
+      - type: bind
+        source: ${CLIENTS_DIR:-${DOCS_DIR:-.}/clients}
+        target: /app/clients
+      # Word 模板目录 - 支持 TEMPLATES_DIR 或 DOCS_DIR/templates，默认 ./templates
+      - type: bind
+        source: ${TEMPLATES_DIR:-${DOCS_DIR:-.}/templates}
+        target: /app/templates
+      # 输出目录 - 支持 OUTPUT_DIR，默认 ./build
+      - type: bind
+        source: ${OUTPUT_DIR:-./build}
+        target: /app/build
     environment:
-      - PORT=8080
+      # 容器内服务端口，与端口映射保持一致
+      - PORT=${PORT:-8080}
       - TZ=Asia/Shanghai
     restart: unless-stopped
     healthcheck:
-      test: ["CMD", "wget", "-q", "--spider", "http://localhost:8080/"]
+      # 健康检查使用动态端口
+      test: ["CMD", "wget", "-q", "--spider", "http://localhost:${PORT:-8080}/"]
       interval: 30s
       timeout: 3s
       retries: 3

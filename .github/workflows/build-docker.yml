@@ -6,17 +6,30 @@
 # 触发条件:
 #   - 手动触发
 #
+# 镜像类型:
+#   - Production: 生产环境镜像（优化构建）
+#   - Development: 开发环境镜像（带热重载）
+#
 # 使用镜像:
 #   docker pull ghcr.io/<owner>/<repo>:latest
-#   docker pull ghcr.io/<owner>/<repo>:v1.0.0
+#   docker pull ghcr.io/<owner>/<repo>:dev
 
-name: Build Docker Image
+name: Build Docker Images
 
 on:
   workflow_dispatch:
     inputs:
+      image_type:
+        description: '镜像类型'
+        required: true
+        type: choice
+        options:
+          - production
+          - development
+          - both
+        default: 'production'
       tag:
-        description: '镜像标签（留空则使用 latest）'
+        description: '镜像标签（留空则使用默认）'
         required: false
         default: ''
 
@@ -24,7 +37,8 @@ env:
   REGISTRY: ghcr.io
 
 jobs:
-  build-and-push:
+  build-production:
+    if: ${{ github.event.inputs.image_type == 'production' || github.event.inputs.image_type == 'both' }}
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -49,7 +63,7 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Extract metadata
+      - name: Extract metadata (Production)
         id: meta
         uses: docker/metadata-action@v5
         with:
@@ -60,11 +74,61 @@ jobs:
             type=raw,value=${{ github.event.inputs.tag }},enable=${{ github.event.inputs.tag != '' }}
             type=sha,prefix=
 
-      - name: Build and push
+      - name: Build and push (Production)
         uses: docker/build-push-action@v5
         with:
           context: .
           file: web/Dockerfile
+          target: production
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+          platforms: linux/amd64,linux/arm64
+
+  build-development:
+    if: ${{ github.event.inputs.image_type == 'development' || github.event.inputs.image_type == 'both' }}
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set image name (lowercase)
+        id: image
+        run: |
+          echo "name=${GITHUB_REPOSITORY,,}" >> $GITHUB_OUTPUT
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Login to GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Extract metadata (Development)
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.REGISTRY }}/${{ steps.image.outputs.name }}
+          tags: |
+            type=raw,value=dev
+            type=raw,value=dev-${{ github.event.inputs.tag }},enable=${{ github.event.inputs.tag != '' }}
+            type=sha,prefix=dev-
+
+      - name: Build and push (Development)
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          file: web/Dockerfile
+          target: development
           push: true
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}

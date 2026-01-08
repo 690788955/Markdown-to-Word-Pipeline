@@ -38,8 +38,8 @@ COPY web/ ./
 # 构建应用（交叉编译）
 RUN CGO_ENABLED=0 GOOS=${TARGETOS} GOARCH=${TARGETARCH} go build -ldflags="-w -s" -o doc-generator-web .
 
-# 阶段2: 运行时镜像（使用支持多架构的 Alpine + TeX Live）
-FROM alpine:3.19
+# 阶段2: 基础运行时镜像（共享依赖）
+FROM alpine:3.19 AS base
 
 # 安装基础工具和 Pandoc
 RUN apk add --no-cache \
@@ -98,9 +98,25 @@ ENV WORK_DIR=/app
 # 暴露端口
 EXPOSE 8080
 
+# 阶段3: 生产环境镜像
+FROM base AS production
+
 # 健康检查
 HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
     CMD wget -q --spider http://localhost:8080/ || exit 1
 
 # 启动应用
+CMD ["/app/doc-generator-web"]
+
+# 阶段4: 开发环境镜像（带热重载支持）
+FROM base AS development
+
+# 安装开发工具（如需要）
+RUN apk add --no-cache git
+
+# 开发环境健康检查（更宽松）
+HEALTHCHECK --interval=60s --timeout=5s --start-period=10s --retries=3 \
+    CMD wget -q --spider http://localhost:8080/ || exit 1
+
+# 启动应用（开发模式）
 CMD ["/app/doc-generator-web"]

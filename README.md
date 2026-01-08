@@ -318,8 +318,10 @@ web\doc-generator-web.exe    # Windows
 
 ### 使用 Docker Compose
 
+#### 基本使用
+
 ```bash
-# 启动服务（本地构建镜像）
+# 启动服务（本地构建镜像，默认配置）
 docker compose up -d
 
 # 使用指定镜像
@@ -331,6 +333,108 @@ docker compose logs -f
 # 停止服务
 docker compose down
 ```
+
+#### 环境变量配置
+
+Docker Compose 现在支持通过环境变量灵活配置端口和目录：
+
+```bash
+# 自定义端口
+PORT=9000 docker compose up -d
+
+# 自定义文档目录（单一根目录）
+DOCS_DIR=/home/user/documents docker compose up -d
+
+# 分别指定各目录（精细控制）
+SRC_DIR=/custom/src \
+CLIENTS_DIR=/custom/clients \
+TEMPLATES_DIR=/custom/templates \
+OUTPUT_DIR=/custom/output \
+docker compose up -d
+
+# 组合配置示例
+PORT=9001 \
+DOCS_DIR=/projects/project-a/docs \
+OUTPUT_DIR=/shared/output/project-a \
+docker compose up -d
+```
+
+#### 支持的环境变量
+
+| 变量名 | 说明 | 默认值 | 示例 |
+|--------|------|--------|------|
+| `PORT` | 服务端口 | `8080` | `PORT=9000` |
+| `DOCS_DIR` | 文档根目录 | `.` (当前目录) | `DOCS_DIR=/home/user/docs` |
+| `SRC_DIR` | 源文档目录 | `${DOCS_DIR}/src` 或 `./src` | `SRC_DIR=/custom/src` |
+| `CLIENTS_DIR` | 客户配置目录 | `${DOCS_DIR}/clients` 或 `./clients` | `CLIENTS_DIR=/custom/clients` |
+| `TEMPLATES_DIR` | 模板目录 | `${DOCS_DIR}/templates` 或 `./templates` | `TEMPLATES_DIR=/custom/templates` |
+| `OUTPUT_DIR` | 输出目录 | `./build` | `OUTPUT_DIR=/shared/output` |
+| `IMAGE` | 自定义镜像 | `doc-generator:latest` | `IMAGE=registry.com/doc-gen:v1.0` |
+
+#### 配置优先级
+
+```
+个别目录变量 > DOCS_DIR > 默认项目结构
+```
+
+例如：如果同时设置了 `DOCS_DIR=/base/docs` 和 `SRC_DIR=/custom/src`，则：
+- `src` 目录使用 `/custom/src`（个别变量优先）
+- `clients` 目录使用 `/base/docs/clients`（DOCS_DIR 子目录）
+- `templates` 目录使用 `/base/docs/templates`（DOCS_DIR 子目录）
+
+#### 部署场景示例
+
+**开发环境**（默认配置）：
+```bash
+docker compose up -d
+# 访问: http://localhost:8080
+```
+
+**生产环境**（自定义端口和输出）：
+```bash
+PORT=9000 OUTPUT_DIR=/var/lib/doc-generator/output docker compose up -d
+# 访问: http://localhost:9000
+```
+
+**多项目环境**（完全隔离）：
+```bash
+# 项目 A
+PORT=9001 DOCS_DIR=/projects/project-a/docs OUTPUT_DIR=/shared/output/project-a docker compose up -d
+
+# 项目 B  
+PORT=9002 DOCS_DIR=/projects/project-b/docs OUTPUT_DIR=/shared/output/project-b docker compose up -d
+```
+
+**CI/CD 环境**（分离的目录结构）：
+```bash
+PORT=8080 \
+SRC_DIR=/workspace/docs/modules \
+CLIENTS_DIR=/workspace/configs/clients \
+TEMPLATES_DIR=/workspace/templates \
+OUTPUT_DIR=/workspace/artifacts \
+IMAGE=registry.company.com/doc-generator:latest \
+docker compose up -d
+```
+
+#### 配置验证
+
+使用提供的验证脚本检查配置：
+
+```bash
+# Windows
+.\validate-deployment.ps1 -Verbose
+
+# Linux/macOS  
+./validate-deployment.sh --verbose
+
+# 仅检查配置（不启动服务）
+.\validate-deployment.ps1 -CheckOnly
+./validate-deployment.sh --check-only
+```
+
+#### 向后兼容性
+
+新的环境变量配置完全向后兼容。如果不设置任何新的环境变量，Docker Compose 的行为与原版本完全相同。
 
 ### 卷挂载说明
 
