@@ -1333,3 +1333,102 @@ input[type="color"] {
         width: 100px;
     }
 }
+
+
+/* ==================== 变量表单样式 ==================== */
+.variable-form-section {
+    background: #f8f9fa;
+    border: 1px solid #e9ecef;
+    border-radius: 8px;
+    padding: 15px;
+    margin-bottom: 15px;
+}
+
+.variable-form-section h4 {
+    color: #2c3e50;
+    font-size: 0.95rem;
+    margin-bottom: 12px;
+    padding-bottom: 8px;
+    border-bottom: 1px solid #e9ecef;
+}
+
+.variable-form-section .form-group {
+    margin-bottom: 12px;
+}
+
+.variable-form-section .form-group:last-child {
+    margin-bottom: 0;
+}
+
+.variable-form-section .form-group label {
+    display: block;
+    font-size: 0.85rem;
+    color: #495057;
+    margin-bottom: 4px;
+    font-weight: 500;
+}
+
+.variable-form-section .form-group label .required {
+    color: #e74c3c;
+    font-weight: bold;
+}
+
+.variable-form-section .form-control {
+    width: 100%;
+    padding: 8px 12px;
+    border: 1px solid #ddd;
+    border-radius: 5px;
+    font-size: 0.9rem;
+    transition: border-color 0.2s;
+}
+
+.variable-form-section .form-control:focus {
+    outline: none;
+    border-color: #3498db;
+    box-shadow: 0 0 0 2px rgba(52, 152, 219, 0.1);
+}
+
+.variable-form-section .form-help {
+    display: block;
+    margin-top: 4px;
+    font-size: 0.75rem;
+    color: #7f8c8d;
+}
+
+.variable-form-section .list-empty {
+    text-align: center;
+    color: #999;
+    padding: 20px;
+    font-size: 0.9rem;
+}
+
+/* 深色模式 - 变量表单 */
+@media (prefers-color-scheme: dark) {
+    .variable-form-section {
+        background: #0f3460;
+        border-color: #333;
+    }
+    
+    .variable-form-section h4 {
+        color: #eee;
+        border-color: #444;
+    }
+    
+    .variable-form-section .form-group label {
+        color: #ddd;
+    }
+    
+    .variable-form-section .form-control {
+        background: #16213e;
+        border-color: #444;
+        color: #eee;
+    }
+    
+    .variable-form-section .form-control:focus {
+        border-color: #3498db;
+    }
+    
+    .variable-form-section .form-help {
+        color: #888;
+    }
+}

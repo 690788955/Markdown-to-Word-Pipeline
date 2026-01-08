@@ -24,6 +24,7 @@ SHOW_HELP=false
 LIST_CLIENTS=false
 LIST_DOCS=false
 CHECK_PDF_DEPS=false
+declare -A VAR_VALUES  # 变量值关联数组
 
 # 解析命名参数
 while [[ $# -gt 0 ]]; do
@@ -46,6 +47,13 @@ while [[ $# -gt 0 ]]; do
             ;;
         -w|--workdir)
             WORK_DIR="$2"
+            shift 2
+            ;;
+        -V|--var)
+            # 解析 name=value 格式
+            if [[ "$2" =~ ^([^=]+)=(.*)$ ]]; then
+                VAR_VALUES["${BASH_REMATCH[1]}"]="${BASH_REMATCH[2]}"
+            fi
             shift 2
             ;;
         -h|--help)
@@ -109,6 +117,7 @@ show_help() {
   -d, --doc <文档类型>   指定文档类型（如：运维手册、部署手册）
   -n, --name <名称>      自定义客户名称（覆盖配置）
   -f, --format <格式>    输出格式：word 或 pdf（默认: word）
+  -V, --var <name=value> 设置变量值，可多次使用
   -w, --workdir <目录>   指定工作目录
   -h, --help             显示帮助信息
   --list-clients         列出所有可用客户配置
@@ -120,6 +129,7 @@ show_help() {
   ./build.sh -f pdf                               # 生成 PDF
   ./build.sh -c 标准文档 -d 运维手册              # 构建运维手册
   ./build.sh -c 标准文档 -d 运维手册 -f pdf       # 生成 PDF 格式
+  ./build.sh -V "项目名称=XX系统" -V "版本号=v2.0"  # 设置变量
   ./build.sh --list-clients                       # 列出所有客户
   ./build.sh -c 标准文档 --list-docs              # 列出文档类型
   ./build.sh --check-pdf-deps                     # 检查 PDF 依赖
@@ -161,6 +171,178 @@ list_docs() {
             echo "  - $name"
         fi
     done
+}
+
+# ==========================================
+# 变量处理函数
+# ==========================================
+
+# 从文件提取变量声明
+get_variables_from_file() {
+    local file="$1"
+    
+    if [ ! -f "$file" ]; then
+        return
+    fi
+    
+    # 检查是否有 front-matter
+    if ! head -1 "$file" | grep -q "^---"; then
+        return
+    fi
+    
+    # 使用 awk 提取 variables 节中的变量名和默认值
+    awk '
+        BEGIN { in_fm=0; in_vars=0; current_var="" }
+        /^---$/ && NR==1 { in_fm=1; next }
+        /^---$/ && in_fm { exit }
+        in_fm && /^variables:/ { in_vars=1; next }
+        in_vars && /^[a-zA-Z]/ { exit }
+        in_vars && /^  [a-zA-Z_][a-zA-Z0-9_.]*:/ {
+            gsub(/^  /, "")
+            gsub(/:.*/, "")
+            current_var=$0
+            print current_var
+        }
+    ' "$file"
+}
+
+# 获取变量默认值
+get_variable_default() {
+    local file="$1"
+    local var_name="$2"
+    
+    if [ ! -f "$file" ]; then
+        return
+    fi
+    
+    awk -v var="$var_name" '
+        BEGIN { in_fm=0; in_vars=0; found_var=0 }
+        /^---$/ && NR==1 { in_fm=1; next }
+        /^---$/ && in_fm { exit }
+        in_fm && /^variables:/ { in_vars=1; next }
+        in_vars && /^[a-zA-Z]/ { exit }
+        in_vars && $0 ~ "^  "var":" {
+            # 检查是否是简单值
+            line=$0
+            gsub(/^  [^:]+:[[:space:]]*/, "", line)
+            gsub(/["'"'"']/, "", line)
+            if (line != "") {
+                print line
+                exit
+            }
+            found_var=1
+            next
+        }
+        found_var && /^    default:/ {
+            line=$0
+            gsub(/^    default:[[:space:]]*/, "", line)
+            gsub(/["'"'"']/, "", line)
+            print line
+            exit
+        }
+        found_var && /^  [a-zA-Z]/ { exit }
+    ' "$file"
+}
+
+# 渲染文件内容（替换变量）
+render_file_content() {
+    local file="$1"
+    local output="$2"
+    
+    local content
+    content=$(cat "$file")
+    
+    # 获取文件中的变量
+    local vars
+    vars=$(get_variables_from_file "$file")
+    
+    if [ -z "$vars" ]; then
+        # 没有变量，直接复制
+        cp "$file" "$output"
+        return
+    fi
+    
+    # 替换变量
+    for var in $vars; do
+        local value=""
+        
+        # 优先使用命令行传入的值
+        if [ -n "${VAR_VALUES[$var]+x}" ]; then
+            value="${VAR_VALUES[$var]}"
+        else
+            # 使用默认值
+            value=$(get_variable_default "$file" "$var")
+        fi
+        
+        if [ -n "$value" ]; then
+            # 替换 {{var}} 为值
+            content=$(echo "$content" | sed "s/{{${var}}}/${value}/g")
+        fi
+    done
+    
+    # 处理转义的占位符 \{{text}} -> {{text}}
+    content=$(echo "$content" | sed 's/\\{{/{{/g')
+    
+    # 移除 variables 节（简化处理）
+    content=$(echo "$content" | awk '
+        BEGIN { in_fm=0; in_vars=0; skip_vars=0 }
+        /^---$/ && NR==1 { in_fm=1; print; next }
+        /^---$/ && in_fm { in_fm=0; print; next }
+        in_fm && /^variables:/ { skip_vars=1; next }
+        skip_vars && /^[a-zA-Z]/ { skip_vars=0 }
+        skip_vars { next }
+        { print }
+    ')
+    
+    echo "$content" > "$output"
+}
+
+# 处理模块文件的变量渲染
+process_modules_with_variables() {
+    local temp_dir="$1"
+    shift
+    local modules=("$@")
+    
+    local processed_modules=()
+    local has_variables=false
+    
+    # 检查是否有变量
+    for module in "${modules[@]}"; do
+        local vars
+        vars=$(get_variables_from_file "$module")
+        if [ -n "$vars" ]; then
+            has_variables=true
+            break
+        fi
+    done
+    
+    if [ "$has_variables" = false ] && [ ${#VAR_VALUES[@]} -eq 0 ]; then
+        # 没有变量，返回原模块列表
+        echo "${modules[@]}"
+        return
+    fi
+    
+    echo "处理变量模板..." >&2
+    
+    # 创建临时目录
+    mkdir -p "$temp_dir"
+    
+    for module in "${modules[@]}"; do
+        local vars
+        vars=$(get_variables_from_file "$module")
+        
+        if [ -n "$vars" ]; then
+            local basename
+            basename=$(basename "$module")
+            local temp_file="${temp_dir}/${basename}"
+            render_file_content "$module" "$temp_file"
+            processed_modules+=("$temp_file")
+        else
+            processed_modules+=("$module")
+        fi
+    done
+    
+    echo "${processed_modules[@]}"
 }
 
 # ==========================================
@@ -494,6 +676,11 @@ if [ ${#valid_modules[@]} -eq 0 ]; then
     exit 1
 fi
 
+# 处理变量模板
+TEMP_DIR="/tmp/docgen_$$"
+processed_modules_str=$(process_modules_with_variables "$TEMP_DIR" "${valid_modules[@]}")
+read -ra processed_modules <<< "$processed_modules_str"
+
 # 读取元数据（优先级：文档配置 > 客户 metadata.yaml > src/metadata.yaml）
 # 1. 基础元数据
 title=$(read_yaml_value "${SRC_DIR}/metadata.yaml" "title")
@@ -551,7 +738,7 @@ echo ""
 
 # 构建 Pandoc 命令
 pandoc_cmd=(pandoc)
-pandoc_cmd+=("${valid_modules[@]}")
+pandoc_cmd+=("${processed_modules[@]}")
 
 if [ -f "$CLIENT_META" ]; then
     pandoc_cmd+=("$CLIENT_META")

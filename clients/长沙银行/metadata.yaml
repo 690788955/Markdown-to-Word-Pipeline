@@ -1,0 +1,12 @@
+---
+title: "长沙银行文档"
+subtitle: "自定义配置"
+author: "运维团队"
+date: "2026年1月"
+version: "v1.0"
+
+client:
+  name: "长沙银行"
+  contact: ""
+  system: ""
+---

@@ -94,7 +94,7 @@ func main() {
 	log.Printf("[WebService] 初始化服务...")
 	clientSvc := service.NewClientService(cfg.ClientsDir)
 	docSvc := service.NewDocumentService(cfg.ClientsDir)
-	buildSvc := service.NewBuildService(cfg.WorkDir, cfg.BuildDir)
+	buildSvc := service.NewBuildService(cfg.WorkDir, cfg.BuildDir, cfg.SrcDir)
 	moduleSvc := service.NewModuleService(cfg.SrcDir)
 	templateSvc := service.NewTemplateService(cfg.TemplatesDir)
 	configMgr := service.NewConfigManager(cfg.ClientsDir)

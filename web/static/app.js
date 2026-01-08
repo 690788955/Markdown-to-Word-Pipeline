@@ -470,6 +470,10 @@ function renderTransferUI() {
     renderAvailableModules();
     renderSelectedModules();
     updateSelectedCount();
+    // 模块变化时加载变量
+    if (typeof onModulesChanged === 'function') {
+        onModulesChanged();
+    }
 }
 
 // 渲染左侧可选模块列表
@@ -1146,6 +1150,16 @@ async function submitConfig() {
         return;
     }
     
+    // 验证变量
+    const varErrors = validateVariables();
+    if (varErrors.length > 0) {
+        alert('变量验证失败:\n' + varErrors.join('\n'));
+        return;
+    }
+    
+    // 获取变量值
+    const variables = getVariableValues();
+    
     const configData = {
         clientName: clientName,
         docTypeName: docTypeName,
@@ -1154,7 +1168,8 @@ async function submitConfig() {
         modules: selectedModules,
         pandocArgs: pandocArgs,
         outputPattern: outputPattern || '{client}_' + docTypeName + '_{date}.docx',
-        pdfOptions: pdfOptions
+        pdfOptions: pdfOptions,
+        variables: variables
     };
     
     const submitBtn = document.querySelector('.modal-footer .btn-primary');
@@ -1274,3 +1289,306 @@ window.selectAllModules = selectAllModules;
 window.clearAllModules = clearAllModules;
 window.moveSelectedToRight = moveSelectedToRight;
 window.moveSelectedToLeft = moveSelectedToLeft;
+
+
+// ==================== 变量模板功能 ====================
+
+let currentVariables = []; // 当前模块的变量声明
+let variableValues = {}; // 用户填写的变量值
+
+// 加载变量声明
+async function loadVariables(modules) {
+    if (!modules || modules.length === 0) {
+        currentVariables = [];
+        renderVariableForm();
+        return;
+    }
+    
+    try {
+        const response = await fetch('/api/variables', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ modules: modules })
+        });
+        
+        const data = await response.json();
+        if (!data.success) throw new Error(data.error);
+        
+        currentVariables = data.data.variables || [];
+        
+        // 显示冲突错误
+        if (data.data.errors && data.data.errors.length > 0) {
+            console.warn('变量冲突:', data.data.errors);
+        }
+        
+        renderVariableForm();
+    } catch (e) {
+        console.error('加载变量失败:', e);
+        currentVariables = [];
+        renderVariableForm();
+    }
+}
+
+// 渲染变量表单
+function renderVariableForm() {
+    const container = document.getElementById('variableForm');
+    if (!container) return;
+    
+    if (currentVariables.length === 0) {
+        container.innerHTML = '<div class="list-empty">所选模块没有定义变量</div>';
+        container.style.display = 'none';
+        return;
+    }
+    
+    container.style.display = 'block';
+    container.innerHTML = '';
+    
+    // 标题
+    const title = document.createElement('h4');
+    title.textContent = '📝 变量设置';
+    title.style.marginBottom = '12px';
+    container.appendChild(title);
+    
+    // 变量列表
+    currentVariables.forEach(function(varDecl) {
+        const group = document.createElement('div');
+        group.className = 'form-group';
+        
+        // 标签
+        const label = document.createElement('label');
+        label.htmlFor = 'var_' + varDecl.name;
+        label.textContent = varDecl.description || varDecl.name;
+        if (varDecl.required) {
+            const required = document.createElement('span');
+            required.className = 'required';
+            required.textContent = ' *';
+            required.style.color = '#e74c3c';
+            label.appendChild(required);
+        }
+        group.appendChild(label);
+        
+        // 输入控件
+        let input;
+        switch (varDecl.type) {
+            case 'select':
+                input = createSelectInput(varDecl);
+                break;
+            case 'number':
+                input = createNumberInput(varDecl);
+                break;
+            case 'date':
+                input = createDateInput(varDecl);
+                break;
+            default:
+                input = createTextInput(varDecl);
+        }
+        
+        input.id = 'var_' + varDecl.name;
+        input.name = varDecl.name;
+        input.addEventListener('change', function() {
+            onVariableChange(varDecl.name, this.value);
+        });
+        input.addEventListener('input', function() {
+            onVariableChange(varDecl.name, this.value);
+        });
+        
+        group.appendChild(input);
+        
+        // 帮助文本
+        if (varDecl.description && varDecl.description !== varDecl.name) {
+            const help = document.createElement('small');
+            help.className = 'form-help';
+            help.textContent = getVariableHelp(varDecl);
+            help.style.color = '#7f8c8d';
+            help.style.fontSize = '12px';
+            group.appendChild(help);
+        }
+        
+        container.appendChild(group);
+    });
+}
+
+// 创建文本输入
+function createTextInput(varDecl) {
+    const input = document.createElement('input');
+    input.type = 'text';
+    input.className = 'form-control';
+    if (varDecl.default !== undefined && varDecl.default !== null) {
+        input.value = String(varDecl.default);
+        variableValues[varDecl.name] = varDecl.default;
+    }
+    if (varDecl.pattern) {
+        input.pattern = varDecl.pattern;
+    }
+    return input;
+}
+
+// 创建数字输入
+function createNumberInput(varDecl) {
+    const input = document.createElement('input');
+    input.type = 'number';
+    input.className = 'form-control';
+    if (varDecl.default !== undefined && varDecl.default !== null) {
+        input.value = varDecl.default;
+        variableValues[varDecl.name] = varDecl.default;
+    }
+    if (varDecl.min !== undefined && varDecl.min !== null) {
+        input.min = varDecl.min;
+    }
+    if (varDecl.max !== undefined && varDecl.max !== null) {
+        input.max = varDecl.max;
+    }
+    return input;
+}
+
+// 创建日期输入
+function createDateInput(varDecl) {
+    const input = document.createElement('input');
+    input.type = 'date';
+    input.className = 'form-control';
+    if (varDecl.default !== undefined && varDecl.default !== null) {
+        input.value = varDecl.default;
+        variableValues[varDecl.name] = varDecl.default;
+    }
+    return input;
+}
+
+// 创建选择输入
+function createSelectInput(varDecl) {
+    const select = document.createElement('select');
+    select.className = 'form-control';
+    
+    // 空选项
+    if (!varDecl.required) {
+        const emptyOpt = document.createElement('option');
+        emptyOpt.value = '';
+        emptyOpt.textContent = '请选择...';
+        select.appendChild(emptyOpt);
+    }
+    
+    // 选项
+    (varDecl.options || []).forEach(function(opt) {
+        const option = document.createElement('option');
+        option.value = opt;
+        option.textContent = opt;
+        if (varDecl.default === opt) {
+            option.selected = true;
+            variableValues[varDecl.name] = opt;
+        }
+        select.appendChild(option);
+    });
+    
+    return select;
+}
+
+// 获取变量帮助文本
+function getVariableHelp(varDecl) {
+    const parts = [];
+    if (varDecl.type === 'number') {
+        if (varDecl.min !== undefined && varDecl.max !== undefined) {
+            parts.push('范围: ' + varDecl.min + ' - ' + varDecl.max);
+        } else if (varDecl.min !== undefined) {
+            parts.push('最小值: ' + varDecl.min);
+        } else if (varDecl.max !== undefined) {
+            parts.push('最大值: ' + varDecl.max);
+        }
+    }
+    if (varDecl.type === 'date') {
+        parts.push('格式: YYYY-MM-DD');
+    }
+    if (varDecl.pattern) {
+        parts.push('格式: ' + varDecl.pattern);
+    }
+    return parts.join(' | ');
+}
+
+// 变量值变化
+function onVariableChange(name, value) {
+    if (value === '' || value === undefined) {
+        delete variableValues[name];
+    } else {
+        variableValues[name] = value;
+    }
+}
+
+// 验证变量
+function validateVariables() {
+    const errors = [];
+    
+    currentVariables.forEach(function(varDecl) {
+        const value = variableValues[varDecl.name];
+        
+        // 必填检查
+        if (varDecl.required && (value === undefined || value === '')) {
+            errors.push(varDecl.description || varDecl.name + ' 是必填项');
+            return;
+        }
+        
+        if (value === undefined || value === '') return;
+        
+        // 类型验证
+        switch (varDecl.type) {
+            case 'number':
+                const num = parseFloat(value);
+                if (isNaN(num)) {
+                    errors.push((varDecl.description || varDecl.name) + ' 必须是数字');
+                } else {
+                    if (varDecl.min !== undefined && num < varDecl.min) {
+                        errors.push((varDecl.description || varDecl.name) + ' 不能小于 ' + varDecl.min);
+                    }
+                    if (varDecl.max !== undefined && num > varDecl.max) {
+                        errors.push((varDecl.description || varDecl.name) + ' 不能大于 ' + varDecl.max);
+                    }
+                }
+                break;
+            case 'date':
+                if (!/^\d{4}-\d{2}-\d{2}$/.test(value)) {
+                    errors.push((varDecl.description || varDecl.name) + ' 格式不正确 (YYYY-MM-DD)');
+                }
+                break;
+            case 'select':
+                if (varDecl.options && !varDecl.options.includes(value)) {
+                    errors.push((varDecl.description || varDecl.name) + ' 值不在允许的选项中');
+                }
+                break;
+            case 'text':
+                if (varDecl.pattern) {
+                    try {
+                        const re = new RegExp(varDecl.pattern);
+                        if (!re.test(value)) {
+                            errors.push((varDecl.description || varDecl.name) + ' 格式不正确');
+                        }
+                    } catch (e) {
+                        // 忽略无效的正则
+                    }
+                }
+                break;
+        }
+    });
+    
+    return errors;
+}
+
+// 获取变量值（用于提交）
+function getVariableValues() {
+    return { ...variableValues };
+}
+
+// 清空变量值
+function clearVariableValues() {
+    variableValues = {};
+    currentVariables = [];
+    renderVariableForm();
+}
+
+// 监听模块选择变化，自动加载变量
+function onModulesChanged() {
+    loadVariables(selectedModules);
+}
+
+// 暴露函数到全局作用域
+window.loadVariables = loadVariables;
+window.validateVariables = validateVariables;
+window.getVariableValues = getVariableValues;
+window.clearVariableValues = clearVariableValues;
+window.onModulesChanged = onModulesChanged;

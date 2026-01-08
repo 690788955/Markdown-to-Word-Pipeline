@@ -25,6 +25,7 @@ param(
     [ValidateSet("word", "pdf")]
     [string]$Format = "word",    # 输出格式：word 或 pdf
     [string]$WorkDir = "",       # 工作目录（包含 src, clients, templates）
+    [string[]]$Var = @(),        # 变量值，格式：name=value
     [switch]$ListClients,
     [switch]$ListDocs,           # 列出客户的所有文档
     [switch]$ListModules,
@@ -76,6 +77,7 @@ function Show-Help {
   -Client <名称>    指定客户配置（默认: default）
   -Doc <文档类型>   指定文档类型（如：运维手册、部署手册）
   -Format <格式>    输出格式：word 或 pdf（默认: word）
+  -Var <name=value> 设置变量值，可多次使用（如：-Var "项目名称=XX系统"）
   -ListClients      列出所有可用客户配置
   -ListDocs         列出指定客户的所有文档类型
   -ListModules      列出所有文档模块
@@ -97,6 +99,7 @@ function Show-Help {
   .\build.ps1 -Client 标准文档 -Doc 交接文档   # 构建交接文档
   .\build.ps1 -Client 标准文档 -ListDocs    # 列出文档类型
   .\build.ps1 -Client 标准文档 -BuildAll    # 构建所有文档
+  .\build.ps1 -Var "项目名称=XX系统" -Var "版本号=v2.0"  # 设置变量
   .\build.ps1 -ListClients                        # 列出所有客户
   .\build.ps1 -ListModules                        # 列出所有模块
   .\build.ps1 -InstallFonts                       # 安装字体
@@ -206,6 +209,190 @@ function Initialize-Template {
     } finally {
         Remove-Item $tempMd -Force -ErrorAction SilentlyContinue
     }
+}
+
+# ==========================================
+# 变量处理函数
+# ==========================================
+
+# 解析命令行变量参数
+function Parse-VariableArgs {
+    param([string[]]$VarArgs)
+    
+    $vars = @{}
+    foreach ($arg in $VarArgs) {
+        if ($arg -match "^([^=]+)=(.*)$") {
+            $vars[$Matches[1].Trim()] = $Matches[2]
+        }
+    }
+    return $vars
+}
+
+# 从文件提取变量声明
+function Get-VariablesFromFile {
+    param([string]$FilePath)
+    
+    if (-not (Test-Path $FilePath)) { return @{} }
+    
+    $content = Get-Content $FilePath -Raw -Encoding UTF8
+    
+    # 检查是否有 front-matter
+    if (-not $content.StartsWith("---")) { return @{} }
+    
+    # 提取 front-matter
+    $endIndex = $content.IndexOf("`n---", 3)
+    if ($endIndex -eq -1) { return @{} }
+    
+    $fmContent = $content.Substring(3, $endIndex - 3)
+    
+    # 简单解析 variables 节
+    $vars = @{}
+    $inVariables = $false
+    $currentVar = $null
+    $indent = 0
+    
+    foreach ($line in $fmContent -split "`n") {
+        if ($line -match "^variables:") {
+            $inVariables = $true
+            continue
+        }
+        if ($inVariables) {
+            # 检查是否退出 variables 节
+            if ($line -match "^[a-zA-Z]" -and -not $line.StartsWith(" ")) {
+                break
+            }
+            # 解析变量名
+            if ($line -match "^\s{2}([a-zA-Z_][a-zA-Z0-9_.]*):(.*)$") {
+                $currentVar = $Matches[1]
+                $value = $Matches[2].Trim()
+                if ($value -and $value -ne "") {
+                    # 简单值
+                    $vars[$currentVar] = @{ default = $value.Trim('"').Trim("'") }
+                } else {
+                    $vars[$currentVar] = @{}
+                }
+            }
+            # 解析变量属性
+            elseif ($currentVar -and $line -match "^\s{4}(default|type|description):\s*(.+)$") {
+                $key = $Matches[1]
+                $val = $Matches[2].Trim().Trim('"').Trim("'")
+                $vars[$currentVar][$key] = $val
+            }
+        }
+    }
+    
+    return $vars
+}
+
+# 渲染文件内容（替换变量）
+function Render-FileContent {
+    param(
+        [string]$Content,
+        [hashtable]$Variables,
+        [hashtable]$Values
+    )
+    
+    $result = $Content
+    
+    # 1. 临时替换转义的占位符
+    $escapePlaceholder = "`0ESCAPED`0"
+    $escapedMatches = [regex]::Matches($result, '\\(\{\{[^}]*\}\})')
+    $escapedOriginals = @()
+    foreach ($match in $escapedMatches) {
+        $escapedOriginals += $match.Groups[1].Value
+    }
+    $result = [regex]::Replace($result, '\\(\{\{[^}]*\}\})', $escapePlaceholder)
+    
+    # 2. 替换已声明的变量
+    $result = [regex]::Replace($result, '\{\{([a-zA-Z_][a-zA-Z0-9_.]*)\}\}', {
+        param($match)
+        $varName = $match.Groups[1].Value
+        
+        # 只替换已声明的变量
+        if (-not $Variables.ContainsKey($varName)) {
+            return $match.Value
+        }
+        
+        # 优先使用传入的值
+        if ($Values.ContainsKey($varName)) {
+            return $Values[$varName]
+        }
+        
+        # 使用默认值
+        if ($Variables[$varName].ContainsKey("default")) {
+            return $Variables[$varName]["default"]
+        }
+        
+        return $match.Value
+    })
+    
+    # 3. 恢复转义的占位符
+    for ($i = 0; $i -lt $escapedOriginals.Count; $i++) {
+        $result = $result.Replace($escapePlaceholder, $escapedOriginals[$i], 1)
+    }
+    
+    # 4. 移除 front-matter 中的 variables 节
+    if ($result.StartsWith("---")) {
+        $endIndex = $result.IndexOf("`n---", 3)
+        if ($endIndex -gt 0) {
+            $fmContent = $result.Substring(0, $endIndex + 4)
+            $bodyContent = $result.Substring($endIndex + 4)
+            
+            # 移除 variables 节
+            $newFm = [regex]::Replace($fmContent, '(?ms)^variables:.*?(?=^[a-zA-Z]|\z)', '', [System.Text.RegularExpressions.RegexOptions]::Multiline)
+            $result = $newFm + $bodyContent
+        }
+    }
+    
+    return $result
+}
+
+# 处理模块文件的变量渲染
+function Process-ModulesWithVariables {
+    param(
+        [string[]]$ModulePaths,
+        [hashtable]$CliValues
+    )
+    
+    # 收集所有变量声明
+    $allVars = @{}
+    foreach ($path in $ModulePaths) {
+        $vars = Get-VariablesFromFile -FilePath $path
+        foreach ($key in $vars.Keys) {
+            if (-not $allVars.ContainsKey($key)) {
+                $allVars[$key] = $vars[$key]
+            }
+        }
+    }
+    
+    # 如果没有变量，直接返回原路径
+    if ($allVars.Count -eq 0) {
+        return $ModulePaths
+    }
+    
+    Write-Host "检测到变量: $($allVars.Keys -join ', ')" -ForegroundColor Cyan
+    
+    # 创建临时目录
+    $tempDir = Join-Path ([System.IO.Path]::GetTempPath()) "docgen_$(Get-Random)"
+    New-Item -ItemType Directory -Path $tempDir -Force | Out-Null
+    
+    # 渲染每个文件
+    $renderedPaths = @()
+    foreach ($path in $ModulePaths) {
+        $content = Get-Content $path -Raw -Encoding UTF8
+        $vars = Get-VariablesFromFile -FilePath $path
+        
+        if ($vars.Count -gt 0) {
+            $rendered = Render-FileContent -Content $content -Variables $vars -Values $CliValues
+            $tempPath = Join-Path $tempDir (Split-Path $path -Leaf)
+            $rendered | Out-File -FilePath $tempPath -Encoding UTF8 -NoNewline
+            $renderedPaths += $tempPath
+        } else {
+            $renderedPaths += $path
+        }
+    }
+    
+    return $renderedPaths
 }
 
 # ==========================================
@@ -399,7 +586,8 @@ function Invoke-Build {
         [string]$ClientConfig,
         [string]$DocType = "",
         [string]$CustomClientName = "",
-        [string]$OutputFormat = "word"
+        [string]$OutputFormat = "word",
+        [hashtable]$VariableValues = @{}
     )
     
     # 检查 Pandoc
@@ -553,6 +741,27 @@ function Invoke-Build {
         exit 1
     }
     
+    # 处理变量模板
+    $processedModules = $validModules
+    if ($VariableValues.Count -gt 0) {
+        Write-Host "处理变量模板..." -ForegroundColor Cyan
+        $processedModules = Process-ModulesWithVariables -ModulePaths $validModules -CliValues $VariableValues
+    } else {
+        # 检查是否有变量需要处理（即使没有传入值，也需要处理默认值）
+        $hasVariables = $false
+        foreach ($path in $validModules) {
+            $vars = Get-VariablesFromFile -FilePath $path
+            if ($vars.Count -gt 0) {
+                $hasVariables = $true
+                break
+            }
+        }
+        if ($hasVariables) {
+            Write-Host "处理变量模板..." -ForegroundColor Cyan
+            $processedModules = Process-ModulesWithVariables -ModulePaths $validModules -CliValues @{}
+        }
+    }
+    
     # 读取元数据（优先级：文档配置 > 客户 metadata.yaml > src/metadata.yaml）
     # 1. 基础元数据
     $title = Read-YamlValue -FilePath "$SrcDir\metadata.yaml" -Key "title"
@@ -616,7 +825,7 @@ function Invoke-Build {
     
     # 构建 Pandoc 参数
     $pandocCmdArgs = @()
-    $pandocCmdArgs += $validModules
+    $pandocCmdArgs += $processedModules
     
     if (Test-Path $clientMeta) {
         $pandocCmdArgs += $clientMeta
@@ -742,6 +951,9 @@ if ($InstallFonts) {
     exit 0 
 }
 
+# 解析变量参数
+$VariableValues = Parse-VariableArgs -VarArgs $Var
+
 # 构建所有文档
 if ($BuildAll) {
     $clientDir = Join-Path $ClientsDir $Client
@@ -754,9 +966,9 @@ if ($BuildAll) {
         $docName = $_.BaseName
         if ($docName -ne "metadata") {
             if ($docName -eq "config") {
-                Invoke-Build -ClientConfig $Client -DocType "" -CustomClientName $ClientName -OutputFormat $Format
+                Invoke-Build -ClientConfig $Client -DocType "" -CustomClientName $ClientName -OutputFormat $Format -VariableValues $VariableValues
             } else {
-                Invoke-Build -ClientConfig $Client -DocType $docName -CustomClientName $ClientName -OutputFormat $Format
+                Invoke-Build -ClientConfig $Client -DocType $docName -CustomClientName $ClientName -OutputFormat $Format -VariableValues $VariableValues
             }
             Write-Host ""
         }
@@ -765,7 +977,7 @@ if ($BuildAll) {
 }
 
 # 单个文档构建
-Invoke-Build -ClientConfig $Client -DocType $Doc -CustomClientName $ClientName -OutputFormat $Format
+Invoke-Build -ClientConfig $Client -DocType $Doc -CustomClientName $ClientName -OutputFormat $Format -VariableValues $VariableValues
 
 # 恢复原目录
 Pop-Location

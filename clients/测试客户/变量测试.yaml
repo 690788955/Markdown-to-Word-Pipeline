@@ -1,0 +1,32 @@
+# 变量测试 配置
+# 自定义生成
+
+client_name: 测试客户
+template: default.docx
+modules:
+    - src/13-变量模板示例.md
+pandoc_args:
+    - --toc
+    - --number-sections
+    - --standalone
+output_pattern: '{client}_变量测试_{date}.docx'
+pdf_options:
+    mainfont: Microsoft YaHei
+    monofont: Consolas
+    titlepage: true
+    titlepage-color: 2c3e50
+    titlepage-text-color: ffffff
+    titlepage-rule-color: 3498db
+    toc-own-page: true
+    colorlinks: true
+    linkcolor: 2980b9
+    urlcolor: 3498db
+    listings: true
+    listings-no-page-break: true
+variables:
+    contact_email: admin@example.com
+    deploy_date: "2026-01-08"
+    environment: 生产环境
+    project_name: 我的测试项目ABC
+    server_count: 3
+    version: v1.0.0

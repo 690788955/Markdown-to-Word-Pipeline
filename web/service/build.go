@@ -16,10 +16,11 @@ import (
 
 // BuildRequest 构建请求
 type BuildRequest struct {
-	ClientName   string `json:"clientName"`
-	DocumentType string `json:"documentType"` // 可选，空表示默认
-	CustomName   string `json:"customName"`   // 自定义客户名称（可选）
-	Format       string `json:"format"`       // 输出格式：word 或 pdf（默认: word）
+	ClientName   string                 `json:"clientName"`
+	DocumentType string                 `json:"documentType"`          // 可选，空表示默认
+	CustomName   string                 `json:"customName"`            // 自定义客户名称（可选）
+	Format       string                 `json:"format"`                // 输出格式：word 或 pdf（默认: word）
+	Variables    map[string]interface{} `json:"variables,omitempty"`   // 变量值（可选）
 }
 
 // BuildResult 构建结果
@@ -35,18 +36,21 @@ type BuildResult struct {
 type BuildService struct {
 	workDir       string
 	buildDir      string
+	srcDir        string        // 源文档目录
 	exeDir        string        // 可执行文件所在目录（用于查找 bin 脚本）
 	timeout       time.Duration
 	cleanupAge    time.Duration // 文件清理年龄
 	cleanupTicker *time.Ticker
-	pathFix       *PathFixService // 路径修复服务
+	pathFix       *PathFixService   // 路径修复服务
+	variableSvc   *VariableService  // 变量服务
 }
 
 // NewBuildService 创建构建服务实例
-func NewBuildService(workDir, buildDir string) *BuildService {
+func NewBuildService(workDir, buildDir, srcDir string) *BuildService {
 	log.Printf("[BuildService] 初始化构建服务")
 	log.Printf("[BuildService] 工作目录: %s", workDir)
 	log.Printf("[BuildService] 构建目录: %s", buildDir)
+	log.Printf("[BuildService] 源文档目录: %s", srcDir)
 	
 	// 获取可执行文件所在目录
 	exeDir := ""
@@ -56,12 +60,14 @@ func NewBuildService(workDir, buildDir string) *BuildService {
 	}
 	
 	svc := &BuildService{
-		workDir:    workDir,
-		buildDir:   buildDir,
-		exeDir:     exeDir,
-		timeout:    60 * time.Second,  // 默认 60 秒超时
-		cleanupAge: 24 * time.Hour,    // 默认 24 小时后清理
-		pathFix:    NewPathFixService(workDir), // 初始化路径修复服务
+		workDir:     workDir,
+		buildDir:    buildDir,
+		srcDir:      srcDir,
+		exeDir:      exeDir,
+		timeout:     60 * time.Second,  // 默认 60 秒超时
+		cleanupAge:  24 * time.Hour,    // 默认 24 小时后清理
+		pathFix:     NewPathFixService(workDir), // 初始化路径修复服务
+		variableSvc: NewVariableService(srcDir), // 初始化变量服务
 	}
 	
 	// 启动定期清理
@@ -133,6 +139,9 @@ func (s *BuildService) Build(req BuildRequest) (*BuildResult, error) {
 	log.Printf("[BuildService] 自定义名称: %s", req.CustomName)
 	log.Printf("[BuildService] 输出格式: %s", format)
 	log.Printf("[BuildService] 工作目录: %s", s.workDir)
+	if len(req.Variables) > 0 {
+		log.Printf("[BuildService] 变量数量: %d", len(req.Variables))
+	}
 	log.Printf("[BuildService] ==========================================")
 	
 	// 构建前自动修复路径问题
@@ -142,8 +151,28 @@ func (s *BuildService) Build(req BuildRequest) (*BuildResult, error) {
 		// 不中断构建流程，继续执行
 	}
 	
-	// 构建命令
-	args := s.buildCommandArgs(req.ClientName, req.DocumentType, req.CustomName, format)
+	// 如果有变量值，先进行变量替换
+	tempSrcDir := ""
+	workDir := s.workDir
+	if len(req.Variables) > 0 {
+		var err error
+		tempSrcDir, err = s.prepareVariableRenderedSrc(req.Variables)
+		if err != nil {
+			log.Printf("[BuildService] 警告: 变量替换失败: %v", err)
+			// 继续使用原始源文件
+		} else {
+			// 使用临时目录作为工作目录
+			workDir = filepath.Dir(tempSrcDir)
+			log.Printf("[BuildService] 使用变量替换后的临时目录: %s", workDir)
+			defer func() {
+				// 构建完成后清理临时目录
+				if tempSrcDir != "" {
+					os.RemoveAll(filepath.Dir(tempSrcDir))
+					log.Printf("[BuildService] 已清理临时目录")
+				}
+			}()
+		}
+	}
 	
 	// 创建带超时的上下文
 	ctx, cancel := context.WithTimeout(context.Background(), s.timeout)
@@ -165,8 +194,10 @@ func (s *BuildService) Build(req BuildRequest) (*BuildResult, error) {
 			}, nil
 		}
 		
+		// 如果使用临时目录，更新 WorkDir 参数
+		cmdArgs := s.buildCommandArgsWithWorkDir(req.ClientName, req.DocumentType, req.CustomName, format, workDir)
 		psArgs := []string{"-ExecutionPolicy", "Bypass", "-File", scriptPath}
-		psArgs = append(psArgs, args...)
+		psArgs = append(psArgs, cmdArgs...)
 		cmd = exec.CommandContext(ctx, "powershell", psArgs...)
 		log.Printf("[BuildService] 执行命令: powershell %s", strings.Join(psArgs, " "))
 	} else {
@@ -182,12 +213,14 @@ func (s *BuildService) Build(req BuildRequest) (*BuildResult, error) {
 			}, nil
 		}
 		
-		cmdArgs := append([]string{scriptPath}, args...)
+		// 如果使用临时目录，更新 workdir 参数
+		cmdArgs := s.buildCommandArgsWithWorkDir(req.ClientName, req.DocumentType, req.CustomName, format, workDir)
+		cmdArgs = append([]string{scriptPath}, cmdArgs...)
 		cmd = exec.CommandContext(ctx, "bash", cmdArgs...)
 		log.Printf("[BuildService] 执行命令: bash %s", strings.Join(cmdArgs, " "))
 	}
 
-	cmd.Dir = s.workDir
+	cmd.Dir = workDir  // 使用变量替换后的工作目录
 
 	// 捕获输出
 	output, err := cmd.CombinedOutput()
@@ -212,6 +245,16 @@ func (s *BuildService) Build(req BuildRequest) (*BuildResult, error) {
 			Error:   fmt.Sprintf("构建失败: %v\n工作目录: %s\n请检查脚本权限和依赖", err, s.workDir),
 			Output:  outputStr,
 		}, nil
+	}
+
+	// 如果使用了临时目录，需要将输出文件复制到原始 build 目录
+	if tempSrcDir != "" {
+		tempBuildDir := filepath.Join(workDir, "build")
+		log.Printf("[BuildService] 临时构建目录: %s", tempBuildDir)
+		log.Printf("[BuildService] 目标构建目录: %s", s.buildDir)
+		if err := s.copyBuildOutput(tempBuildDir, s.buildDir); err != nil {
+			log.Printf("[BuildService] 警告: 复制输出文件失败: %v", err)
+		}
 	}
 
 	// 从输出中解析生成的文件路径
@@ -595,4 +638,219 @@ func (s *BuildService) StreamBuild(req BuildRequest, outputChan chan<- string) (
 		FileName: fileName,
 		Output:   outputStr,
 	}, nil
+}
+
+// buildCommandArgsWithWorkDir 构建命令参数（指定工作目录）
+func (s *BuildService) buildCommandArgsWithWorkDir(clientName, docType, customName, format, workDir string) []string {
+	if runtime.GOOS == "windows" {
+		// PowerShell 参数格式
+		args := []string{"-Client", clientName, "-WorkDir", workDir}
+		if docType != "" && docType != "config" {
+			args = append(args, "-Doc", docType)
+		}
+		if customName != "" {
+			args = append(args, "-ClientName", customName)
+		}
+		if format == "pdf" {
+			args = append(args, "-Format", "pdf")
+		}
+		return args
+	}
+	
+	// Bash 脚本参数格式
+	args := []string{"-c", clientName, "-w", workDir}
+	if docType != "" && docType != "config" {
+		args = append(args, "-d", docType)
+	}
+	if customName != "" {
+		args = append(args, "-n", customName)
+	}
+	if format == "pdf" {
+		args = append(args, "-f", "pdf")
+	}
+	return args
+}
+
+// prepareVariableRenderedSrc 准备变量替换后的源文件目录
+// 返回临时 src 目录路径
+func (s *BuildService) prepareVariableRenderedSrc(variables map[string]interface{}) (string, error) {
+	log.Printf("[BuildService] 开始变量替换处理...")
+	
+	// 创建临时目录
+	tempDir, err := os.MkdirTemp("", "doc-build-*")
+	if err != nil {
+		return "", fmt.Errorf("创建临时目录失败: %w", err)
+	}
+	
+	tempSrcDir := filepath.Join(tempDir, "src")
+	if err := os.MkdirAll(tempSrcDir, 0755); err != nil {
+		os.RemoveAll(tempDir)
+		return "", fmt.Errorf("创建临时 src 目录失败: %w", err)
+	}
+	
+	// 复制整个工作目录结构（排除 build 目录）
+	err = s.copyWorkDir(s.workDir, tempDir)
+	if err != nil {
+		os.RemoveAll(tempDir)
+		return "", fmt.Errorf("复制工作目录失败: %w", err)
+	}
+	
+	// 遍历临时 src 目录中的所有 .md 文件，进行变量替换
+	err = filepath.Walk(tempSrcDir, func(path string, info os.FileInfo, err error) error {
+		if err != nil {
+			return err
+		}
+		if info.IsDir() {
+			return nil
+		}
+		if !strings.HasSuffix(info.Name(), ".md") {
+			return nil
+		}
+		
+		// 读取文件内容
+		content, err := os.ReadFile(path)
+		if err != nil {
+			log.Printf("[BuildService] 警告: 读取文件失败 %s: %v", path, err)
+			return nil // 继续处理其他文件
+		}
+		
+		// 提取变量声明
+		declarations, err := s.variableSvc.ExtractVariablesFromContent(string(content), path)
+		if err != nil {
+			log.Printf("[BuildService] 警告: 提取变量声明失败 %s: %v", path, err)
+			return nil
+		}
+		
+		// 如果文件没有变量声明，跳过
+		if len(declarations) == 0 {
+			return nil
+		}
+		
+		// 渲染内容
+		rendered, err := s.variableSvc.RenderContent(string(content), declarations, variables)
+		if err != nil {
+			log.Printf("[BuildService] 警告: 变量替换失败 %s: %v", path, err)
+			return nil
+		}
+		
+		// 写回文件
+		if err := os.WriteFile(path, []byte(rendered), info.Mode()); err != nil {
+			log.Printf("[BuildService] 警告: 写入文件失败 %s: %v", path, err)
+			return nil
+		}
+		
+		log.Printf("[BuildService] 已替换变量: %s", filepath.Base(path))
+		return nil
+	})
+	
+	if err != nil {
+		os.RemoveAll(tempDir)
+		return "", fmt.Errorf("变量替换处理失败: %w", err)
+	}
+	
+	log.Printf("[BuildService] 变量替换完成，临时目录: %s", tempDir)
+	return tempSrcDir, nil
+}
+
+// copyWorkDir 复制工作目录（排除 build 目录和 .git 目录）
+func (s *BuildService) copyWorkDir(src, dst string) error {
+	return filepath.Walk(src, func(path string, info os.FileInfo, err error) error {
+		if err != nil {
+			return err
+		}
+		
+		// 计算相对路径
+		relPath, err := filepath.Rel(src, path)
+		if err != nil {
+			return err
+		}
+		
+		// 跳过 build 目录和 .git 目录
+		if info.IsDir() {
+			if relPath == "build" || relPath == ".git" || strings.HasPrefix(relPath, "build"+string(filepath.Separator)) || strings.HasPrefix(relPath, ".git"+string(filepath.Separator)) {
+				return filepath.SkipDir
+			}
+		}
+		
+		// 目标路径
+		dstPath := filepath.Join(dst, relPath)
+		
+		if info.IsDir() {
+			return os.MkdirAll(dstPath, info.Mode())
+		}
+		
+		// 复制文件
+		return copyFile(path, dstPath)
+	})
+}
+
+// copyFile 复制单个文件
+func copyFile(src, dst string) error {
+	srcFile, err := os.Open(src)
+	if err != nil {
+		return err
+	}
+	defer srcFile.Close()
+	
+	// 确保目标目录存在
+	if err := os.MkdirAll(filepath.Dir(dst), 0755); err != nil {
+		return err
+	}
+	
+	dstFile, err := os.Create(dst)
+	if err != nil {
+		return err
+	}
+	defer dstFile.Close()
+	
+	_, err = dstFile.ReadFrom(srcFile)
+	if err != nil {
+		return err
+	}
+	
+	// 复制文件权限
+	srcInfo, err := os.Stat(src)
+	if err != nil {
+		return err
+	}
+	return os.Chmod(dst, srcInfo.Mode())
+}
+
+// copyBuildOutput 将临时目录中的构建输出复制到原始 build 目录
+func (s *BuildService) copyBuildOutput(tempBuildDir, targetBuildDir string) error {
+	// 确保目标目录存在
+	if err := os.MkdirAll(targetBuildDir, 0755); err != nil {
+		return fmt.Errorf("创建目标目录失败: %w", err)
+	}
+	
+	// 读取临时 build 目录
+	entries, err := os.ReadDir(tempBuildDir)
+	if err != nil {
+		if os.IsNotExist(err) {
+			return nil // 临时 build 目录不存在，可能构建失败
+		}
+		return fmt.Errorf("读取临时目录失败: %w", err)
+	}
+	
+	// 复制所有 .docx 和 .pdf 文件
+	for _, entry := range entries {
+		if entry.IsDir() {
+			continue
+		}
+		name := entry.Name()
+		if !strings.HasSuffix(name, ".docx") && !strings.HasSuffix(name, ".pdf") {
+			continue
+		}
+		
+		srcPath := filepath.Join(tempBuildDir, name)
+		dstPath := filepath.Join(targetBuildDir, name)
+		
+		if err := copyFile(srcPath, dstPath); err != nil {
+			log.Printf("[BuildService] 警告: 复制文件失败 %s: %v", name, err)
+			continue
+		}
+		log.Printf("[BuildService] 已复制输出文件: %s", name)
+	}
+	
+	return nil
 }

@@ -37,24 +37,26 @@ type PdfOptions struct {
 
 // CustomConfig 自定义配置
 type CustomConfig struct {
-	ClientName    string      `json:"clientName"`              // 客户名称（目录名）
-	DocTypeName   string      `json:"docTypeName"`             // 文档类型名称（配置文件名）
-	DisplayName   string      `json:"displayName"`             // 显示名称
-	Template      string      `json:"template"`                // 模板文件名
-	Modules       []string    `json:"modules"`                 // 模块列表（有序）
-	PandocArgs    []string    `json:"pandocArgs"`              // Pandoc 参数
-	OutputPattern string      `json:"outputPattern"`           // 输出文件名模式
-	PdfOptions    *PdfOptions `json:"pdfOptions,omitempty"`    // PDF 输出选项
+	ClientName    string                 `json:"clientName"`              // 客户名称（目录名）
+	DocTypeName   string                 `json:"docTypeName"`             // 文档类型名称（配置文件名）
+	DisplayName   string                 `json:"displayName"`             // 显示名称
+	Template      string                 `json:"template"`                // 模板文件名
+	Modules       []string               `json:"modules"`                 // 模块列表（有序）
+	PandocArgs    []string               `json:"pandocArgs"`              // Pandoc 参数
+	OutputPattern string                 `json:"outputPattern"`           // 输出文件名模式
+	PdfOptions    *PdfOptions            `json:"pdfOptions,omitempty"`    // PDF 输出选项
+	Variables     map[string]interface{} `json:"variables,omitempty"`     // 变量值
 }
 
 // ConfigYAML 配置文件的 YAML 结构
 type ConfigYAML struct {
-	ClientName    string      `yaml:"client_name"`
-	Template      string      `yaml:"template"`
-	Modules       []string    `yaml:"modules"`
-	PandocArgs    []string    `yaml:"pandoc_args"`
-	OutputPattern string      `yaml:"output_pattern"`
-	PdfOptions    *PdfOptions `yaml:"pdf_options,omitempty"`
+	ClientName    string                 `yaml:"client_name"`
+	Template      string                 `yaml:"template"`
+	Modules       []string               `yaml:"modules"`
+	PandocArgs    []string               `yaml:"pandoc_args"`
+	OutputPattern string                 `yaml:"output_pattern"`
+	PdfOptions    *PdfOptions            `yaml:"pdf_options,omitempty"`
+	Variables     map[string]interface{} `yaml:"variables,omitempty"`
 }
 
 // ConfigManager 配置管理器
@@ -212,6 +214,7 @@ func (m *ConfigManager) writeConfigFile(path string, config CustomConfig) error 
 		PandocArgs:    config.PandocArgs,
 		OutputPattern: config.OutputPattern,
 		PdfOptions:    config.PdfOptions,
+		Variables:     config.Variables,
 	}
 
 	// 如果 PandocArgs 为空，设置默认值
@@ -261,6 +264,7 @@ func (m *ConfigManager) GetConfig(clientName, docTypeName string) (*CustomConfig
 		PandocArgs:    yamlConfig.PandocArgs,
 		OutputPattern: yamlConfig.OutputPattern,
 		PdfOptions:    yamlConfig.PdfOptions,
+		Variables:     yamlConfig.Variables,
 	}, nil
 }
 

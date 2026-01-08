@@ -1,0 +1,24 @@
+# 变量模板示例配置
+# 演示变量模板功能的使用
+
+client_name: 标准文档
+title: 变量模板功能示例
+version: v1.0
+
+# 文档模块
+modules:
+  - src/13-变量模板示例.md
+
+# 输出文件名模式
+output_pattern: "{client}_{title}_{date}.docx"
+
+# Pandoc 参数
+pandoc_args:
+  - --toc
+  - --number-sections
+  - --standalone
+
+# 变量默认值（可在此覆盖模块中的默认值）
+variables:
+  project_name: 示例项目
+  environment: 测试环境

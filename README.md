@@ -582,6 +582,118 @@ pdf_options:
   urlcolor: "3498DB"
 ```
 
+## 变量模板功能
+
+支持在 Markdown 文档中使用变量占位符，在构建时替换为实际值。
+
+### 变量声明
+
+在文档的 YAML front-matter 中声明变量：
+
+```yaml
+---
+title: 运维手册
+variables:
+  project_name:
+    description: 项目名称
+    type: text
+    default: XX系统
+  
+  server_count:
+    description: 服务器数量
+    type: number
+    min: 1
+    max: 100
+    default: 3
+  
+  deploy_date:
+    description: 部署日期
+    type: date
+    default: "2026-01-08"
+  
+  environment:
+    description: 部署环境
+    type: select
+    options:
+      - 开发环境
+      - 测试环境
+      - 生产环境
+    default: 生产环境
+---
+```
+
+### 变量类型
+
+| 类型 | 说明 | 验证选项 |
+|------|------|----------|
+| `text` | 文本类型 | `pattern` (正则表达式) |
+| `number` | 数字类型 | `min`, `max` (范围) |
+| `date` | 日期类型 | 格式: YYYY-MM-DD |
+| `select` | 选择类型 | `options` (选项列表) |
+
+### 使用变量
+
+在文档内容中使用双大括号引用变量：
+
+```markdown
+## 项目信息
+
+- **项目名称**: {{project_name}}
+- **服务器数量**: {{server_count}} 台
+- **部署日期**: {{deploy_date}}
+- **部署环境**: {{environment}}
+```
+
+### 转义语法
+
+如需显示字面的双大括号，使用反斜杠转义：
+
+```markdown
+输入: \{{不替换}}
+输出: {{不替换}}
+```
+
+### 命令行传递变量
+
+**Windows (PowerShell):**
+```powershell
+.\build.ps1 -Client 标准文档 -Doc 变量示例 -Var "project_name=我的项目" -Var "version=v2.0"
+```
+
+**Linux/macOS (Bash):**
+```bash
+./bin/build.sh -c 标准文档 -d 变量示例 -V "project_name=我的项目" -V "version=v2.0"
+```
+
+### 配置文件中设置变量
+
+在客户配置文件中预设变量值：
+
+```yaml
+# clients/某客户/运维手册.yaml
+client_name: 某客户
+modules:
+  - src/01-概述.md
+  - src/02-系统架构.md
+
+# 变量默认值（覆盖模块中的默认值）
+variables:
+  project_name: 某客户系统
+  environment: 生产环境
+```
+
+### 变量优先级
+
+1. 命令行参数 (`-Var` / `-V`) - 最高优先级
+2. 配置文件中的 `variables` 节
+3. 模块 front-matter 中的 `default` 值
+
+### Web 界面使用
+
+1. 选择包含变量的文档模块
+2. 在"变量设置"区域填写变量值
+3. 点击"生成"按钮
+
 ## 许可证
 
 MIT License

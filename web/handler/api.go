@@ -38,10 +38,11 @@ type Response struct {
 
 // GenerateRequest 生成请求（支持多选）
 type GenerateRequest struct {
-	ClientConfig  string   `json:"clientConfig"`  // 客户配置目录名
-	DocumentTypes []string `json:"documentTypes"` // 文档类型列表
-	ClientName    string   `json:"clientName"`    // 自定义客户名称（可选）
-	Format        string   `json:"format"`        // 输出格式：word 或 pdf（默认: word）
+	ClientConfig  string                 `json:"clientConfig"`  // 客户配置目录名
+	DocumentTypes []string               `json:"documentTypes"` // 文档类型列表
+	ClientName    string                 `json:"clientName"`    // 自定义客户名称（可选）
+	Format        string                 `json:"format"`        // 输出格式：word 或 pdf（默认: word）
+	Variables     map[string]interface{} `json:"variables"`     // 变量值（可选）
 }
 
 // GeneratedFile 生成的文件信息
@@ -58,10 +59,14 @@ type APIHandler struct {
 	moduleSvc   *service.ModuleService
 	templateSvc *service.TemplateService
 	configMgr   *service.ConfigManager
+	variableSvc *service.VariableService
 }
 
 // NewAPIHandler 创建 API 处理器实例
 func NewAPIHandler(clientSvc *service.ClientService, docSvc *service.DocumentService, buildSvc *service.BuildService, moduleSvc *service.ModuleService, templateSvc *service.TemplateService, configMgr *service.ConfigManager) *APIHandler {
+	// 创建变量服务（使用 moduleSvc 的 srcDir）
+	variableSvc := service.NewVariableService("")
+	
 	return &APIHandler{
 		clientSvc:   clientSvc,
 		docSvc:      docSvc,
@@ -69,6 +74,7 @@ func NewAPIHandler(clientSvc *service.ClientService, docSvc *service.DocumentSer
 		moduleSvc:   moduleSvc,
 		templateSvc: templateSvc,
 		configMgr:   configMgr,
+		variableSvc: variableSvc,
 	}
 }
 
@@ -84,6 +90,8 @@ func (h *APIHandler) RegisterRoutes(mux *http.ServeMux) {
 	mux.HandleFunc("/api/templates", h.handleTemplates)
 	mux.HandleFunc("/api/configs", h.handleConfigs)
 	mux.HandleFunc("/api/configs/", h.handleConfigDetail)
+	// 新增：变量模板相关路由
+	mux.HandleFunc("/api/variables", h.handleVariables)
 }
 
 // handleClients 处理客户列表请求
@@ -193,11 +201,21 @@ func (h *APIHandler) handleGenerate(w http.ResponseWriter, r *http.Request) {
 		go func(dt string) {
 			defer wg.Done()
 
+			// 获取变量值：优先使用请求中的变量，否则从配置中读取
+			variables := req.Variables
+			if len(variables) == 0 {
+				// 尝试从配置中读取变量
+				if cfg, err := h.configMgr.GetConfig(req.ClientConfig, dt); err == nil && cfg != nil {
+					variables = cfg.Variables
+				}
+			}
+
 			buildReq := service.BuildRequest{
 				ClientName:   req.ClientConfig,
 				DocumentType: dt,
 				CustomName:   req.ClientName,
 				Format:       format,
+				Variables:    variables,
 			}
 
 			result, err := h.buildSvc.Build(buildReq)
@@ -373,13 +391,15 @@ func (h *APIHandler) handleDownloadZip(w http.ResponseWriter, r *http.Request) {
 
 // CreateConfigRequest 创建配置请求
 type CreateConfigRequest struct {
-	ClientName    string   `json:"clientName"`
-	DocTypeName   string   `json:"docTypeName"`
-	DisplayName   string   `json:"displayName"`
-	Template      string   `json:"template"`
-	Modules       []string `json:"modules"`
-	PandocArgs    []string `json:"pandocArgs"`
-	OutputPattern string   `json:"outputPattern"`
+	ClientName    string                 `json:"clientName"`
+	DocTypeName   string                 `json:"docTypeName"`
+	DisplayName   string                 `json:"displayName"`
+	Template      string                 `json:"template"`
+	Modules       []string               `json:"modules"`
+	PandocArgs    []string               `json:"pandocArgs"`
+	OutputPattern string                 `json:"outputPattern"`
+	PdfOptions    *service.PdfOptions    `json:"pdfOptions,omitempty"`
+	Variables     map[string]interface{} `json:"variables,omitempty"`
 }
 
 // handleModules 处理模块列表请求
@@ -444,6 +464,8 @@ func (h *APIHandler) handleConfigs(w http.ResponseWriter, r *http.Request) {
 		Modules:       req.Modules,
 		PandocArgs:    req.PandocArgs,
 		OutputPattern: req.OutputPattern,
+		PdfOptions:    req.PdfOptions,
+		Variables:     req.Variables,
 	}
 
 	if config.DisplayName == "" {
@@ -541,6 +563,8 @@ func (h *APIHandler) updateConfig(w http.ResponseWriter, r *http.Request, client
 		Modules:       req.Modules,
 		PandocArgs:    req.PandocArgs,
 		OutputPattern: req.OutputPattern,
+		PdfOptions:    req.PdfOptions,
+		Variables:     req.Variables,
 	}
 
 	if err := h.configMgr.UpdateConfig(clientName, docTypeName, config); err != nil {
@@ -579,4 +603,57 @@ func (h *APIHandler) deleteConfig(w http.ResponseWriter, clientName, docTypeName
 	h.successResponse(w, map[string]interface{}{
 		"message": "配置删除成功",
 	})
+}
+
+
+// VariablesRequest 变量提取请求
+type VariablesRequest struct {
+	Modules []string `json:"modules"`
+}
+
+// handleVariables 处理变量提取请求
+func (h *APIHandler) handleVariables(w http.ResponseWriter, r *http.Request) {
+	if r.Method == http.MethodGet {
+		// GET 请求：从 query 参数获取模块列表
+		modulesParam := r.URL.Query().Get("modules")
+		if modulesParam == "" {
+			h.errorResponse(w, http.StatusBadRequest, "modules 参数不能为空", ErrInvalidInput)
+			return
+		}
+		modules := strings.Split(modulesParam, ",")
+		h.extractVariables(w, modules)
+		return
+	}
+
+	if r.Method == http.MethodPost {
+		// POST 请求：从 body 获取模块列表
+		var req VariablesRequest
+		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+			h.errorResponse(w, http.StatusBadRequest, "无效的请求格式", ErrInvalidInput)
+			return
+		}
+		if len(req.Modules) == 0 {
+			h.errorResponse(w, http.StatusBadRequest, "modules 不能为空", ErrInvalidInput)
+			return
+		}
+		h.extractVariables(w, req.Modules)
+		return
+	}
+
+	h.methodNotAllowed(w)
+}
+
+// extractVariables 提取变量声明
+func (h *APIHandler) extractVariables(w http.ResponseWriter, modules []string) {
+	variables, errors := h.variableSvc.ExtractVariables(modules)
+
+	response := service.VariablesResponse{
+		Variables: variables,
+	}
+
+	if len(errors) > 0 {
+		response.Errors = errors
+	}
+
+	h.successResponse(w, response)
 }
