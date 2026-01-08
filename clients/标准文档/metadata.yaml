@@ -23,7 +23,7 @@ pdf_options:
   # macOS 推荐: PingFang SC, Hiragino Sans GB, Menlo
   mainfont: "Noto Sans CJK SC"
   CJKmainfont: "Noto Sans CJK SC"
-  monofont: "Consolas"  # Windows 系统自带等宽字体
+  monofont: "DejaVu Sans Mono"  # Linux 通用等宽字体
   
   # 封面设置
   titlepage: true

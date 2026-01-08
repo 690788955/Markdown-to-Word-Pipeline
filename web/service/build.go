@@ -39,6 +39,7 @@ type BuildService struct {
 	timeout       time.Duration
 	cleanupAge    time.Duration // 文件清理年龄
 	cleanupTicker *time.Ticker
+	pathFix       *PathFixService // 路径修复服务
 }
 
 // NewBuildService 创建构建服务实例
@@ -60,6 +61,7 @@ func NewBuildService(workDir, buildDir string) *BuildService {
 		exeDir:     exeDir,
 		timeout:    60 * time.Second,  // 默认 60 秒超时
 		cleanupAge: 24 * time.Hour,    // 默认 24 小时后清理
+		pathFix:    NewPathFixService(workDir), // 初始化路径修复服务
 	}
 	
 	// 启动定期清理
@@ -132,6 +134,13 @@ func (s *BuildService) Build(req BuildRequest) (*BuildResult, error) {
 	log.Printf("[BuildService] 输出格式: %s", format)
 	log.Printf("[BuildService] 工作目录: %s", s.workDir)
 	log.Printf("[BuildService] ==========================================")
+	
+	// 构建前自动修复路径问题
+	log.Printf("[BuildService] 检查并修复 Markdown 文件路径...")
+	if err := s.pathFix.ScanAndFixPaths(); err != nil {
+		log.Printf("[BuildService] 警告: 路径修复失败: %v", err)
+		// 不中断构建流程，继续执行
+	}
 	
 	// 构建命令
 	args := s.buildCommandArgs(req.ClientName, req.DocumentType, req.CustomName, format)

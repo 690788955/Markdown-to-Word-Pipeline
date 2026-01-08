@@ -8,6 +8,7 @@
 #   SRC_DIR=/path/to/src          # 源文档目录 (默认: ${DOCS_DIR}/src 或 ./src)
 #   CLIENTS_DIR=/path/to/clients  # 客户配置目录 (默认: ${DOCS_DIR}/clients 或 ./clients)
 #   TEMPLATES_DIR=/path/to/templates # 模板目录 (默认: ${DOCS_DIR}/templates 或 ./templates)
+#   FONTS_DIR=/path/to/fonts      # 字体目录 (默认: ${DOCS_DIR}/fonts 或 ./fonts)
 #   OUTPUT_DIR=/path/to/build     # 输出目录 (默认: ./build)
 #   IMAGE=your-registry/doc-generator:v1.0  # 自定义镜像 (默认: doc-generator:latest)
 #
@@ -55,6 +56,10 @@ services:
       - type: bind
         source: ${TEMPLATES_DIR:-${DOCS_DIR:-.}/templates}
         target: /app/templates
+      # 自定义字体目录 - 支持 FONTS_DIR 或 DOCS_DIR/fonts，默认 ./fonts
+      - type: bind
+        source: ${FONTS_DIR:-${DOCS_DIR:-.}/fonts}
+        target: /app/fonts
       # 输出目录 - 支持 OUTPUT_DIR，默认 ./build
       - type: bind
         source: ${OUTPUT_DIR:-./build}

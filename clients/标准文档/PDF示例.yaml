@@ -15,14 +15,14 @@ output_pattern: "{client}_{title}_{version}_{date}.docx"
 
 # PDF 输出选项
 # 字体设置（根据系统安装的字体选择）
-# Windows 推荐: Microsoft YaHei, SimSun, SimHei
-# Linux 推荐: Noto Sans CJK SC, WenQuanYi Micro Hei
-# macOS 推荐: PingFang SC, Hiragino Sans GB
+# Windows 推荐: Microsoft YaHei, SimSun, SimHei, Consolas (等宽)
+# Linux 推荐: Noto Sans CJK SC, WenQuanYi Micro Hei, DejaVu Sans Mono (等宽)
+# macOS 推荐: PingFang SC, Hiragino Sans GB, Menlo (等宽)
 pdf_options:
   # 字体
   mainfont: "Noto Sans CJK SC"
   sansfont: "Noto Sans CJK SC"
-  monofont: "Liberation Mono"
+  monofont: "DejaVu Sans Mono"  # Linux 通用等宽字体
   CJKmainfont: "Noto Sans CJK SC"
   
   # 封面

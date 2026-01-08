@@ -49,6 +49,7 @@ RUN apk add --no-cache \
     texmf-dist-latexextra \
     texmf-dist-fontsextra \
     font-noto-cjk \
+    ttf-dejavu \
     fontconfig
 
 # 安装 Eisvogel 模板（PDF 生成必需）
@@ -67,6 +68,10 @@ WORKDIR /app
 # 从构建阶段复制可执行文件
 COPY --from=builder /build/doc-generator-web /app/
 
+# 复制启动脚本
+COPY web/entrypoint.sh /app/
+RUN chmod +x /app/entrypoint.sh
+
 # 复制静态资源（Web 界面）
 COPY web/static/ /app/static/
 
@@ -76,9 +81,14 @@ COPY bin/ /app/bin/
 COPY src/ /app/src/
 COPY templates/ /app/templates/
 COPY clients/ /app/clients/
+COPY fonts/ /app/fonts/
 
 # 创建 build 目录（用于输出，建议挂载）
 RUN mkdir -p /app/build
+
+# 创建字体目录并设置为系统字体路径
+RUN mkdir -p /usr/share/fonts/custom && \
+    ln -sf /app/fonts /usr/share/fonts/custom/project-fonts
 
 # 设置脚本执行权限并验证
 RUN chmod +x /app/bin/*.sh 2>/dev/null || true && \
@@ -93,6 +103,7 @@ ENV WORK_DIR=/app
 # /app/src       - 文档源文件 (*.md)
 # /app/clients   - 客户配置目录
 # /app/templates - Word 模板
+# /app/fonts     - 自定义字体文件 (*.ttf, *.otf)
 # /app/build     - 输出目录
 
 # 暴露端口
@@ -105,8 +116,8 @@ FROM base AS production
 HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
     CMD wget -q --spider http://localhost:8080/ || exit 1
 
-# 启动应用
-CMD ["/app/doc-generator-web"]
+# 启动应用（使用 entrypoint 脚本）
+ENTRYPOINT ["/app/entrypoint.sh"]
 
 # 阶段4: 开发环境镜像（带热重载支持）
 FROM base AS development
@@ -118,5 +129,5 @@ RUN apk add --no-cache git
 HEALTHCHECK --interval=60s --timeout=5s --start-period=10s --retries=3 \
     CMD wget -q --spider http://localhost:8080/ || exit 1
 
-# 启动应用（开发模式）
-CMD ["/app/doc-generator-web"]
+# 启动应用（使用 entrypoint 脚本）
+ENTRYPOINT ["/app/entrypoint.sh"]
