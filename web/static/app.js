@@ -467,12 +467,17 @@ async function loadModules() {
 
 // 渲染穿梭框 UI
 function renderTransferUI() {
+    console.log('[模块] renderTransferUI 被调用');
     renderAvailableModules();
     renderSelectedModules();
     updateSelectedCount();
     // 模块变化时加载变量
+    console.log('[模块] 检查 onModulesChanged 函数:', typeof onModulesChanged);
     if (typeof onModulesChanged === 'function') {
+        console.log('[模块] 调用 onModulesChanged');
         onModulesChanged();
+    } else {
+        console.warn('[模块] onModulesChanged 函数不存在!');
     }
 }
 
@@ -1298,13 +1303,18 @@ let variableValues = {}; // 用户填写的变量值
 
 // 加载变量声明
 async function loadVariables(modules) {
+    console.log('[变量] loadVariables 被调用, 模块数量:', modules ? modules.length : 0);
+    console.log('[变量] 模块列表:', modules);
+    
     if (!modules || modules.length === 0) {
+        console.log('[变量] 没有模块，清空变量');
         currentVariables = [];
         renderVariableForm();
         return;
     }
     
     try {
+        console.log('[变量] 请求 /api/variables ...');
         const response = await fetch('/api/variables', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
@@ -1312,18 +1322,22 @@ async function loadVariables(modules) {
         });
         
         const data = await response.json();
+        console.log('[变量] API 响应:', data);
+        
         if (!data.success) throw new Error(data.error);
         
         currentVariables = data.data.variables || [];
+        console.log('[变量] 解析到变量数量:', currentVariables.length);
+        console.log('[变量] 变量列表:', currentVariables.map(v => v.name));
         
         // 显示冲突错误
         if (data.data.errors && data.data.errors.length > 0) {
-            console.warn('变量冲突:', data.data.errors);
+            console.warn('[变量] 变量冲突:', data.data.errors);
         }
         
         renderVariableForm();
     } catch (e) {
-        console.error('加载变量失败:', e);
+        console.error('[变量] 加载变量失败:', e);
         currentVariables = [];
         renderVariableForm();
     }
@@ -1331,15 +1345,22 @@ async function loadVariables(modules) {
 
 // 渲染变量表单
 function renderVariableForm() {
+    console.log('[变量] renderVariableForm 被调用, 变量数量:', currentVariables.length);
+    
     const container = document.getElementById('variableForm');
-    if (!container) return;
+    if (!container) {
+        console.error('[变量] 找不到 variableForm 容器!');
+        return;
+    }
     
     if (currentVariables.length === 0) {
+        console.log('[变量] 没有变量，隐藏表单');
         container.innerHTML = '<div class="list-empty">所选模块没有定义变量</div>';
         container.style.display = 'none';
         return;
     }
     
+    console.log('[变量] 显示变量设置表单');
     container.style.display = 'block';
     container.innerHTML = '';
     
@@ -1583,6 +1604,7 @@ function clearVariableValues() {
 
 // 监听模块选择变化，自动加载变量
 function onModulesChanged() {
+    console.log('[变量] onModulesChanged 被调用, selectedModules:', selectedModules);
     loadVariables(selectedModules);
 }
 

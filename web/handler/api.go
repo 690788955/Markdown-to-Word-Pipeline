@@ -5,6 +5,7 @@ import (
 	"archive/zip"
 	"encoding/json"
 	"io"
+	"log"
 	"net/http"
 	"net/url"
 	"os"
@@ -613,9 +614,12 @@ type VariablesRequest struct {
 
 // handleVariables 处理变量提取请求
 func (h *APIHandler) handleVariables(w http.ResponseWriter, r *http.Request) {
+	log.Printf("[API] handleVariables 被调用, 方法: %s", r.Method)
+	
 	if r.Method == http.MethodGet {
 		// GET 请求：从 query 参数获取模块列表
 		modulesParam := r.URL.Query().Get("modules")
+		log.Printf("[API] GET 请求, modules 参数: %s", modulesParam)
 		if modulesParam == "" {
 			h.errorResponse(w, http.StatusBadRequest, "modules 参数不能为空", ErrInvalidInput)
 			return
@@ -629,9 +633,11 @@ func (h *APIHandler) handleVariables(w http.ResponseWriter, r *http.Request) {
 		// POST 请求：从 body 获取模块列表
 		var req VariablesRequest
 		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+			log.Printf("[API] POST 请求解析失败: %v", err)
 			h.errorResponse(w, http.StatusBadRequest, "无效的请求格式", ErrInvalidInput)
 			return
 		}
+		log.Printf("[API] POST 请求, 模块数量: %d, 模块列表: %v", len(req.Modules), req.Modules)
 		if len(req.Modules) == 0 {
 			h.errorResponse(w, http.StatusBadRequest, "modules 不能为空", ErrInvalidInput)
 			return
@@ -645,7 +651,15 @@ func (h *APIHandler) handleVariables(w http.ResponseWriter, r *http.Request) {
 
 // extractVariables 提取变量声明
 func (h *APIHandler) extractVariables(w http.ResponseWriter, modules []string) {
+	log.Printf("[API] extractVariables 被调用, 模块: %v", modules)
 	variables, errors := h.variableSvc.ExtractVariables(modules)
+	log.Printf("[API] 提取到变量数量: %d, 错误数量: %d", len(variables), len(errors))
+	
+	if len(variables) > 0 {
+		for _, v := range variables {
+			log.Printf("[API]   变量: %s (类型: %s, 来源: %s)", v.Name, v.Type, v.SourceFile)
+		}
+	}
 
 	response := service.VariablesResponse{
 		Variables: variables,
