@@ -290,6 +290,11 @@ async function onClientChange() {
     // 更新锁定按钮状态
     updateLockButton();
     
+    // 清除预览缓存
+    if (typeof clearPreviewCache === 'function') {
+        clearPreviewCache();
+    }
+    
     if (generateAllBtn) generateAllBtn.disabled = true;
     hideResult();
     
@@ -301,7 +306,8 @@ async function onClientChange() {
     if (docList) docList.innerHTML = '<div class="list-empty">加载中...</div>';
     
     try {
-        const url = '/api/clients/' + encodeURIComponent(client) + '/docs';
+        // 加载带预览数据的文档类型列表
+        const url = '/api/clients/' + encodeURIComponent(client) + '/docs?preview=true';
         const response = await fetch(url);
         const data = await response.json();
         
@@ -454,6 +460,11 @@ function renderDocList() {
         item.appendChild(name);
         item.appendChild(actions);
         docList.appendChild(item);
+        
+        // 添加悬停预览支持
+        if (currentClient && typeof setupDocItemHover === 'function') {
+            setupDocItemHover(item, currentClient.name, doc.name);
+        }
     });
 }
 
@@ -1933,3 +1944,278 @@ window.onModulesChanged = onModulesChanged;
 
 // ==================== 客户元数据管理功能 ====================
 
+
+// ==================== 文档悬停预览功能 ====================
+
+// 预览配置
+const PREVIEW_CONFIG = {
+    showDelay: 300,      // 显示延迟 (ms)
+    hideDelay: 150,      // 隐藏延迟 (ms)
+    maxWidth: 320,       // 最大宽度 (px)
+    offset: 10,          // 与触发元素的偏移 (px)
+    maxModules: 5        // 显示的最大模块数
+};
+
+// 预览数据缓存
+const previewCache = new Map(); // key: clientName, value: Map<docType, preview>
+
+// 预览状态
+let previewState = {
+    visible: false,
+    showTimer: null,
+    hideTimer: null,
+    currentDocType: null,
+    tooltipElement: null
+};
+
+// 渲染预览内容 HTML
+function renderPreviewContent(preview) {
+    if (!preview) {
+        return '<div class="preview-empty">暂无预览信息</div>';
+    }
+
+    let html = '<div class="preview-content">';
+    
+    // 标题
+    html += '<div class="preview-title">' + escapeHtml(preview.title || '未命名文档') + '</div>';
+    
+    // 元数据行
+    const metaItems = [];
+    if (preview.author) metaItems.push('作者: ' + escapeHtml(preview.author));
+    if (preview.version) metaItems.push('版本: ' + escapeHtml(preview.version));
+    if (preview.date) metaItems.push('日期: ' + escapeHtml(preview.date));
+    
+    if (metaItems.length > 0) {
+        html += '<div class="preview-meta">' + metaItems.join(' · ') + '</div>';
+    }
+    
+    // 模块信息
+    html += '<div class="preview-modules">';
+    html += '<div class="preview-modules-header">📄 包含 ' + preview.moduleCount + ' 个模块</div>';
+    
+    if (preview.modules && preview.modules.length > 0) {
+        html += '<ul class="preview-modules-list">';
+        preview.modules.forEach(function(mod) {
+            html += '<li>' + escapeHtml(mod) + '</li>';
+        });
+        html += '</ul>';
+        
+        if (preview.hasMore) {
+            const remaining = preview.moduleCount - preview.modules.length;
+            html += '<div class="preview-modules-more">...还有 ' + remaining + ' 个模块</div>';
+        }
+    }
+    html += '</div>';
+    
+    // 模板信息
+    if (preview.template) {
+        html += '<div class="preview-template">模板: ' + escapeHtml(preview.template) + '</div>';
+    }
+    
+    html += '</div>';
+    return html;
+}
+
+// HTML 转义
+function escapeHtml(text) {
+    if (!text) return '';
+    const div = document.createElement('div');
+    div.textContent = text;
+    return div.innerHTML;
+}
+
+// 计算 Tooltip 位置
+function calculateTooltipPosition(triggerElement, tooltipElement) {
+    const triggerRect = triggerElement.getBoundingClientRect();
+    const tooltipRect = tooltipElement.getBoundingClientRect();
+    const viewportWidth = window.innerWidth;
+    const viewportHeight = window.innerHeight;
+    const offset = PREVIEW_CONFIG.offset;
+    
+    let left, top;
+    
+    // 优先显示在右侧
+    left = triggerRect.right + offset;
+    top = triggerRect.top;
+    
+    // 如果右侧空间不足，显示在左侧
+    if (left + tooltipRect.width > viewportWidth - offset) {
+        left = triggerRect.left - tooltipRect.width - offset;
+    }
+    
+    // 如果左侧也不够，显示在下方
+    if (left < offset) {
+        left = triggerRect.left;
+        top = triggerRect.bottom + offset;
+    }
+    
+    // 确保不超出底部
+    if (top + tooltipRect.height > viewportHeight - offset) {
+        top = viewportHeight - tooltipRect.height - offset;
+    }
+    
+    // 确保不超出顶部
+    if (top < offset) {
+        top = offset;
+    }
+    
+    return { left: left, top: top };
+}
+
+// 获取或创建 Tooltip 元素
+function getOrCreateTooltip() {
+    let tooltip = document.getElementById('previewTooltip');
+    if (!tooltip) {
+        tooltip = document.createElement('div');
+        tooltip.id = 'previewTooltip';
+        tooltip.className = 'preview-tooltip';
+        tooltip.setAttribute('role', 'tooltip');
+        tooltip.setAttribute('aria-hidden', 'true');
+        document.body.appendChild(tooltip);
+        
+        // 鼠标进入 tooltip 时取消隐藏
+        tooltip.addEventListener('mouseenter', function() {
+            clearTimeout(previewState.hideTimer);
+        });
+        
+        // 鼠标离开 tooltip 时隐藏
+        tooltip.addEventListener('mouseleave', function() {
+            hidePreviewTooltip();
+        });
+    }
+    return tooltip;
+}
+
+// 显示预览 Tooltip
+function showPreviewTooltip(triggerElement, preview) {
+    const tooltip = getOrCreateTooltip();
+    
+    // 渲染内容
+    tooltip.innerHTML = renderPreviewContent(preview);
+    
+    // 先显示以获取尺寸
+    tooltip.style.visibility = 'hidden';
+    tooltip.style.display = 'block';
+    tooltip.classList.add('visible');
+    
+    // 计算位置
+    const position = calculateTooltipPosition(triggerElement, tooltip);
+    tooltip.style.left = position.left + 'px';
+    tooltip.style.top = position.top + 'px';
+    
+    // 显示
+    tooltip.style.visibility = 'visible';
+    tooltip.setAttribute('aria-hidden', 'false');
+    
+    previewState.visible = true;
+    previewState.tooltipElement = tooltip;
+}
+
+// 隐藏预览 Tooltip
+function hidePreviewTooltip() {
+    const tooltip = previewState.tooltipElement || document.getElementById('previewTooltip');
+    if (tooltip) {
+        tooltip.classList.remove('visible');
+        tooltip.setAttribute('aria-hidden', 'true');
+        setTimeout(function() {
+            if (!tooltip.classList.contains('visible')) {
+                tooltip.style.display = 'none';
+            }
+        }, 150);
+    }
+    
+    previewState.visible = false;
+    previewState.currentDocType = null;
+}
+
+// 获取预览数据（带缓存）
+async function getPreviewData(clientName, docType) {
+    // 检查缓存
+    if (previewCache.has(clientName)) {
+        const clientCache = previewCache.get(clientName);
+        if (clientCache.has(docType)) {
+            return clientCache.get(docType);
+        }
+    }
+    
+    // 从 documentTypes 中查找（如果已经加载了预览数据）
+    const docTypeData = documentTypes.find(d => d.name === docType);
+    if (docTypeData && docTypeData.preview) {
+        // 缓存数据
+        if (!previewCache.has(clientName)) {
+            previewCache.set(clientName, new Map());
+        }
+        previewCache.get(clientName).set(docType, docTypeData.preview);
+        return docTypeData.preview;
+    }
+    
+    return null;
+}
+
+// 设置文档项的悬停事件
+function setupDocItemHover(docItem, clientName, docType) {
+    // 鼠标进入
+    docItem.addEventListener('mouseenter', function(e) {
+        clearTimeout(previewState.hideTimer);
+        
+        previewState.showTimer = setTimeout(async function() {
+            const preview = await getPreviewData(clientName, docType);
+            if (preview) {
+                showPreviewTooltip(docItem, preview);
+                previewState.currentDocType = docType;
+            }
+        }, PREVIEW_CONFIG.showDelay);
+    });
+    
+    // 鼠标离开
+    docItem.addEventListener('mouseleave', function(e) {
+        clearTimeout(previewState.showTimer);
+        
+        previewState.hideTimer = setTimeout(function() {
+            hidePreviewTooltip();
+        }, PREVIEW_CONFIG.hideDelay);
+    });
+    
+    // 点击时立即关闭
+    docItem.addEventListener('click', function() {
+        clearTimeout(previewState.showTimer);
+        clearTimeout(previewState.hideTimer);
+        hidePreviewTooltip();
+    });
+    
+    // 键盘焦点支持
+    docItem.setAttribute('tabindex', '0');
+    docItem.addEventListener('focus', async function() {
+        clearTimeout(previewState.hideTimer);
+        const preview = await getPreviewData(clientName, docType);
+        if (preview) {
+            showPreviewTooltip(docItem, preview);
+            previewState.currentDocType = docType;
+        }
+    });
+    
+    docItem.addEventListener('blur', function() {
+        hidePreviewTooltip();
+    });
+}
+
+// 清除预览缓存
+function clearPreviewCache(clientName) {
+    if (clientName) {
+        previewCache.delete(clientName);
+    } else {
+        previewCache.clear();
+    }
+}
+
+// Escape 键关闭预览
+document.addEventListener('keydown', function(e) {
+    if (e.key === 'Escape' && previewState.visible) {
+        hidePreviewTooltip();
+    }
+});
+
+// 暴露函数到全局作用域
+window.showPreviewTooltip = showPreviewTooltip;
+window.hidePreviewTooltip = hidePreviewTooltip;
+window.clearPreviewCache = clearPreviewCache;

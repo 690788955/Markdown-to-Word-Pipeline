@@ -2187,3 +2187,114 @@ a:focus:not(:focus-visible) {
     font-size: 0.85rem;
     color: var(--color-primary);
 }
+
+/* ==================== 文档悬停预览 Tooltip ==================== */
+
+.preview-tooltip {
+    position: fixed;
+    z-index: 10000;
+    max-width: 320px;
+    background: var(--color-surface);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-md);
+    box-shadow: var(--shadow-lg);
+    padding: var(--spacing-md);
+    display: none;
+    opacity: 0;
+    transform: translateY(5px);
+    transition: opacity var(--transition-fast), transform var(--transition-fast);
+    pointer-events: auto;
+}
+
+.preview-tooltip.visible {
+    opacity: 1;
+    transform: translateY(0);
+}
+
+.preview-content {
+    font-size: 0.9rem;
+    line-height: 1.5;
+}
+
+.preview-title {
+    font-size: 1rem;
+    font-weight: 600;
+    color: var(--color-text);
+    margin-bottom: var(--spacing-sm);
+    padding-bottom: var(--spacing-sm);
+    border-bottom: 1px solid var(--color-border-light);
+}
+
+.preview-meta {
+    font-size: 0.8rem;
+    color: var(--color-text-secondary);
+    margin-bottom: var(--spacing-sm);
+}
+
+.preview-modules {
+    margin-top: var(--spacing-sm);
+}
+
+.preview-modules-header {
+    font-weight: 500;
+    color: var(--color-text);
+    margin-bottom: var(--spacing-xs);
+}
+
+.preview-modules-list {
+    margin: 0;
+    padding-left: 1.2em;
+    color: var(--color-text-secondary);
+    font-size: 0.85rem;
+}
+
+.preview-modules-list li {
+    margin-bottom: 2px;
+}
+
+.preview-modules-more {
+    font-size: 0.8rem;
+    color: var(--color-text-muted);
+    font-style: italic;
+    margin-top: var(--spacing-xs);
+}
+
+.preview-template {
+    margin-top: var(--spacing-sm);
+    font-size: 0.8rem;
+    color: var(--color-text-muted);
+    padding-top: var(--spacing-sm);
+    border-top: 1px solid var(--color-border-light);
+}
+
+.preview-empty {
+    color: var(--color-text-muted);
+    font-style: italic;
+    text-align: center;
+    padding: var(--spacing-md);
+}
+
+/* 文档列表项悬停效果增强 */
+.doc-item {
+    cursor: default;
+    transition: background-color var(--transition-fast), box-shadow var(--transition-fast);
+}
+
+.doc-item:hover {
+    background-color: var(--color-surface-hover);
+}
+
+.doc-item:focus {
+    outline: 2px solid var(--color-primary);
+    outline-offset: 2px;
+}
+
+/* 响应式：小屏幕下 tooltip 全宽显示 */
+@media (max-width: 768px) {
+    .preview-tooltip {
+        left: var(--spacing-md) !important;
+        right: var(--spacing-md) !important;
+        max-width: none;
+        width: auto;
+    }
+}

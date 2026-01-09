@@ -1,19 +1,43 @@
-# 完整知识库 - 包含所有文档模块
-# 使用通配符自动包含 src 目录下所有 .md 文件，无需手动维护
+# 完整知识库 配置
+# 自定义生成
 
-client_name: "标准文档"
-template: "default.docx"
-
-# 使用通配符自动包含所有模块
-# 文件会按文件名排序（01-xxx.md, 02-xxx.md, ...）
+client_name: 标准文档
+template: default.docx
 modules:
-  - src/metadata.yaml
-  - src/*.md
-
+    - src/01-概述.md
+    - src/02-系统架构.md
+    - src/03-日常运维.md
+    - src/04-故障处理.md
+    - src/05-监控告警.md
+    - src/06-备份恢复.md
+    - src/07-安全规范.md
+    - src/08-部署上线.md
+    - src/09-应急预案.md
+    - src/10-项目背景.md
+    - src/11-联系人.md
+    - src/12-PDF功能示例.md
+    - src/13-变量模板示例.md
 pandoc_args:
-  - "--toc"
-  - "--toc-depth=3"
-  - "--number-sections"
-  - "--standalone"
-
-output_pattern: "{client}_完整知识库_{date}.docx"
+    - --toc
+    - --number-sections
+    - --standalone
+    - --toc-depth=3
+output_pattern: '{client}_完整知识库_{date}.docx'
+pdf_options:
+    titlepage: true
+    titlepage-color: 2c3e50
+    titlepage-text-color: ffffff
+    titlepage-rule-color: 3498db
+    toc-own-page: true
+    colorlinks: true
+    linkcolor: 2980b9
+    urlcolor: 3498db
+    listings: true
+    listings-no-page-break: true
+variables:
+    contact_email: admin@example.com
+    deploy_date: "2026-01-08"
+    environment: 生产环境
+    project_name: XX系统
+    server_count: 3
+    version: v1.0.0

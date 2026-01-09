@@ -152,6 +152,23 @@ func (h *APIHandler) handleClientDocs(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// 检查是否需要预览数据
+	preview := r.URL.Query().Get("preview") == "true"
+
+	if preview {
+		// 返回带预览的文档类型列表
+		docTypesWithPreview, err := h.docSvc.ListDocumentTypesWithPreview(clientName)
+		if err != nil {
+			h.errorResponse(w, http.StatusInternalServerError, err.Error(), "")
+			return
+		}
+		h.successResponse(w, map[string]interface{}{
+			"documentTypes": docTypesWithPreview,
+		})
+		return
+	}
+
+	// 返回基本文档类型列表（向后兼容）
 	docTypes, err := h.docSvc.ListDocumentTypes(clientName)
 	if err != nil {
 		h.errorResponse(w, http.StatusInternalServerError, err.Error(), "")
