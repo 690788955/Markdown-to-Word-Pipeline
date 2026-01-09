@@ -17,9 +17,14 @@
             <section class="config-bar">
                 <div class="config-item">
                     <label>客户配置</label>
-                    <select id="clientSelect">
-                        <option value="">加载中...</option>
-                    </select>
+                    <div class="client-select-row">
+                        <select id="clientSelect">
+                            <option value="">加载中...</option>
+                        </select>
+                        <button id="lockBtn" class="btn btn-icon" style="display:none;" onclick="toggleClientLock()" title="锁定/解锁配置">
+                            <span id="lockIcon">🔓</span>
+                        </button>
+                    </div>
                 </div>
                 <div class="config-item">
                     <label>客户名称</label>
@@ -295,23 +300,24 @@
                                     <div class="args-row">
                                         <label for="pdfMainFont">正文字体</label>
                                         <select id="pdfMainFont">
-                                            <option value="">默认</option>
-                                            <option value="Microsoft YaHei" selected>微软雅黑</option>
-                                            <option value="SimSun">宋体</option>
-                                            <option value="SimHei">黑体</option>
-                                            <option value="KaiTi">楷体</option>
-                                            <option value="FangSong">仿宋</option>
-                                            <option value="Noto Sans SC">Noto Sans SC</option>
-                                            <option value="Noto Serif SC">Noto Serif SC</option>
-                                            <option value="Source Han Sans SC">思源黑体</option>
+                                            <option value="" selected>默认 (自动选择)</option>
+                                            <option value="Microsoft YaHei">微软雅黑 (Windows)</option>
+                                            <option value="SimSun">宋体 (Windows)</option>
+                                            <option value="SimHei">黑体 (Windows)</option>
+                                            <option value="KaiTi">楷体 (Windows)</option>
+                                            <option value="FangSong">仿宋 (Windows)</option>
+                                            <option value="Noto Sans CJK SC">Noto Sans CJK SC (Linux)</option>
+                                            <option value="Noto Serif CJK SC">Noto Serif CJK SC (Linux)</option>
+                                            <option value="PingFang SC">苹方 (macOS)</option>
                                         </select>
                                     </div>
                                     <div class="args-row">
                                         <label for="pdfMonoFont">代码字体</label>
                                         <select id="pdfMonoFont">
-                                            <option value="">默认</option>
-                                            <option value="Consolas" selected>Consolas</option>
-                                            <option value="Courier New">Courier New</option>
+                                            <option value="" selected>默认 (自动选择)</option>
+                                            <option value="Consolas">Consolas (Windows)</option>
+                                            <option value="DejaVu Sans Mono">DejaVu Sans Mono (Linux)</option>
+                                            <option value="Menlo">Menlo (macOS)</option>
                                             <option value="Source Code Pro">Source Code Pro</option>
                                             <option value="Fira Code">Fira Code</option>
                                         </select>

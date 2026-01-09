@@ -67,6 +67,9 @@ type ConfigManager struct {
 // 自定义配置标记文件名
 const customMarkerFile = ".custom"
 
+// 锁定标记文件名
+const lockedMarkerFile = ".locked"
+
 // 非法字符正则表达式
 var invalidNameChars = regexp.MustCompile(`[/\\:*?"<>|]`)
 
@@ -82,6 +85,33 @@ func (m *ConfigManager) IsCustomConfig(clientName string) bool {
 	markerPath := filepath.Join(m.clientsDir, clientName, customMarkerFile)
 	_, err := os.Stat(markerPath)
 	return err == nil
+}
+
+// IsClientLocked 检查客户配置是否已锁定
+func (m *ConfigManager) IsClientLocked(clientName string) bool {
+	lockedPath := filepath.Join(m.clientsDir, clientName, lockedMarkerFile)
+	_, err := os.Stat(lockedPath)
+	return err == nil
+}
+
+// LockClient 锁定客户配置
+func (m *ConfigManager) LockClient(clientName string) error {
+	clientDir := filepath.Join(m.clientsDir, clientName)
+	if _, err := os.Stat(clientDir); os.IsNotExist(err) {
+		return fmt.Errorf("客户不存在: %s", clientName)
+	}
+	
+	lockedPath := filepath.Join(clientDir, lockedMarkerFile)
+	return os.WriteFile(lockedPath, []byte(""), 0644)
+}
+
+// UnlockClient 解锁客户配置
+func (m *ConfigManager) UnlockClient(clientName string) error {
+	lockedPath := filepath.Join(m.clientsDir, clientName, lockedMarkerFile)
+	if _, err := os.Stat(lockedPath); os.IsNotExist(err) {
+		return nil // 本来就没锁定
+	}
+	return os.Remove(lockedPath)
 }
 
 // validateClientName 验证客户名称
@@ -268,11 +298,11 @@ func (m *ConfigManager) GetConfig(clientName, docTypeName string) (*CustomConfig
 	}, nil
 }
 
-// UpdateConfig 更新自定义配置
+// UpdateConfig 更新配置
 func (m *ConfigManager) UpdateConfig(clientName, docTypeName string, config CustomConfig) error {
-	// 检查是否为自定义配置
-	if !m.IsCustomConfig(clientName) {
-		return fmt.Errorf("不能修改预置配置")
+	// 检查客户是否已锁定
+	if m.IsClientLocked(clientName) {
+		return fmt.Errorf("客户配置已锁定，请先解锁后再修改")
 	}
 
 	configPath := filepath.Join(m.clientsDir, clientName, docTypeName+".yaml")
@@ -294,11 +324,16 @@ func (m *ConfigManager) UpdateConfig(clientName, docTypeName string, config Cust
 	return m.writeConfigFile(configPath, config)
 }
 
-// DeleteConfig 删除自定义配置
+// DeleteConfig 删除配置
 func (m *ConfigManager) DeleteConfig(clientName, docTypeName string) error {
-	// 检查是否为自定义配置
+	// 检查是否为自定义配置（只有自定义配置可以删除）
 	if !m.IsCustomConfig(clientName) {
 		return fmt.Errorf("不能删除预置配置")
+	}
+
+	// 检查客户是否已锁定
+	if m.IsClientLocked(clientName) {
+		return fmt.Errorf("客户配置已锁定，请先解锁后再删除")
 	}
 
 	configPath := filepath.Join(m.clientsDir, clientName, docTypeName+".yaml")

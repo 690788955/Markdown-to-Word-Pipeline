@@ -100,7 +100,7 @@ func main() {
 	configMgr := service.NewConfigManager(cfg.ClientsDir)
 
 	// 创建 API 处理器
-	apiHandler := handler.NewAPIHandler(clientSvc, docSvc, buildSvc, moduleSvc, templateSvc, configMgr, cfg.SrcDir)
+	apiHandler := handler.NewAPIHandler(clientSvc, docSvc, buildSvc, moduleSvc, templateSvc, configMgr, cfg.SrcDir, cfg.AdminPassword)
 
 	// 创建路由
 	mux := http.NewServeMux()

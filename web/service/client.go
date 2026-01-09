@@ -17,6 +17,7 @@ type Client struct {
 	DisplayName string    `json:"displayName"` // 显示名称
 	ModifiedAt  time.Time `json:"modifiedAt"`  // 最后修改时间
 	IsCustom    bool      `json:"isCustom"`    // 是否为自定义配置
+	Locked      bool      `json:"locked"`      // 是否已锁定
 }
 
 // ClientMetadata 客户元数据（从 metadata.yaml 读取）
@@ -159,6 +160,7 @@ func (s *ClientService) getClientInfo(name, clientDir string) (*Client, error) {
 		Name:        name,
 		DisplayName: name, // 默认使用目录名
 		IsCustom:    s.isCustomClient(clientDir),
+		Locked:      s.isClientLocked(clientDir),
 	}
 
 	// 获取目录修改时间
@@ -192,6 +194,13 @@ func (s *ClientService) getClientInfo(name, clientDir string) (*Client, error) {
 func (s *ClientService) isCustomClient(clientDir string) bool {
 	markerPath := filepath.Join(clientDir, ".custom")
 	_, err := os.Stat(markerPath)
+	return err == nil
+}
+
+// isClientLocked 检查客户是否已锁定
+func (s *ClientService) isClientLocked(clientDir string) bool {
+	lockedPath := filepath.Join(clientDir, ".locked")
+	_, err := os.Stat(lockedPath)
 	return err == nil
 }
 

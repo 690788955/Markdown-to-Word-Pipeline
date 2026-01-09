@@ -70,6 +70,35 @@ header h1 {
     border-color: #3498db;
 }
 
+.client-select-row {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+}
+
+.client-select-row select {
+    flex: 1;
+}
+
+.btn-icon {
+    padding: 8px 10px;
+    background: #f8f9fa;
+    border: 1px solid #ddd;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 1.1rem;
+    transition: all 0.2s;
+}
+
+.btn-icon:hover {
+    background: #e9ecef;
+}
+
+.btn-icon.locked {
+    background: #fff3cd;
+    border-color: #ffc107;
+}
+
 /* 按钮 */
 .btn {
     display: inline-flex;
@@ -177,6 +206,11 @@ header h1 {
     font-size: 0.75rem;
     color: #3498db;
     margin-left: 8px;
+}
+
+.doc-name .badge-locked {
+    color: #e74c3c;
+    cursor: help;
 }
 
 .doc-actions {
@@ -524,6 +558,23 @@ footer {
 .checkbox-label input[type="checkbox"] {
     width: auto;
     margin: 0;
+}
+
+.checkbox-row {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.checkbox-row input[type="checkbox"] {
+    width: 16px;
+    height: 16px;
+    margin: 0;
+}
+
+.checkbox-row .checkbox-label {
+    padding: 0;
+    font-size: 0.85rem;
 }
 
 /* Pandoc 参数区域 */

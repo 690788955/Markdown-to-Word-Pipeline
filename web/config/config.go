@@ -20,18 +20,21 @@ type Config struct {
 	SrcDir string
 	// WorkDir 工作目录（项目根目录）
 	WorkDir string
+	// AdminPassword 管理密码（用于锁定/解锁配置）
+	AdminPassword string
 }
 
 // DefaultConfig 返回默认配置
 func DefaultConfig() *Config {
 	workDir := getWorkDir()
 	return &Config{
-		Port:         getEnv("PORT", "8080"),
-		ClientsDir:   filepath.Join(workDir, getEnv("CLIENTS_DIR", "clients")),
-		BuildDir:     filepath.Join(workDir, getEnv("BUILD_DIR", "build")),
-		TemplatesDir: filepath.Join(workDir, getEnv("TEMPLATES_DIR", "templates")),
-		SrcDir:       filepath.Join(workDir, getEnv("SRC_DIR", "src")),
-		WorkDir:      workDir,
+		Port:          getEnv("PORT", "8080"),
+		ClientsDir:    filepath.Join(workDir, getEnv("CLIENTS_DIR", "clients")),
+		BuildDir:      filepath.Join(workDir, getEnv("BUILD_DIR", "build")),
+		TemplatesDir:  filepath.Join(workDir, getEnv("TEMPLATES_DIR", "templates")),
+		SrcDir:        filepath.Join(workDir, getEnv("SRC_DIR", "src")),
+		WorkDir:       workDir,
+		AdminPassword: getEnv("ADMIN_PASSWORD", "admin123"),
 	}
 }
 

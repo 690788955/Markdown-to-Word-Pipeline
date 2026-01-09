@@ -59,6 +59,46 @@ function initTabs() {
     });
 }
 
+// 显示错误模态框
+function showErrorModal(title, message) {
+    // 检查是否已存在错误模态框
+    let modal = document.getElementById('errorModal');
+    if (!modal) {
+        // 创建模态框
+        modal = document.createElement('div');
+        modal.id = 'errorModal';
+        modal.className = 'modal';
+        modal.innerHTML = `
+            <div class="modal-content" style="max-width: 600px;">
+                <div class="modal-header">
+                    <h3 id="errorModalTitle">错误</h3>
+                    <button type="button" class="modal-close" onclick="hideErrorModal()">&times;</button>
+                </div>
+                <div class="modal-body">
+                    <div id="errorModalMessage" style="white-space: pre-wrap; word-break: break-word; max-height: 400px; overflow-y: auto; background: #f8f9fa; padding: 12px; border-radius: 4px; font-family: monospace; font-size: 13px;"></div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-primary" onclick="hideErrorModal()">确定</button>
+                </div>
+            </div>
+        `;
+        document.body.appendChild(modal);
+    }
+    
+    // 设置内容
+    document.getElementById('errorModalTitle').textContent = title;
+    document.getElementById('errorModalMessage').textContent = message;
+    
+    // 显示模态框
+    modal.style.display = 'flex';
+}
+
+// 隐藏错误模态框
+function hideErrorModal() {
+    const modal = document.getElementById('errorModal');
+    if (modal) modal.style.display = 'none';
+}
+
 // 获取当前选择的输出格式
 function getSelectedFormat() {
     const formatSelect = document.getElementById('formatSelect');
@@ -122,11 +162,15 @@ async function onClientChange() {
     const clientSelect = document.getElementById('clientSelect');
     const generateAllBtn = document.getElementById('generateAllBtn');
     const docList = document.getElementById('docList');
+    const lockBtn = document.getElementById('lockBtn');
     
     const client = clientSelect ? clientSelect.value : '';
     
     // 获取当前客户信息
     currentClient = window.clientsData ? window.clientsData.find(c => c.name === client) : null;
+    
+    // 更新锁定按钮状态
+    updateLockButton();
     
     if (generateAllBtn) generateAllBtn.disabled = true;
     hideResult();
@@ -154,6 +198,78 @@ async function onClientChange() {
     }
 }
 
+// 更新锁定按钮状态
+function updateLockButton() {
+    const lockBtn = document.getElementById('lockBtn');
+    const lockIcon = document.getElementById('lockIcon');
+    
+    if (!lockBtn || !lockIcon) return;
+    
+    if (!currentClient) {
+        lockBtn.style.display = 'none';
+        return;
+    }
+    
+    lockBtn.style.display = 'inline-flex';
+    
+    if (currentClient.locked) {
+        lockIcon.textContent = '🔒';
+        lockBtn.classList.add('locked');
+        lockBtn.title = '点击解锁配置';
+    } else {
+        lockIcon.textContent = '🔓';
+        lockBtn.classList.remove('locked');
+        lockBtn.title = '点击锁定配置';
+    }
+}
+
+// 切换客户锁定状态
+async function toggleClientLock() {
+    if (!currentClient) return;
+    
+    const isLocked = currentClient.locked;
+    const action = isLocked ? '解锁' : '锁定';
+    
+    // 弹出密码输入框
+    const password = prompt(`请输入管理密码以${action}客户配置 "${currentClient.displayName || currentClient.name}"：`);
+    if (password === null) return; // 用户取消
+    
+    if (!password.trim()) {
+        alert('密码不能为空');
+        return;
+    }
+    
+    try {
+        const url = '/api/lock/' + encodeURIComponent(currentClient.name);
+        const method = isLocked ? 'DELETE' : 'POST';
+        
+        const response = await fetch(url, { 
+            method: method,
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ password: password })
+        });
+        const data = await response.json();
+        
+        if (!data.success) throw new Error(data.error);
+        
+        // 更新本地状态
+        currentClient.locked = !isLocked;
+        
+        // 更新 clientsData 中的状态
+        if (window.clientsData) {
+            const client = window.clientsData.find(c => c.name === currentClient.name);
+            if (client) client.locked = currentClient.locked;
+        }
+        
+        updateLockButton();
+        renderDocList();
+        
+        alert(`客户配置已${action}`);
+    } catch (e) {
+        alert(`${action}失败: ` + e.message);
+    }
+}
+
 // 渲染文档列表
 function renderDocList() {
     const docList = document.getElementById('docList');
@@ -165,6 +281,7 @@ function renderDocList() {
     }
     
     const isCustomClient = currentClient && currentClient.isCustom;
+    const isLocked = currentClient && currentClient.locked;
     
     docList.innerHTML = '';
     documentTypes.forEach(function(doc) {
@@ -190,18 +307,29 @@ function renderDocList() {
         genBtn.onclick = function() { generateSingle(doc.name, genBtn); };
         actions.appendChild(genBtn);
         
-        // 自定义配置显示编辑和删除按钮
-        if (isCustomClient) {
-            const editBtn = document.createElement('button');
-            editBtn.className = 'btn btn-outline btn-sm';
-            editBtn.textContent = '编辑';
+        // 所有配置都显示编辑按钮（锁定时禁用）
+        const editBtn = document.createElement('button');
+        editBtn.className = 'btn btn-outline btn-sm';
+        editBtn.textContent = '编辑';
+        if (isLocked) {
+            editBtn.disabled = true;
+            editBtn.title = '客户配置已锁定';
+        } else {
             editBtn.onclick = function() { editConfig(currentClient.name, doc.name); };
-            actions.appendChild(editBtn);
-            
+        }
+        actions.appendChild(editBtn);
+        
+        // 自定义配置显示删除按钮（锁定时禁用）
+        if (isCustomClient) {
             const delBtn = document.createElement('button');
             delBtn.className = 'btn btn-outline btn-sm btn-danger-outline';
             delBtn.textContent = '删除';
-            delBtn.onclick = function() { confirmDeleteConfig(currentClient.name, doc.name); };
+            if (isLocked) {
+                delBtn.disabled = true;
+                delBtn.title = '客户配置已锁定';
+            } else {
+                delBtn.onclick = function() { confirmDeleteConfig(currentClient.name, doc.name); };
+            }
             actions.appendChild(delBtn);
         }
         
@@ -244,7 +372,7 @@ async function generateSingle(docType, btn) {
             addToResult(files);
         }
     } catch (e) {
-        alert('生成失败: ' + e.message);
+        showErrorModal('生成失败', e.message);
     } finally {
         setLoading(btn, false);
     }
@@ -286,7 +414,7 @@ async function generateAll() {
             showResult(files);
         }
     } catch (e) {
-        alert('生成失败: ' + e.message);
+        showErrorModal('生成失败', e.message);
     } finally {
         setLoading(generateAllBtn, false);
     }
@@ -920,9 +1048,9 @@ function resetConfigForm() {
     // 自定义参数
     setVal('cfgCustomArgs', '');
     
-    // PDF 设置重置
-    setVal('pdfMainFont', 'Microsoft YaHei');
-    setVal('pdfMonoFont', 'Consolas');
+    // PDF 设置重置 - 使用空值让后端根据平台选择合适的字体
+    setVal('pdfMainFont', '');
+    setVal('pdfMonoFont', '');
     setVal('pdfFontSize', '');
     setVal('pdfLineStretch', '');
     setChecked('pdfTitlePage', true);
@@ -944,8 +1072,6 @@ function resetConfigForm() {
     selectedModules = [];
     renderTransferUI();
 }
-
-// 填充配置表单（编辑模式）
 function fillConfigForm(config) {
     const setVal = (id, val) => { const el = document.getElementById(id); if (el) el.value = val; };
     const setChecked = (id, val) => { const el = document.getElementById(id); if (el) el.checked = val; };
@@ -1008,10 +1134,10 @@ function fillConfigForm(config) {
     setVal('argTabStop', tabStop);
     setVal('cfgCustomArgs', customArgs.join(' '));
     
-    // PDF 设置
+    // PDF 设置 - 使用空值让后端根据平台选择合适的字体
     const pdf = config.pdfOptions || {};
-    setVal('pdfMainFont', pdf.mainfont || 'Microsoft YaHei');
-    setVal('pdfMonoFont', pdf.monofont || 'Consolas');
+    setVal('pdfMainFont', pdf.mainfont || '');
+    setVal('pdfMonoFont', pdf.monofont || '');
     setVal('pdfFontSize', pdf.fontsize || '');
     setVal('pdfLineStretch', pdf.linestretch ? String(pdf.linestretch) : '');
     setChecked('pdfTitlePage', pdf.titlepage !== false);
@@ -1289,11 +1415,13 @@ async function deleteConfig(clientName, docTypeName) {
 window.showConfigModal = showConfigModal;
 window.hideConfigModal = hideConfigModal;
 window.hideConfirmModal = hideConfirmModal;
+window.hideErrorModal = hideErrorModal;
 window.submitConfig = submitConfig;
 window.selectAllModules = selectAllModules;
 window.clearAllModules = clearAllModules;
 window.moveSelectedToRight = moveSelectedToRight;
 window.moveSelectedToLeft = moveSelectedToLeft;
+window.toggleClientLock = toggleClientLock;
 
 
 // ==================== 变量模板功能 ====================

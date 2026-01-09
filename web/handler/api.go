@@ -10,6 +10,7 @@ import (
 	"net/url"
 	"os"
 	"path/filepath"
+	"regexp"
 	"strings"
 	"sync"
 
@@ -54,28 +55,30 @@ type GeneratedFile struct {
 
 // APIHandler API 处理器
 type APIHandler struct {
-	clientSvc   *service.ClientService
-	docSvc      *service.DocumentService
-	buildSvc    *service.BuildService
-	moduleSvc   *service.ModuleService
-	templateSvc *service.TemplateService
-	configMgr   *service.ConfigManager
-	variableSvc *service.VariableService
+	clientSvc     *service.ClientService
+	docSvc        *service.DocumentService
+	buildSvc      *service.BuildService
+	moduleSvc     *service.ModuleService
+	templateSvc   *service.TemplateService
+	configMgr     *service.ConfigManager
+	variableSvc   *service.VariableService
+	adminPassword string
 }
 
 // NewAPIHandler 创建 API 处理器实例
-func NewAPIHandler(clientSvc *service.ClientService, docSvc *service.DocumentService, buildSvc *service.BuildService, moduleSvc *service.ModuleService, templateSvc *service.TemplateService, configMgr *service.ConfigManager, srcDir string) *APIHandler {
+func NewAPIHandler(clientSvc *service.ClientService, docSvc *service.DocumentService, buildSvc *service.BuildService, moduleSvc *service.ModuleService, templateSvc *service.TemplateService, configMgr *service.ConfigManager, srcDir string, adminPassword string) *APIHandler {
 	// 创建变量服务
 	variableSvc := service.NewVariableService(srcDir)
 	
 	return &APIHandler{
-		clientSvc:   clientSvc,
-		docSvc:      docSvc,
-		buildSvc:    buildSvc,
-		moduleSvc:   moduleSvc,
-		templateSvc: templateSvc,
-		configMgr:   configMgr,
-		variableSvc: variableSvc,
+		clientSvc:     clientSvc,
+		docSvc:        docSvc,
+		buildSvc:      buildSvc,
+		moduleSvc:     moduleSvc,
+		templateSvc:   templateSvc,
+		configMgr:     configMgr,
+		variableSvc:   variableSvc,
+		adminPassword: adminPassword,
 	}
 }
 
@@ -93,6 +96,8 @@ func (h *APIHandler) RegisterRoutes(mux *http.ServeMux) {
 	mux.HandleFunc("/api/configs/", h.handleConfigDetail)
 	// 新增：变量模板相关路由
 	mux.HandleFunc("/api/variables", h.handleVariables)
+	// 新增：客户锁定相关路由
+	mux.HandleFunc("/api/lock/", h.handleClientLock)
 }
 
 // handleClients 处理客户列表请求
@@ -230,6 +235,14 @@ func (h *APIHandler) handleGenerate(w http.ResponseWriter, r *http.Request) {
 					errMsg += err.Error()
 				} else {
 					errMsg += result.Error
+					// 如果有详细输出，提取关键错误信息
+					if result.Output != "" {
+						// 提取 Pandoc/LaTeX 错误信息
+						detailErr := extractErrorDetail(result.Output)
+						if detailErr != "" {
+							errMsg += "\n详细信息: " + detailErr
+						}
+					}
 				}
 				errors = append(errors, errMsg)
 				return
@@ -572,8 +585,8 @@ func (h *APIHandler) updateConfig(w http.ResponseWriter, r *http.Request, client
 		errMsg := err.Error()
 		if strings.Contains(errMsg, "不存在") {
 			h.errorResponse(w, http.StatusNotFound, errMsg, ErrConfigNotFound)
-		} else if strings.Contains(errMsg, "预置") {
-			h.errorResponse(w, http.StatusForbidden, errMsg, ErrPresetConfigReadonly)
+		} else if strings.Contains(errMsg, "已锁定") {
+			h.errorResponse(w, http.StatusForbidden, errMsg, "CONFIG_LOCKED")
 		} else if strings.Contains(errMsg, "不能为空") || strings.Contains(errMsg, "至少选择") {
 			h.errorResponse(w, http.StatusBadRequest, errMsg, ErrInvalidInput)
 		} else {
@@ -670,4 +683,115 @@ func (h *APIHandler) extractVariables(w http.ResponseWriter, modules []string) {
 	}
 
 	h.successResponse(w, response)
+}
+
+// handleClientLock 处理客户锁定/解锁请求
+func (h *APIHandler) handleClientLock(w http.ResponseWriter, r *http.Request) {
+	// 解析路径: /api/lock/{clientName}
+	clientName := strings.TrimPrefix(r.URL.Path, "/api/lock/")
+	clientName, err := url.PathUnescape(clientName)
+	if err != nil || clientName == "" {
+		h.errorResponse(w, http.StatusBadRequest, "无效的客户名称", ErrInvalidInput)
+		return
+	}
+
+	switch r.Method {
+	case http.MethodGet:
+		// 获取锁定状态
+		locked := h.configMgr.IsClientLocked(clientName)
+		h.successResponse(w, map[string]interface{}{
+			"clientName": clientName,
+			"locked":     locked,
+		})
+	case http.MethodPost:
+		// 锁定客户 - 需要验证密码
+		var req struct {
+			Password string `json:"password"`
+		}
+		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+			h.errorResponse(w, http.StatusBadRequest, "无效的请求格式", ErrInvalidInput)
+			return
+		}
+		if req.Password != h.adminPassword {
+			h.errorResponse(w, http.StatusUnauthorized, "管理密码错误", "INVALID_PASSWORD")
+			return
+		}
+		if err := h.configMgr.LockClient(clientName); err != nil {
+			h.errorResponse(w, http.StatusInternalServerError, err.Error(), "")
+			return
+		}
+		h.successResponse(w, map[string]interface{}{
+			"message": "客户配置已锁定",
+		})
+	case http.MethodDelete:
+		// 解锁客户 - 需要验证密码
+		var req struct {
+			Password string `json:"password"`
+		}
+		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+			h.errorResponse(w, http.StatusBadRequest, "无效的请求格式", ErrInvalidInput)
+			return
+		}
+		if req.Password != h.adminPassword {
+			h.errorResponse(w, http.StatusUnauthorized, "管理密码错误", "INVALID_PASSWORD")
+			return
+		}
+		if err := h.configMgr.UnlockClient(clientName); err != nil {
+			h.errorResponse(w, http.StatusInternalServerError, err.Error(), "")
+			return
+		}
+		h.successResponse(w, map[string]interface{}{
+			"message": "客户配置已解锁",
+		})
+	default:
+		h.methodNotAllowed(w)
+	}
+}
+
+// extractErrorDetail 从构建输出中提取关键错误信息
+func extractErrorDetail(output string) string {
+	var details []string
+	
+	// 匹配 LaTeX/fontspec 错误
+	fontErrRegex := regexp.MustCompile(`The font "([^"]+)" cannot be found`)
+	if matches := fontErrRegex.FindStringSubmatch(output); len(matches) > 1 {
+		details = append(details, "字体 \""+matches[1]+"\" 未安装")
+	}
+	
+	// 匹配 Pandoc 错误
+	if strings.Contains(output, "Error producing PDF") {
+		details = append(details, "PDF 生成失败")
+	}
+	
+	// 匹配文件未找到错误
+	fileNotFoundRegex := regexp.MustCompile(`(?i)(?:file not found|cannot find|no such file)[:\s]*([^\n]+)`)
+	if matches := fileNotFoundRegex.FindStringSubmatch(output); len(matches) > 1 {
+		details = append(details, "文件未找到: "+strings.TrimSpace(matches[1]))
+	}
+	
+	// 匹配 LaTeX 包错误
+	pkgErrRegex := regexp.MustCompile(`Package ([^\s]+) Error: ([^\n]+)`)
+	if matches := pkgErrRegex.FindStringSubmatch(output); len(matches) > 2 {
+		details = append(details, matches[1]+" 错误: "+matches[2])
+	}
+	
+	// 匹配一般性错误行
+	if len(details) == 0 {
+		lines := strings.Split(output, "\n")
+		for _, line := range lines {
+			line = strings.TrimSpace(line)
+			if strings.Contains(strings.ToLower(line), "error") && len(line) < 200 {
+				details = append(details, line)
+				if len(details) >= 3 {
+					break
+				}
+			}
+		}
+	}
+	
+	if len(details) == 0 {
+		return ""
+	}
+	
+	return strings.Join(details, "; ")
 }
