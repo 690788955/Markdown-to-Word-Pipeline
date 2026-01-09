@@ -46,6 +46,25 @@ type CustomConfig struct {
 	OutputPattern string                 `json:"outputPattern"`           // 输出文件名模式
 	PdfOptions    *PdfOptions            `json:"pdfOptions,omitempty"`    // PDF 输出选项
 	Variables     map[string]interface{} `json:"variables,omitempty"`     // 变量值
+	Metadata      *MetadataConfig        `json:"metadata,omitempty"`      // 元数据配置
+}
+
+// MetadataConfig 元数据配置
+type MetadataConfig struct {
+	Title         string        `json:"title,omitempty" yaml:"title,omitempty"`
+	Subtitle      string        `json:"subtitle,omitempty" yaml:"subtitle,omitempty"`
+	Author        string        `json:"author,omitempty" yaml:"author,omitempty"`
+	Version       string        `json:"version,omitempty" yaml:"version,omitempty"`
+	Date          string        `json:"date,omitempty" yaml:"date,omitempty"`
+	TocTitle      string        `json:"tocTitle,omitempty" yaml:"toc-title,omitempty"`
+	Client        *ClientInfo   `json:"client,omitempty" yaml:"client,omitempty"`
+}
+
+// ClientInfo 客户信息
+type ClientInfo struct {
+	Name    string `json:"name,omitempty" yaml:"name,omitempty"`
+	Contact string `json:"contact,omitempty" yaml:"contact,omitempty"`
+	System  string `json:"system,omitempty" yaml:"system,omitempty"`
 }
 
 // ConfigYAML 配置文件的 YAML 结构
@@ -57,6 +76,7 @@ type ConfigYAML struct {
 	OutputPattern string                 `yaml:"output_pattern"`
 	PdfOptions    *PdfOptions            `yaml:"pdf_options,omitempty"`
 	Variables     map[string]interface{} `yaml:"variables,omitempty"`
+	Metadata      *MetadataConfig        `yaml:"metadata,omitempty"`
 }
 
 // ConfigManager 配置管理器
@@ -265,7 +285,42 @@ func (m *ConfigManager) writeConfigFile(path string, config CustomConfig) error 
 
 	// 添加注释头
 	content := fmt.Sprintf("# %s 配置\n# 自定义生成\n\n%s", config.DocTypeName, string(data))
-	return os.WriteFile(path, []byte(content), 0644)
+	if err := os.WriteFile(path, []byte(content), 0644); err != nil {
+		return err
+	}
+
+	// 如果有元数据，保存到 metadata.yaml
+	if config.Metadata != nil && !config.Metadata.IsEmpty() {
+		clientDir := filepath.Dir(path)
+		if err := m.saveClientMetadata(clientDir, config.Metadata); err != nil {
+			return fmt.Errorf("保存元数据失败: %w", err)
+		}
+	}
+
+	return nil
+}
+
+// saveClientMetadata 保存客户元数据
+func (m *ConfigManager) saveClientMetadata(clientDir string, metadata *MetadataConfig) error {
+	metadataPath := filepath.Join(clientDir, "metadata.yaml")
+
+	data, err := yaml.Marshal(metadata)
+	if err != nil {
+		return err
+	}
+
+	// 使用 YAML front matter 格式
+	content := fmt.Sprintf("---\n# 客户元数据配置\n# 此文件中的值会覆盖 src/metadata.yaml 中的同名字段\n\n%s---\n", string(data))
+	return os.WriteFile(metadataPath, []byte(content), 0644)
+}
+
+// IsEmpty 检查元数据是否为空
+func (m *MetadataConfig) IsEmpty() bool {
+	if m == nil {
+		return true
+	}
+	return m.Title == "" && m.Subtitle == "" && m.Author == "" && 
+		m.Version == "" && m.Date == "" && m.TocTitle == "" && m.Client == nil
 }
 
 // GetConfig 获取配置详情
@@ -285,6 +340,9 @@ func (m *ConfigManager) GetConfig(clientName, docTypeName string) (*CustomConfig
 		return nil, fmt.Errorf("解析配置文件失败: %w", err)
 	}
 
+	// 尝试读取客户的 metadata.yaml
+	metadata := m.loadClientMetadata(clientName)
+
 	return &CustomConfig{
 		ClientName:    clientName,
 		DocTypeName:   docTypeName,
@@ -295,7 +353,34 @@ func (m *ConfigManager) GetConfig(clientName, docTypeName string) (*CustomConfig
 		OutputPattern: yamlConfig.OutputPattern,
 		PdfOptions:    yamlConfig.PdfOptions,
 		Variables:     yamlConfig.Variables,
+		Metadata:      metadata,
 	}, nil
+}
+
+// loadClientMetadata 加载客户的元数据配置
+func (m *ConfigManager) loadClientMetadata(clientName string) *MetadataConfig {
+	metadataPath := filepath.Join(m.clientsDir, clientName, "metadata.yaml")
+	
+	data, err := os.ReadFile(metadataPath)
+	if err != nil {
+		return nil // 没有元数据文件，返回 nil
+	}
+
+	// 解析 YAML front matter 格式
+	content := string(data)
+	if strings.HasPrefix(content, "---") {
+		parts := strings.SplitN(content[3:], "---", 2)
+		if len(parts) > 0 {
+			content = parts[0]
+		}
+	}
+
+	var metadata MetadataConfig
+	if err := yaml.Unmarshal([]byte(content), &metadata); err != nil {
+		return nil
+	}
+
+	return &metadata
 }
 
 // UpdateConfig 更新配置

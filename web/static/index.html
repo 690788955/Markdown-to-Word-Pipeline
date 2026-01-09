@@ -103,6 +103,7 @@
                     <!-- Tab 导航 -->
                     <div class="config-tabs">
                         <button type="button" class="tab-btn active" data-tab="tabModules">文档模块</button>
+                        <button type="button" class="tab-btn" data-tab="tabMetadata">元数据</button>
                         <button type="button" class="tab-btn" data-tab="tabGeneral">通用设置</button>
                         <button type="button" class="tab-btn" data-tab="tabWord">Word 设置</button>
                         <button type="button" class="tab-btn" data-tab="tabPdf">PDF 设置</button>
@@ -146,6 +147,59 @@
                             </div>
                         </div>
                         <small class="form-hint" style="margin-top: 8px; display: block;">提示：右侧列表支持拖拽排序，调整文档章节顺序</small>
+                    </div>
+
+                    <!-- Tab 内容：元数据 -->
+                    <div id="tabMetadata" class="tab-content">
+                        <p class="info-text">设置文档的元数据信息，这些值会覆盖默认的 src/metadata.yaml 配置。</p>
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label for="metaTitle">文档标题</label>
+                                <input type="text" id="metaTitle" placeholder="例如：XX系统运维手册">
+                            </div>
+                            <div class="form-group">
+                                <label for="metaSubtitle">副标题</label>
+                                <input type="text" id="metaSubtitle" placeholder="例如：标准化运维知识库">
+                            </div>
+                        </div>
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label for="metaAuthor">作者</label>
+                                <input type="text" id="metaAuthor" placeholder="例如：运维团队">
+                            </div>
+                            <div class="form-group">
+                                <label for="metaVersion">版本号</label>
+                                <input type="text" id="metaVersion" placeholder="例如：v1.0">
+                            </div>
+                        </div>
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label for="metaDate">日期</label>
+                                <input type="text" id="metaDate" placeholder="例如：2026年1月">
+                            </div>
+                            <div class="form-group">
+                                <label for="metaTocTitle">目录标题</label>
+                                <input type="text" id="metaTocTitle" placeholder="默认：目录">
+                            </div>
+                        </div>
+                        <div class="form-group">
+                            <label>客户信息</label>
+                        </div>
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label for="metaClientName">客户名称 <small>(用于文档内容)</small></label>
+                                <input type="text" id="metaClientName" placeholder="例如：XX公司">
+                            </div>
+                            <div class="form-group">
+                                <label for="metaClientContact">联系人</label>
+                                <input type="text" id="metaClientContact" placeholder="例如：运维工程师">
+                            </div>
+                        </div>
+                        <div class="form-group">
+                            <label for="metaClientSystem">系统名称</label>
+                            <input type="text" id="metaClientSystem" placeholder="例如：XX业务系统">
+                        </div>
+                        <small class="form-hint">留空的字段将使用默认值（src/metadata.yaml）</small>
                     </div>
 
                     <!-- Tab 内容：通用设置 -->

@@ -1,4 +1,4 @@
-<# 
+﻿<# 
 .SYNOPSIS
     运维文档生成系统 - Windows 构建脚本
 
@@ -217,7 +217,9 @@ function Read-YamlValue {
     if (-not (Test-Path $FilePath)) { return $null }
     
     $content = Get-Content $FilePath -Raw -Encoding UTF8
-    if ($content -match "(?m)^${Key}:\s*[`"']?([^`"'\r\n]+)[`"']?") {
+    # 使用单引号字符串避免转义问题
+    $pattern = '(?m)^' + $Key + ':\s*["' + "'" + ']?([^"' + "'" + '\r\n]+)["' + "'" + ']?'
+    if ($content -match $pattern) {
         return $Matches[1].Trim()
     }
     return $null

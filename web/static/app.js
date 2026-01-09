@@ -1172,6 +1172,17 @@ function resetConfigForm() {
     setVal('cfgTemplate', '');
     setVal('cfgOutputPattern', '');
     
+    // 元数据重置
+    setVal('metaTitle', '');
+    setVal('metaSubtitle', '');
+    setVal('metaAuthor', '');
+    setVal('metaVersion', '');
+    setVal('metaDate', '');
+    setVal('metaTocTitle', '');
+    setVal('metaClientName', '');
+    setVal('metaClientContact', '');
+    setVal('metaClientSystem', '');
+    
     // 基础参数
     setChecked('argToc', true);
     setChecked('argNumberSections', true);
@@ -1225,6 +1236,21 @@ function fillConfigForm(config) {
     setVal('cfgDocTypeName', config.docTypeName || '');
     setVal('cfgTemplate', config.template || '');
     setVal('cfgOutputPattern', config.outputPattern || '');
+    
+    // 填充元数据
+    const meta = config.metadata || {};
+    setVal('metaTitle', meta.title || '');
+    setVal('metaSubtitle', meta.subtitle || '');
+    setVal('metaAuthor', meta.author || '');
+    setVal('metaVersion', meta.version || '');
+    setVal('metaDate', meta.date || '');
+    setVal('metaTocTitle', meta.tocTitle || '');
+    
+    // 客户信息
+    const client = meta.client || {};
+    setVal('metaClientName', client.name || '');
+    setVal('metaClientContact', client.contact || '');
+    setVal('metaClientSystem', client.system || '');
     
     // 解析 Pandoc 参数
     const args = config.pandocArgs || [];
@@ -1412,6 +1438,31 @@ async function submitConfig() {
         }
     });
     
+    // 收集元数据
+    const metadata = {
+        title: getVal('metaTitle'),
+        subtitle: getVal('metaSubtitle'),
+        author: getVal('metaAuthor'),
+        version: getVal('metaVersion'),
+        date: getVal('metaDate'),
+        tocTitle: getVal('metaTocTitle'),
+        client: {
+            name: getVal('metaClientName'),
+            contact: getVal('metaClientContact'),
+            system: getVal('metaClientSystem')
+        }
+    };
+    
+    // 清理元数据空值
+    if (!metadata.client.name && !metadata.client.contact && !metadata.client.system) {
+        delete metadata.client;
+    }
+    Object.keys(metadata).forEach(key => {
+        if (metadata[key] === '' || metadata[key] === null) {
+            delete metadata[key];
+        }
+    });
+    
     // 验证
     if (!clientName) {
         alert('请输入客户名称');
@@ -1445,7 +1496,8 @@ async function submitConfig() {
         pandocArgs: pandocArgs,
         outputPattern: outputPattern || '{client}_' + docTypeName + '_{date}.docx',
         pdfOptions: pdfOptions,
-        variables: variables
+        variables: variables,
+        metadata: Object.keys(metadata).length > 0 ? metadata : null
     };
     
     const submitBtn = document.querySelector('.modal-footer .btn-primary');
