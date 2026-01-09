@@ -8,9 +8,21 @@
 - 🎨 **多客户支持**: 为不同客户配置专属的文档组合和元数据
 - 🔧 **自动化构建**: 通过命令一键生成 Word 或 PDF 文档
 - 📄 **PDF 输出**: 支持 PDF 格式输出，含代码高亮、封面、目录等专业排版
-- 🌐 **Web 界面**: 提供可视化界面，选择客户和文档类型即可生成
-- � ***Docker 支持**: 提供 Docker 镜像，支持卷挂载自定义文档
+- 🌐 **Web 界面**: 现代化响应式界面，支持深色模式，移动端友好
+- 🐳 **Docker 支持**: 提供 Docker 镜像，支持卷挂载自定义文档
 - 🚀 **CI/CD 集成**: 支持 GitHub Actions / GitLab CI 自动构建
+- 🔐 **配置锁定**: 支持密码保护客户配置，防止误修改
+
+## 技术栈
+
+| 组件 | 技术 |
+|------|------|
+| 文档处理 | Pandoc (Markdown → Word/PDF) |
+| PDF 引擎 | XeLaTeX + Eisvogel 模板 |
+| Web 后端 | Go 1.21+ (标准库 net/http) |
+| Web 前端 | 原生 HTML/CSS/JavaScript |
+| 配置格式 | YAML |
+| 容器化 | Docker + Docker Compose |
 
 ## 目录结构
 
@@ -309,8 +321,13 @@ web\doc-generator-web.exe    # Windows
 - 选择客户和文档类型
 - 选择输出格式（Word/PDF）
 - 一键生成并下载文档
-- 创建新客户配置
-- 实时显示配置更新
+- 创建和编辑客户配置
+- 穿梭框式模块选择，支持拖拽排序
+- 变量模板填写
+- 实时文件名预览
+- 深色模式自动适配
+- 移动端响应式布局
+- Toast 通知和加载动画
 
 详细说明见 [web/README.md](web/README.md)
 
@@ -697,3 +714,11 @@ variables:
 ## 许可证
 
 MIT License
+
+## 贡献
+
+欢迎提交 Issue 和 Pull Request！详见 [CONTRIBUTING.md](CONTRIBUTING.md)
+
+## 更新日志
+
+详见 [CHANGELOG.md](CHANGELOG.md)
