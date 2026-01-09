@@ -235,13 +235,9 @@ func (h *APIHandler) handleGenerate(w http.ResponseWriter, r *http.Request) {
 					errMsg += err.Error()
 				} else {
 					errMsg += result.Error
-					// 如果有详细输出，提取关键错误信息
+					// 直接附加完整的构建输出
 					if result.Output != "" {
-						// 提取 Pandoc/LaTeX 错误信息
-						detailErr := extractErrorDetail(result.Output)
-						if detailErr != "" {
-							errMsg += "\n详细信息: " + detailErr
-						}
+						errMsg += "\n\n--- 构建输出 ---\n" + result.Output
 					}
 				}
 				errors = append(errors, errMsg)
@@ -764,10 +760,18 @@ func extractErrorDetail(output string) string {
 		details = append(details, "LaTeX 文件未找到: "+matches[1])
 	}
 	
-	// 匹配 LaTeX Error
-	latexErrRegex := regexp.MustCompile(`! LaTeX Error: ([^\n]+)`)
-	if matches := latexErrRegex.FindStringSubmatch(output); len(matches) > 1 {
-		details = append(details, "LaTeX 错误: "+matches[1])
+	// 匹配 ! 开头的 LaTeX 错误（如 ! Illegal parameter number）
+	latexBangErrRegex := regexp.MustCompile(`(?m)^! ([^\n]+)`)
+	if matches := latexBangErrRegex.FindAllStringSubmatch(output, 3); len(matches) > 0 {
+		for _, m := range matches {
+			if len(m) > 1 {
+				errMsg := strings.TrimSpace(m[1])
+				// 跳过 Emergency stop（单独处理）
+				if !strings.Contains(errMsg, "Emergency stop") {
+					details = append(details, "LaTeX: "+errMsg)
+				}
+			}
+		}
 	}
 	
 	// 匹配 Pandoc 错误
@@ -796,18 +800,12 @@ func extractErrorDetail(output string) string {
 		}
 	}
 	
-	// 匹配一般性错误行
+	// 如果还没有找到错误，尝试匹配一般性错误行
 	if len(details) == 0 {
 		lines := strings.Split(output, "\n")
 		for _, line := range lines {
 			line = strings.TrimSpace(line)
-			// 匹配以 ! 开头的 LaTeX 错误
-			if strings.HasPrefix(line, "!") && len(line) > 2 && len(line) < 200 {
-				details = append(details, line)
-				if len(details) >= 3 {
-					break
-				}
-			} else if strings.Contains(strings.ToLower(line), "error") && len(line) < 200 {
+			if strings.Contains(strings.ToLower(line), "error") && len(line) < 200 && len(line) > 5 {
 				details = append(details, line)
 				if len(details) >= 3 {
 					break

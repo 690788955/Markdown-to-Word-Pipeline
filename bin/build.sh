@@ -411,6 +411,8 @@ read_pdf_option() {
         in_section && ($0 ~ "^[[:space:]]+"key":" || $0 ~ "^[[:space:]]+"key_alt":") {
             sub(/^[[:space:]]+[^:]+:[[:space:]]*/, "")
             gsub(/["'\'']/, "")
+            # 去除行尾注释（# 开头的部分）
+            sub(/[[:space:]]*#.*$/, "")
             gsub(/[[:space:]]*$/, "")
             print
             exit
