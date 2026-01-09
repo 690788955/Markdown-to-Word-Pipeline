@@ -246,14 +246,20 @@ func (s *VariableService) ExtractVariables(modulePaths []string) ([]VariableDecl
 	log.Printf("[VariableService] srcDir: %s", s.srcDir)
 	log.Printf("[VariableService] 模块路径: %v", modulePaths)
 	
+	// 计算工作目录（srcDir 的父目录）
+	workDir := filepath.Dir(s.srcDir)
+	log.Printf("[VariableService] 工作目录: %s", workDir)
+	
 	varsByFile := make(map[string][]VariableDeclaration)
 
 	for _, path := range modulePaths {
 		// 构建完整路径
 		fullPath := path
 		if !filepath.IsAbs(path) {
-			fullPath = filepath.Join(s.srcDir, "..", path)
+			fullPath = filepath.Join(workDir, path)
 		}
+		// 清理路径，确保跨平台一致性
+		fullPath = filepath.Clean(fullPath)
 		log.Printf("[VariableService] 处理模块: %s -> %s", path, fullPath)
 		
 		// 检查文件是否存在

@@ -64,9 +64,9 @@ type APIHandler struct {
 }
 
 // NewAPIHandler 创建 API 处理器实例
-func NewAPIHandler(clientSvc *service.ClientService, docSvc *service.DocumentService, buildSvc *service.BuildService, moduleSvc *service.ModuleService, templateSvc *service.TemplateService, configMgr *service.ConfigManager) *APIHandler {
-	// 创建变量服务（使用 moduleSvc 的 srcDir）
-	variableSvc := service.NewVariableService("")
+func NewAPIHandler(clientSvc *service.ClientService, docSvc *service.DocumentService, buildSvc *service.BuildService, moduleSvc *service.ModuleService, templateSvc *service.TemplateService, configMgr *service.ConfigManager, srcDir string) *APIHandler {
+	// 创建变量服务
+	variableSvc := service.NewVariableService(srcDir)
 	
 	return &APIHandler{
 		clientSvc:   clientSvc,
