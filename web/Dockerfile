@@ -48,6 +48,7 @@ RUN apk add --no-cache \
     texlive-xetex \
     texmf-dist-latexextra \
     texmf-dist-fontsextra \
+    texmf-dist-langchinese \
     font-noto-cjk \
     ttf-dejavu \
     fontconfig

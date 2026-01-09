@@ -758,9 +758,23 @@ func extractErrorDetail(output string) string {
 		details = append(details, "字体 \""+matches[1]+"\" 未安装")
 	}
 	
+	// 匹配 LaTeX 文件未找到错误 (如 ctexhook.sty)
+	latexFileRegex := regexp.MustCompile(`File \x60([^']+)' not found`)
+	if matches := latexFileRegex.FindStringSubmatch(output); len(matches) > 1 {
+		details = append(details, "LaTeX 文件未找到: "+matches[1])
+	}
+	
+	// 匹配 LaTeX Error
+	latexErrRegex := regexp.MustCompile(`! LaTeX Error: ([^\n]+)`)
+	if matches := latexErrRegex.FindStringSubmatch(output); len(matches) > 1 {
+		details = append(details, "LaTeX 错误: "+matches[1])
+	}
+	
 	// 匹配 Pandoc 错误
 	if strings.Contains(output, "Error producing PDF") {
-		details = append(details, "PDF 生成失败")
+		if len(details) == 0 {
+			details = append(details, "PDF 生成失败")
+		}
 	}
 	
 	// 匹配文件未找到错误
@@ -775,12 +789,25 @@ func extractErrorDetail(output string) string {
 		details = append(details, matches[1]+" 错误: "+matches[2])
 	}
 	
+	// 匹配 Emergency stop
+	if strings.Contains(output, "Emergency stop") {
+		if len(details) == 0 {
+			details = append(details, "LaTeX 紧急停止")
+		}
+	}
+	
 	// 匹配一般性错误行
 	if len(details) == 0 {
 		lines := strings.Split(output, "\n")
 		for _, line := range lines {
 			line = strings.TrimSpace(line)
-			if strings.Contains(strings.ToLower(line), "error") && len(line) < 200 {
+			// 匹配以 ! 开头的 LaTeX 错误
+			if strings.HasPrefix(line, "!") && len(line) > 2 && len(line) < 200 {
+				details = append(details, line)
+				if len(details) >= 3 {
+					break
+				}
+			} else if strings.Contains(strings.ToLower(line), "error") && len(line) < 200 {
 				details = append(details, line)
 				if len(details) >= 3 {
 					break
@@ -793,5 +820,5 @@ func extractErrorDetail(output string) string {
 		return ""
 	}
 	
-	return strings.Join(details, "; ")
+	return strings.Join(details, "\n")
 }
