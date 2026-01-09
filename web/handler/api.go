@@ -62,6 +62,7 @@ type APIHandler struct {
 	templateSvc   *service.TemplateService
 	configMgr     *service.ConfigManager
 	variableSvc   *service.VariableService
+	srcDir        string
 	adminPassword string
 }
 
@@ -78,6 +79,7 @@ func NewAPIHandler(clientSvc *service.ClientService, docSvc *service.DocumentSer
 		templateSvc:   templateSvc,
 		configMgr:     configMgr,
 		variableSvc:   variableSvc,
+		srcDir:        srcDir,
 		adminPassword: adminPassword,
 	}
 }
@@ -401,15 +403,16 @@ func (h *APIHandler) handleDownloadZip(w http.ResponseWriter, r *http.Request) {
 
 // CreateConfigRequest 创建配置请求
 type CreateConfigRequest struct {
-	ClientName    string                 `json:"clientName"`
-	DocTypeName   string                 `json:"docTypeName"`
-	DisplayName   string                 `json:"displayName"`
-	Template      string                 `json:"template"`
-	Modules       []string               `json:"modules"`
-	PandocArgs    []string               `json:"pandocArgs"`
-	OutputPattern string                 `json:"outputPattern"`
-	PdfOptions    *service.PdfOptions    `json:"pdfOptions,omitempty"`
-	Variables     map[string]interface{} `json:"variables,omitempty"`
+	ClientName    string                   `json:"clientName"`
+	DocTypeName   string                   `json:"docTypeName"`
+	DisplayName   string                   `json:"displayName"`
+	Template      string                   `json:"template"`
+	Modules       []string                 `json:"modules"`
+	PandocArgs    []string                 `json:"pandocArgs"`
+	OutputPattern string                   `json:"outputPattern"`
+	PdfOptions    *service.PdfOptions      `json:"pdfOptions,omitempty"`
+	Variables     map[string]interface{}   `json:"variables,omitempty"`
+	Metadata      *service.MetadataConfig  `json:"metadata,omitempty"`
 }
 
 // handleModules 处理模块列表请求
@@ -476,6 +479,7 @@ func (h *APIHandler) handleConfigs(w http.ResponseWriter, r *http.Request) {
 		OutputPattern: req.OutputPattern,
 		PdfOptions:    req.PdfOptions,
 		Variables:     req.Variables,
+		Metadata:      req.Metadata,
 	}
 
 	if config.DisplayName == "" {
@@ -575,6 +579,7 @@ func (h *APIHandler) updateConfig(w http.ResponseWriter, r *http.Request, client
 		OutputPattern: req.OutputPattern,
 		PdfOptions:    req.PdfOptions,
 		Variables:     req.Variables,
+		Metadata:      req.Metadata,
 	}
 
 	if err := h.configMgr.UpdateConfig(clientName, docTypeName, config); err != nil {
@@ -820,3 +825,6 @@ func extractErrorDetail(output string) string {
 	
 	return strings.Join(details, "\n")
 }
+
+
+

@@ -7,32 +7,52 @@ import (
 	"path/filepath"
 	"regexp"
 	"strings"
-	"time"
 
 	"gopkg.in/yaml.v3"
 )
 
 // PdfOptions PDF 输出选项
 type PdfOptions struct {
-	Mainfont            string  `json:"mainfont,omitempty" yaml:"mainfont,omitempty"`
-	Monofont            string  `json:"monofont,omitempty" yaml:"monofont,omitempty"`
-	Fontsize            string  `json:"fontsize,omitempty" yaml:"fontsize,omitempty"`
-	Linestretch         float64 `json:"linestretch,omitempty" yaml:"linestretch,omitempty"`
-	Titlepage           bool    `json:"titlepage" yaml:"titlepage"`
-	TitlepageColor      string  `json:"titlepage-color,omitempty" yaml:"titlepage-color,omitempty"`
-	TitlepageTextColor  string  `json:"titlepage-text-color,omitempty" yaml:"titlepage-text-color,omitempty"`
-	TitlepageRuleColor  string  `json:"titlepage-rule-color,omitempty" yaml:"titlepage-rule-color,omitempty"`
-	Geometry            string  `json:"geometry,omitempty" yaml:"geometry,omitempty"`
-	Papersize           string  `json:"papersize,omitempty" yaml:"papersize,omitempty"`
-	TocOwnPage          bool    `json:"toc-own-page" yaml:"toc-own-page"`
-	Colorlinks          bool    `json:"colorlinks" yaml:"colorlinks"`
-	Linkcolor           string  `json:"linkcolor,omitempty" yaml:"linkcolor,omitempty"`
-	Urlcolor            string  `json:"urlcolor,omitempty" yaml:"urlcolor,omitempty"`
-	Listings            bool    `json:"listings" yaml:"listings"`
-	ListingsNoPageBreak bool    `json:"listings-no-page-break" yaml:"listings-no-page-break"`
-	CodeBlockFontSize   string  `json:"code-block-font-size,omitempty" yaml:"code-block-font-size,omitempty"`
-	HeaderLeft          string  `json:"header-left,omitempty" yaml:"header-left,omitempty"`
-	HeaderRight         string  `json:"header-right,omitempty" yaml:"header-right,omitempty"`
+	// 字体设置
+	Mainfont    string `json:"mainfont,omitempty" yaml:"mainfont,omitempty"`
+	Sansfont    string `json:"sansfont,omitempty" yaml:"sansfont,omitempty"`
+	Monofont    string `json:"monofont,omitempty" yaml:"monofont,omitempty"`
+	CJKmainfont string `json:"CJKmainfont,omitempty" yaml:"CJKmainfont,omitempty"`
+	Fontsize    string `json:"fontsize,omitempty" yaml:"fontsize,omitempty"`
+	Linestretch float64 `json:"linestretch,omitempty" yaml:"linestretch,omitempty"`
+
+	// 封面设置
+	Titlepage           bool   `json:"titlepage" yaml:"titlepage"`
+	TitlepageColor      string `json:"titlepage-color,omitempty" yaml:"titlepage-color,omitempty"`
+	TitlepageTextColor  string `json:"titlepage-text-color,omitempty" yaml:"titlepage-text-color,omitempty"`
+	TitlepageRuleColor  string `json:"titlepage-rule-color,omitempty" yaml:"titlepage-rule-color,omitempty"`
+	TitlepageRuleHeight int    `json:"titlepage-rule-height,omitempty" yaml:"titlepage-rule-height,omitempty"`
+
+	// 页面设置
+	Geometry    string `json:"geometry,omitempty" yaml:"geometry,omitempty"`
+	Papersize   string `json:"papersize,omitempty" yaml:"papersize,omitempty"`
+	Book        bool   `json:"book,omitempty" yaml:"book,omitempty"`
+	Classoption string `json:"classoption,omitempty" yaml:"classoption,omitempty"`
+
+	// 目录设置
+	Toc        bool `json:"toc,omitempty" yaml:"toc,omitempty"`
+	TocDepth   int  `json:"toc-depth,omitempty" yaml:"toc-depth,omitempty"`
+	TocOwnPage bool `json:"toc-own-page" yaml:"toc-own-page"`
+
+	// 链接设置
+	Colorlinks bool   `json:"colorlinks" yaml:"colorlinks"`
+	Linkcolor  string `json:"linkcolor,omitempty" yaml:"linkcolor,omitempty"`
+	Urlcolor   string `json:"urlcolor,omitempty" yaml:"urlcolor,omitempty"`
+
+	// 代码块设置
+	Listings            bool   `json:"listings" yaml:"listings"`
+	ListingsNoPageBreak bool   `json:"listings-no-page-break" yaml:"listings-no-page-break"`
+	CodeBlockFontSize   string `json:"code-block-font-size,omitempty" yaml:"code-block-font-size,omitempty"`
+
+	// 页眉页脚
+	HeaderLeft   string `json:"header-left,omitempty" yaml:"header-left,omitempty"`
+	HeaderRight  string `json:"header-right,omitempty" yaml:"header-right,omitempty"`
+	FooterCenter string `json:"footer-center,omitempty" yaml:"footer-center,omitempty"`
 }
 
 // CustomConfig 自定义配置
@@ -69,6 +89,16 @@ type ClientInfo struct {
 
 // ConfigYAML 配置文件的 YAML 结构
 type ConfigYAML struct {
+	// 元数据字段（顶层，与构建脚本兼容）
+	Title    string `yaml:"title,omitempty"`
+	Subtitle string `yaml:"subtitle,omitempty"`
+	Author   string `yaml:"author,omitempty"`
+	Version  string `yaml:"version,omitempty"`
+	Date     string `yaml:"date,omitempty"`
+	TocTitle string `yaml:"toc-title,omitempty"`
+	// 客户信息
+	Client *ClientInfo `yaml:"client,omitempty"`
+	// 配置字段
 	ClientName    string                 `yaml:"client_name"`
 	Template      string                 `yaml:"template"`
 	Modules       []string               `yaml:"modules"`
@@ -76,7 +106,6 @@ type ConfigYAML struct {
 	OutputPattern string                 `yaml:"output_pattern"`
 	PdfOptions    *PdfOptions            `yaml:"pdf_options,omitempty"`
 	Variables     map[string]interface{} `yaml:"variables,omitempty"`
-	Metadata      *MetadataConfig        `yaml:"metadata,omitempty"`
 }
 
 // ConfigManager 配置管理器
@@ -207,12 +236,6 @@ func (m *ConfigManager) CreateConfig(config CustomConfig) error {
 			os.RemoveAll(clientDir)
 			return fmt.Errorf("创建标记文件失败: %w", err)
 		}
-
-		// 创建 metadata.yaml
-		if err := m.createMetadata(clientDir, config.DisplayName); err != nil {
-			os.RemoveAll(clientDir)
-			return fmt.Errorf("创建元数据文件失败: %w", err)
-		}
 	}
 
 	// 设置默认值
@@ -235,26 +258,6 @@ func (m *ConfigManager) CreateConfig(config CustomConfig) error {
 	return nil
 }
 
-// createMetadata 创建 metadata.yaml 文件
-func (m *ConfigManager) createMetadata(clientDir, displayName string) error {
-	content := fmt.Sprintf(`---
-title: "%s文档"
-subtitle: "自定义配置"
-author: "运维团队"
-date: "%s"
-version: "v1.0"
-
-client:
-  name: "%s"
-  contact: ""
-  system: ""
----
-`, displayName, time.Now().Format("2006年1月"), displayName)
-
-	metadataPath := filepath.Join(clientDir, "metadata.yaml")
-	return os.WriteFile(metadataPath, []byte(content), 0644)
-}
-
 // writeConfigFile 写入配置文件
 func (m *ConfigManager) writeConfigFile(path string, config CustomConfig) error {
 	yamlConfig := ConfigYAML{
@@ -265,6 +268,17 @@ func (m *ConfigManager) writeConfigFile(path string, config CustomConfig) error 
 		OutputPattern: config.OutputPattern,
 		PdfOptions:    config.PdfOptions,
 		Variables:     config.Variables,
+	}
+
+	// 将元数据字段写入顶层（与构建脚本兼容）
+	if config.Metadata != nil {
+		yamlConfig.Title = config.Metadata.Title
+		yamlConfig.Subtitle = config.Metadata.Subtitle
+		yamlConfig.Author = config.Metadata.Author
+		yamlConfig.Version = config.Metadata.Version
+		yamlConfig.Date = config.Metadata.Date
+		yamlConfig.TocTitle = config.Metadata.TocTitle
+		yamlConfig.Client = config.Metadata.Client
 	}
 
 	// 如果 PandocArgs 为空，设置默认值
@@ -289,29 +303,7 @@ func (m *ConfigManager) writeConfigFile(path string, config CustomConfig) error 
 		return err
 	}
 
-	// 如果有元数据，保存到 metadata.yaml
-	if config.Metadata != nil && !config.Metadata.IsEmpty() {
-		clientDir := filepath.Dir(path)
-		if err := m.saveClientMetadata(clientDir, config.Metadata); err != nil {
-			return fmt.Errorf("保存元数据失败: %w", err)
-		}
-	}
-
 	return nil
-}
-
-// saveClientMetadata 保存客户元数据
-func (m *ConfigManager) saveClientMetadata(clientDir string, metadata *MetadataConfig) error {
-	metadataPath := filepath.Join(clientDir, "metadata.yaml")
-
-	data, err := yaml.Marshal(metadata)
-	if err != nil {
-		return err
-	}
-
-	// 使用 YAML front matter 格式
-	content := fmt.Sprintf("---\n# 客户元数据配置\n# 此文件中的值会覆盖 src/metadata.yaml 中的同名字段\n\n%s---\n", string(data))
-	return os.WriteFile(metadataPath, []byte(content), 0644)
 }
 
 // IsEmpty 检查元数据是否为空
@@ -340,8 +332,21 @@ func (m *ConfigManager) GetConfig(clientName, docTypeName string) (*CustomConfig
 		return nil, fmt.Errorf("解析配置文件失败: %w", err)
 	}
 
-	// 尝试读取客户的 metadata.yaml
-	metadata := m.loadClientMetadata(clientName)
+	// 从顶层字段构建元数据（文档级别元数据）
+	var metadata *MetadataConfig
+	if yamlConfig.Title != "" || yamlConfig.Subtitle != "" || yamlConfig.Author != "" ||
+		yamlConfig.Version != "" || yamlConfig.Date != "" || yamlConfig.TocTitle != "" ||
+		yamlConfig.Client != nil {
+		metadata = &MetadataConfig{
+			Title:    yamlConfig.Title,
+			Subtitle: yamlConfig.Subtitle,
+			Author:   yamlConfig.Author,
+			Version:  yamlConfig.Version,
+			Date:     yamlConfig.Date,
+			TocTitle: yamlConfig.TocTitle,
+			Client:   yamlConfig.Client,
+		}
+	}
 
 	return &CustomConfig{
 		ClientName:    clientName,
@@ -355,32 +360,6 @@ func (m *ConfigManager) GetConfig(clientName, docTypeName string) (*CustomConfig
 		Variables:     yamlConfig.Variables,
 		Metadata:      metadata,
 	}, nil
-}
-
-// loadClientMetadata 加载客户的元数据配置
-func (m *ConfigManager) loadClientMetadata(clientName string) *MetadataConfig {
-	metadataPath := filepath.Join(m.clientsDir, clientName, "metadata.yaml")
-	
-	data, err := os.ReadFile(metadataPath)
-	if err != nil {
-		return nil // 没有元数据文件，返回 nil
-	}
-
-	// 解析 YAML front matter 格式
-	content := string(data)
-	if strings.HasPrefix(content, "---") {
-		parts := strings.SplitN(content[3:], "---", 2)
-		if len(parts) > 0 {
-			content = parts[0]
-		}
-	}
-
-	var metadata MetadataConfig
-	if err := yaml.Unmarshal([]byte(content), &metadata); err != nil {
-		return nil
-	}
-
-	return &metadata
 }
 
 // UpdateConfig 更新配置
@@ -397,16 +376,155 @@ func (m *ConfigManager) UpdateConfig(clientName, docTypeName string, config Cust
 		return fmt.Errorf("配置不存在: %s/%s", clientName, docTypeName)
 	}
 
+	// 读取现有配置，以便保留前端未发送的字段
+	existingConfig, err := m.GetConfig(clientName, docTypeName)
+	if err != nil {
+		return fmt.Errorf("读取现有配置失败: %w", err)
+	}
+
 	// 验证输入
 	if err := m.validateModules(config.Modules); err != nil {
 		return err
 	}
 
-	// 更新配置
-	config.ClientName = clientName
-	config.DocTypeName = docTypeName
+	// 合并配置：前端发送的值优先，但保留前端未处理的字段
+	mergedConfig := m.mergeConfigs(existingConfig, &config)
+	mergedConfig.ClientName = clientName
+	mergedConfig.DocTypeName = docTypeName
 
-	return m.writeConfigFile(configPath, config)
+	return m.writeConfigFile(configPath, *mergedConfig)
+}
+
+// mergeConfigs 合并配置，newConfig 的非空值优先
+func (m *ConfigManager) mergeConfigs(existing, newConfig *CustomConfig) *CustomConfig {
+	result := &CustomConfig{
+		ClientName:    newConfig.ClientName,
+		DocTypeName:   newConfig.DocTypeName,
+		DisplayName:   newConfig.DisplayName,
+		Template:      newConfig.Template,
+		Modules:       newConfig.Modules,
+		PandocArgs:    newConfig.PandocArgs,
+		OutputPattern: newConfig.OutputPattern,
+		Variables:     newConfig.Variables,
+		Metadata:      newConfig.Metadata,
+	}
+
+	// 如果 DisplayName 为空，使用现有的
+	if result.DisplayName == "" && existing != nil {
+		result.DisplayName = existing.DisplayName
+	}
+
+	// 如果 Template 为空，使用现有的
+	if result.Template == "" && existing != nil {
+		result.Template = existing.Template
+	}
+
+	// 如果 OutputPattern 为空，使用现有的
+	if result.OutputPattern == "" && existing != nil {
+		result.OutputPattern = existing.OutputPattern
+	}
+
+	// 合并 PDF 选项
+	result.PdfOptions = m.mergePdfOptions(existing.PdfOptions, newConfig.PdfOptions)
+
+	return result
+}
+
+// mergePdfOptions 合并 PDF 选项，保留前端未处理的字段
+func (m *ConfigManager) mergePdfOptions(existing, newOpts *PdfOptions) *PdfOptions {
+	if newOpts == nil && existing == nil {
+		return nil
+	}
+
+	result := &PdfOptions{}
+
+	// 如果有现有配置，先复制所有字段
+	if existing != nil {
+		*result = *existing
+	}
+
+	// 如果有新配置，用新值覆盖（但只覆盖前端实际设置的字段）
+	if newOpts != nil {
+		// 字体设置
+		if newOpts.Mainfont != "" {
+			result.Mainfont = newOpts.Mainfont
+		}
+		if newOpts.Sansfont != "" {
+			result.Sansfont = newOpts.Sansfont
+		}
+		if newOpts.Monofont != "" {
+			result.Monofont = newOpts.Monofont
+		}
+		if newOpts.CJKmainfont != "" {
+			result.CJKmainfont = newOpts.CJKmainfont
+		}
+		if newOpts.Fontsize != "" {
+			result.Fontsize = newOpts.Fontsize
+		}
+		if newOpts.Linestretch != 0 {
+			result.Linestretch = newOpts.Linestretch
+		}
+
+		// 封面设置 - bool 类型直接覆盖
+		result.Titlepage = newOpts.Titlepage
+		if newOpts.TitlepageColor != "" {
+			result.TitlepageColor = newOpts.TitlepageColor
+		}
+		if newOpts.TitlepageTextColor != "" {
+			result.TitlepageTextColor = newOpts.TitlepageTextColor
+		}
+		if newOpts.TitlepageRuleColor != "" {
+			result.TitlepageRuleColor = newOpts.TitlepageRuleColor
+		}
+		if newOpts.TitlepageRuleHeight != 0 {
+			result.TitlepageRuleHeight = newOpts.TitlepageRuleHeight
+		}
+
+		// 页面设置
+		if newOpts.Geometry != "" {
+			result.Geometry = newOpts.Geometry
+		}
+		if newOpts.Papersize != "" {
+			result.Papersize = newOpts.Papersize
+		}
+		// Book 和 Classoption 保留现有值（前端未处理）
+
+		// 目录设置
+		result.Toc = newOpts.Toc
+		if newOpts.TocDepth != 0 {
+			result.TocDepth = newOpts.TocDepth
+		}
+		result.TocOwnPage = newOpts.TocOwnPage
+
+		// 链接设置
+		result.Colorlinks = newOpts.Colorlinks
+		if newOpts.Linkcolor != "" {
+			result.Linkcolor = newOpts.Linkcolor
+		}
+		if newOpts.Urlcolor != "" {
+			result.Urlcolor = newOpts.Urlcolor
+		}
+
+		// 代码块设置
+		result.Listings = newOpts.Listings
+		result.ListingsNoPageBreak = newOpts.ListingsNoPageBreak
+		if newOpts.CodeBlockFontSize != "" {
+			result.CodeBlockFontSize = newOpts.CodeBlockFontSize
+		}
+
+		// 页眉页脚
+		if newOpts.HeaderLeft != "" {
+			result.HeaderLeft = newOpts.HeaderLeft
+		}
+		if newOpts.HeaderRight != "" {
+			result.HeaderRight = newOpts.HeaderRight
+		}
+		if newOpts.FooterCenter != "" {
+			result.FooterCenter = newOpts.FooterCenter
+		}
+	}
+
+	return result
 }
 
 // DeleteConfig 删除配置
@@ -491,3 +609,5 @@ func (m *ConfigManager) ListCustomConfigs(clientName string) ([]string, error) {
 
 	return configs, nil
 }
+
+

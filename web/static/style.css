@@ -808,6 +808,81 @@ body.modal-open {
     }
 }
 
+/* ==================== 元数据区域样式 ==================== */
+.metadata-section {
+    background: var(--color-bg);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-md);
+    padding: var(--spacing-md);
+    margin-bottom: var(--spacing-md);
+}
+
+.metadata-section .section-header {
+    display: flex;
+    align-items: baseline;
+    gap: var(--spacing-sm);
+    margin-bottom: var(--spacing-md);
+    padding-bottom: var(--spacing-sm);
+    border-bottom: 1px solid var(--color-border-light);
+}
+
+.metadata-section .section-header h4 {
+    font-size: 0.95rem;
+    font-weight: 600;
+    color: var(--color-text);
+    margin: 0;
+}
+
+.metadata-section .section-hint {
+    font-size: 0.75rem;
+    color: var(--color-text-muted);
+}
+
+.metadata-section.client-metadata {
+    background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+    border-color: var(--color-primary-light);
+}
+
+@media (prefers-color-scheme: dark) {
+    .metadata-section.client-metadata {
+        background: linear-gradient(135deg, #1a365d 0%, #16213e 100%);
+        border-color: var(--color-primary-dark);
+    }
+}
+
+.metadata-priority-info {
+    background: var(--color-warning-light);
+    border: 1px solid #ffc107;
+    border-radius: var(--radius-sm);
+    padding: var(--spacing-md);
+    font-size: 0.85rem;
+}
+
+.metadata-priority-info p {
+    margin-bottom: var(--spacing-sm);
+    color: var(--color-text);
+}
+
+.metadata-priority-info ol {
+    margin: 0 0 var(--spacing-sm) var(--spacing-lg);
+    padding: 0;
+}
+
+.metadata-priority-info ol li {
+    margin-bottom: var(--spacing-xs);
+    color: var(--color-text-secondary);
+}
+
+.metadata-priority-info small {
+    color: var(--color-text-muted);
+}
+
+@media (prefers-color-scheme: dark) {
+    .metadata-priority-info {
+        background: rgba(243, 156, 18, 0.15);
+        border-color: rgba(243, 156, 18, 0.4);
+    }
+}
 
 /* ==================== 复选框和参数区域 ==================== */
 .checkbox-group {
@@ -2007,4 +2082,108 @@ input[type="color"] {
 button:focus:not(:focus-visible),
 a:focus:not(:focus-visible) {
     outline: none;
+}
+
+/* ==================== 继承元数据预览 ==================== */
+.inherited-preview {
+    background: var(--color-bg);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-sm);
+    padding: var(--spacing-md);
+    margin-bottom: var(--spacing-lg);
+}
+
+.inherited-preview h4 {
+    font-size: 0.9rem;
+    color: var(--color-text-secondary);
+    margin-bottom: var(--spacing-sm);
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-sm);
+}
+
+.inherited-preview h4::before {
+    content: '📋';
+}
+
+.inherited-values {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--spacing-sm);
+}
+
+.inherited-item {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 4px 10px;
+    background: var(--color-surface);
+    border: 1px solid var(--color-border-light);
+    border-radius: var(--radius-sm);
+    font-size: 0.85rem;
+    color: var(--color-text-secondary);
+}
+
+.inherited-item strong {
+    color: var(--color-text);
+    font-weight: 500;
+}
+
+.inherited-item small {
+    color: var(--color-text-muted);
+    font-size: 0.75rem;
+    margin-left: 2px;
+}
+
+/* 客户元数据模态框样式 */
+#clientMetadataModal .modal-content {
+    max-width: 600px;
+}
+
+#clientMetadataModal .metadata-section {
+    margin-bottom: var(--spacing-lg);
+}
+
+#clientMetadataModal .metadata-section:last-child {
+    margin-bottom: 0;
+}
+
+/* ==================== 系统元数据显示 ==================== */
+.system-metadata-grid {
+    display: grid;
+    gap: var(--spacing-sm);
+}
+
+.system-meta-item {
+    display: flex;
+    align-items: center;
+    padding: 10px 14px;
+    background: var(--color-surface);
+    border: 1px solid var(--color-border-light);
+    border-radius: var(--radius-sm);
+}
+
+.system-meta-item .meta-label {
+    min-width: 100px;
+    font-weight: 500;
+    color: var(--color-text-secondary);
+    font-size: 0.9rem;
+}
+
+.system-meta-item .meta-value {
+    flex: 1;
+    color: var(--color-text);
+    font-size: 0.95rem;
+}
+
+#systemMetadataModal .modal-content {
+    max-width: 500px;
+}
+
+#systemMetadataModal code {
+    background: var(--color-bg);
+    padding: 2px 6px;
+    border-radius: 4px;
+    font-size: 0.85rem;
+    color: var(--color-primary);
 }

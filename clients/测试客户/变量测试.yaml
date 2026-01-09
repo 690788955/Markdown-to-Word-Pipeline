@@ -1,6 +1,11 @@
 # 变量测试 配置
 # 自定义生成
 
+title: 测试客户文档
+subtitle: 自定义配置
+author: 运维团队
+version: v1.0
+date: 2026年1月
 client_name: 测试客户
 template: ""
 modules:
@@ -25,6 +30,8 @@ pdf_options:
     urlcolor: 3498db
     listings: true
     listings-no-page-break: true
+    header-left: \\leftmark
+    header-right: \\thepage
 variables:
     contact_email: admin@example.com
     deploy_date: "2026-01-08"

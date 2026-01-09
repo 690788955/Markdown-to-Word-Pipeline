@@ -151,55 +151,43 @@
 
                     <!-- Tab 内容：元数据 -->
                     <div id="tabMetadata" class="tab-content">
-                        <p class="info-text">设置文档的元数据信息，这些值会覆盖默认的 src/metadata.yaml 配置。</p>
-                        <div class="form-row">
-                            <div class="form-group">
-                                <label for="metaTitle">文档标题</label>
-                                <input type="text" id="metaTitle" placeholder="例如：XX系统运维手册">
+                        <!-- 文档级别元数据 -->
+                        <div class="metadata-section">
+                            <div class="section-header">
+                                <h4>📄 文档元数据</h4>
+                                <small class="section-hint">设置文档的基本信息</small>
                             </div>
-                            <div class="form-group">
-                                <label for="metaSubtitle">副标题</label>
-                                <input type="text" id="metaSubtitle" placeholder="例如：标准化运维知识库">
+                            <div class="form-row">
+                                <div class="form-group">
+                                    <label for="metaTitle">文档标题</label>
+                                    <input type="text" id="metaTitle" placeholder="例如：运维手册">
+                                </div>
+                                <div class="form-group">
+                                    <label for="metaSubtitle">副标题</label>
+                                    <input type="text" id="metaSubtitle" placeholder="例如：XX系统">
+                                </div>
                             </div>
-                        </div>
-                        <div class="form-row">
-                            <div class="form-group">
-                                <label for="metaAuthor">作者</label>
-                                <input type="text" id="metaAuthor" placeholder="例如：运维团队">
+                            <div class="form-row">
+                                <div class="form-group">
+                                    <label for="metaAuthor">作者</label>
+                                    <input type="text" id="metaAuthor" placeholder="例如：运维团队">
+                                </div>
+                                <div class="form-group">
+                                    <label for="metaVersion">版本号</label>
+                                    <input type="text" id="metaVersion" placeholder="例如：v1.0">
+                                </div>
                             </div>
-                            <div class="form-group">
-                                <label for="metaVersion">版本号</label>
-                                <input type="text" id="metaVersion" placeholder="例如：v1.0">
-                            </div>
-                        </div>
-                        <div class="form-row">
-                            <div class="form-group">
-                                <label for="metaDate">日期</label>
-                                <input type="text" id="metaDate" placeholder="例如：2026年1月">
-                            </div>
-                            <div class="form-group">
-                                <label for="metaTocTitle">目录标题</label>
-                                <input type="text" id="metaTocTitle" placeholder="默认：目录">
-                            </div>
-                        </div>
-                        <div class="form-group">
-                            <label>客户信息</label>
-                        </div>
-                        <div class="form-row">
-                            <div class="form-group">
-                                <label for="metaClientName">客户名称 <small>(用于文档内容)</small></label>
-                                <input type="text" id="metaClientName" placeholder="例如：XX公司">
-                            </div>
-                            <div class="form-group">
-                                <label for="metaClientContact">联系人</label>
-                                <input type="text" id="metaClientContact" placeholder="例如：运维工程师">
+                            <div class="form-row">
+                                <div class="form-group">
+                                    <label for="metaDate">日期</label>
+                                    <input type="text" id="metaDate" placeholder="例如：2026年1月">
+                                </div>
+                                <div class="form-group">
+                                    <label for="metaTocTitle">目录标题</label>
+                                    <input type="text" id="metaTocTitle" placeholder="默认：目录">
+                                </div>
                             </div>
                         </div>
-                        <div class="form-group">
-                            <label for="metaClientSystem">系统名称</label>
-                            <input type="text" id="metaClientSystem" placeholder="例如：XX业务系统">
-                        </div>
-                        <small class="form-hint">留空的字段将使用默认值（src/metadata.yaml）</small>
                     </div>
 
                     <!-- Tab 内容：通用设置 -->

@@ -1179,9 +1179,6 @@ function resetConfigForm() {
     setVal('metaVersion', '');
     setVal('metaDate', '');
     setVal('metaTocTitle', '');
-    setVal('metaClientName', '');
-    setVal('metaClientContact', '');
-    setVal('metaClientSystem', '');
     
     // 基础参数
     setChecked('argToc', true);
@@ -1229,28 +1226,25 @@ function resetConfigForm() {
     renderTransferUI();
 }
 function fillConfigForm(config) {
+    console.log('fillConfigForm 收到配置:', JSON.stringify(config, null, 2));
     const setVal = (id, val) => { const el = document.getElementById(id); if (el) el.value = val; };
     const setChecked = (id, val) => { const el = document.getElementById(id); if (el) el.checked = val; };
     
-    setVal('cfgClientName', config.clientName || '');
+    // 基本信息 - 编辑模式下显示 displayName，新建模式下显示 clientName
+    setVal('cfgClientName', config.displayName || config.clientName || '');
     setVal('cfgDocTypeName', config.docTypeName || '');
     setVal('cfgTemplate', config.template || '');
     setVal('cfgOutputPattern', config.outputPattern || '');
     
     // 填充元数据
     const meta = config.metadata || {};
+    console.log('元数据:', JSON.stringify(meta, null, 2));
     setVal('metaTitle', meta.title || '');
     setVal('metaSubtitle', meta.subtitle || '');
     setVal('metaAuthor', meta.author || '');
     setVal('metaVersion', meta.version || '');
     setVal('metaDate', meta.date || '');
     setVal('metaTocTitle', meta.tocTitle || '');
-    
-    // 客户信息
-    const client = meta.client || {};
-    setVal('metaClientName', client.name || '');
-    setVal('metaClientContact', client.contact || '');
-    setVal('metaClientSystem', client.system || '');
     
     // 解析 Pandoc 参数
     const args = config.pandocArgs || [];
@@ -1361,8 +1355,10 @@ async function submitConfig() {
     const isChecked = (id) => { const el = document.getElementById(id); return el ? el.checked : false; };
     const getColor = (id) => { const el = document.getElementById(id); return el ? el.value.replace('#', '') : ''; };
     
-    const clientName = getVal('cfgClientName');
-    const docTypeName = getVal('cfgDocTypeName');
+    // 编辑模式下使用原始的 clientName 和 docTypeName
+    const clientName = currentEditConfig ? currentEditConfig.clientName : getVal('cfgClientName');
+    const docTypeName = currentEditConfig ? currentEditConfig.docTypeName : getVal('cfgDocTypeName');
+    const displayName = getVal('cfgClientName'); // 显示名称
     const template = getVal('cfgTemplate');
     const outputPattern = getVal('cfgOutputPattern');
     
@@ -1445,18 +1441,10 @@ async function submitConfig() {
         author: getVal('metaAuthor'),
         version: getVal('metaVersion'),
         date: getVal('metaDate'),
-        tocTitle: getVal('metaTocTitle'),
-        client: {
-            name: getVal('metaClientName'),
-            contact: getVal('metaClientContact'),
-            system: getVal('metaClientSystem')
-        }
+        tocTitle: getVal('metaTocTitle')
     };
     
     // 清理元数据空值
-    if (!metadata.client.name && !metadata.client.contact && !metadata.client.system) {
-        delete metadata.client;
-    }
     Object.keys(metadata).forEach(key => {
         if (metadata[key] === '' || metadata[key] === null) {
             delete metadata[key];
@@ -1490,7 +1478,7 @@ async function submitConfig() {
     const configData = {
         clientName: clientName,
         docTypeName: docTypeName,
-        displayName: clientName,
+        displayName: displayName || clientName,
         template: template,
         modules: selectedModules,
         pandocArgs: pandocArgs,
@@ -1558,6 +1546,7 @@ async function editConfig(clientName, docTypeName) {
         
         if (!data.success) throw new Error(data.error);
         
+        console.log('加载配置数据:', JSON.stringify(data.data.config, null, 2));
         currentEditConfig = data.data.config;
         showConfigModal(true);
     } catch (e) {
@@ -1941,3 +1930,6 @@ window.validateVariables = validateVariables;
 window.getVariableValues = getVariableValues;
 window.clearVariableValues = clearVariableValues;
 window.onModulesChanged = onModulesChanged;
+
+// ==================== 客户元数据管理功能 ====================
+
