@@ -41,7 +41,118 @@ document.addEventListener('DOMContentLoaded', function() {
     
     // Tab 切换事件
     initTabs();
+    
+    // 初始化模态框事件
+    initModalEvents();
 });
+
+// ==================== 模态框通用功能 ====================
+
+// 初始化模态框事件（ESC 键关闭、背景点击关闭）
+function initModalEvents() {
+    // ESC 键关闭模态框
+    document.addEventListener('keydown', function(e) {
+        if (e.key === 'Escape') {
+            closeTopModal();
+        }
+    });
+    
+    // 背景点击关闭模态框
+    document.querySelectorAll('.modal').forEach(function(modal) {
+        modal.addEventListener('click', function(e) {
+            // 只有点击背景（modal 本身）时才关闭，点击内容区域不关闭
+            if (e.target === modal) {
+                closeModal(modal);
+            }
+        });
+    });
+}
+
+// 打开模态框（通用）
+function openModal(modal) {
+    if (!modal) return;
+    
+    // 添加 active 类触发动画
+    modal.classList.add('active');
+    modal.classList.remove('closing');
+    
+    // 阻止背景滚动
+    document.body.classList.add('modal-open');
+}
+
+// 关闭模态框（通用，带动画）
+function closeModal(modal) {
+    if (!modal || !modal.classList.contains('active')) return;
+    
+    // 添加关闭动画类
+    modal.classList.add('closing');
+    modal.classList.remove('active');
+    
+    // 动画结束后隐藏
+    setTimeout(function() {
+        modal.classList.remove('closing');
+        
+        // 检查是否还有其他打开的模态框
+        const openModals = document.querySelectorAll('.modal.active');
+        if (openModals.length === 0) {
+            document.body.classList.remove('modal-open');
+        }
+    }, 250); // 与 CSS transition 时长一致
+}
+
+// 关闭最顶层的模态框
+function closeTopModal() {
+    const modals = document.querySelectorAll('.modal.active');
+    if (modals.length > 0) {
+        // 关闭最后一个（最顶层）
+        closeModal(modals[modals.length - 1]);
+    }
+}
+
+// ==================== Toast 通知功能 ====================
+
+// 获取或创建 Toast 容器
+function getToastContainer() {
+    let container = document.getElementById('toastContainer');
+    if (!container) {
+        container = document.createElement('div');
+        container.id = 'toastContainer';
+        container.className = 'toast-container';
+        document.body.appendChild(container);
+    }
+    return container;
+}
+
+// 显示 Toast 通知
+function showToast(message, type = 'success', duration = 3000) {
+    const container = getToastContainer();
+    
+    const toast = document.createElement('div');
+    toast.className = 'toast toast-' + type;
+    toast.textContent = message;
+    
+    container.appendChild(toast);
+    
+    // 触发动画
+    requestAnimationFrame(function() {
+        toast.classList.add('show');
+    });
+    
+    // 自动消失
+    setTimeout(function() {
+        toast.classList.remove('show');
+        setTimeout(function() {
+            if (toast.parentNode) {
+                toast.parentNode.removeChild(toast);
+            }
+        }, 300);
+    }, duration);
+    
+    return toast;
+}
+
+// 暴露 Toast 函数到全局
+window.showToast = showToast;
 
 // 初始化 Tab 切换
 function initTabs() {
@@ -83,6 +194,13 @@ function showErrorModal(title, message) {
             </div>
         `;
         document.body.appendChild(modal);
+        
+        // 添加背景点击关闭
+        modal.addEventListener('click', function(e) {
+            if (e.target === modal) {
+                hideErrorModal();
+            }
+        });
     }
     
     // 设置内容
@@ -90,13 +208,13 @@ function showErrorModal(title, message) {
     document.getElementById('errorModalMessage').textContent = message;
     
     // 显示模态框
-    modal.style.display = 'flex';
+    openModal(modal);
 }
 
 // 隐藏错误模态框
 function hideErrorModal() {
     const modal = document.getElementById('errorModal');
-    if (modal) modal.style.display = 'none';
+    if (modal) closeModal(modal);
 }
 
 // 获取当前选择的输出格式
@@ -559,14 +677,14 @@ async function showConfigModal(editMode = false) {
         currentEditConfig = null;
     }
     
-    modal.style.display = 'flex';
+    openModal(modal);
     updateFilenamePreview();
 }
 
 // 隐藏配置模态框
 function hideConfigModal() {
     const modal = document.getElementById('configModal');
-    if (modal) modal.style.display = 'none';
+    if (modal) closeModal(modal);
     currentEditConfig = null;
 }
 
@@ -810,16 +928,43 @@ function updateSelectedCount() {
     if (countEl) countEl.textContent = selectedModules.length;
 }
 
-// 添加模块到已选
+// 添加模块到已选（带动画）
 function addModule(path) {
     if (!selectedModules.includes(path)) {
         selectedModules.push(path);
         renderTransferUI();
+        
+        // 添加动画类到新添加的项
+        setTimeout(function() {
+            const container = document.getElementById('selectedModules');
+            if (container) {
+                const lastItem = container.querySelector('.transfer-module-item:last-child');
+                if (lastItem) {
+                    lastItem.classList.add('adding');
+                    setTimeout(function() {
+                        lastItem.classList.remove('adding');
+                    }, 250);
+                }
+            }
+        }, 10);
     }
 }
 
-// 从已选移除模块
+// 从已选移除模块（带动画）
 function removeModule(path) {
+    const container = document.getElementById('selectedModules');
+    if (container) {
+        const item = container.querySelector('[data-path="' + path + '"]');
+        if (item) {
+            item.classList.add('removing');
+            setTimeout(function() {
+                selectedModules = selectedModules.filter(p => p !== path);
+                renderTransferUI();
+            }, 150);
+            return;
+        }
+    }
+    // 如果找不到元素，直接移除
     selectedModules = selectedModules.filter(p => p !== path);
     renderTransferUI();
 }
@@ -1379,13 +1524,13 @@ function confirmDeleteConfig(clientName, docTypeName) {
     message.textContent = '确定要删除配置 "' + docTypeName + '" 吗？此操作不可恢复。';
     confirmBtn.onclick = function() { deleteConfig(clientName, docTypeName); };
     
-    modal.style.display = 'flex';
+    openModal(modal);
 }
 
 // 隐藏确认对话框
 function hideConfirmModal() {
     const modal = document.getElementById('confirmModal');
-    if (modal) modal.style.display = 'none';
+    if (modal) closeModal(modal);
 }
 
 // 删除配置
@@ -1422,6 +1567,8 @@ window.clearAllModules = clearAllModules;
 window.moveSelectedToRight = moveSelectedToRight;
 window.moveSelectedToLeft = moveSelectedToLeft;
 window.toggleClientLock = toggleClientLock;
+window.openModal = openModal;
+window.closeModal = closeModal;
 
 
 // ==================== 变量模板功能 ====================
