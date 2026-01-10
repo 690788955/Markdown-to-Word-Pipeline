@@ -901,7 +901,24 @@ function Invoke-Build {
         }
     }
     
-    $pandocCmdArgs += "--resource-path=$SrcDir"
+    # 构建 resource-path：包含 src 目录及其所有子目录
+    $resourcePaths = @($SrcDir)
+    # 添加所有包含 images 目录的子目录
+    Get-ChildItem -Path $SrcDir -Recurse -Directory -Filter "images" -ErrorAction SilentlyContinue | ForEach-Object {
+        $parentDir = $_.Parent.FullName
+        if ($resourcePaths -notcontains $parentDir) {
+            $resourcePaths += $parentDir
+        }
+    }
+    # 添加模块所在的目录（处理相对路径引用）
+    foreach ($module in $processedModules) {
+        $moduleDir = Split-Path -Parent $module
+        if ($moduleDir -and $moduleDir -ne "." -and $resourcePaths -notcontains $moduleDir) {
+            $resourcePaths += $moduleDir
+        }
+    }
+    $resourcePathStr = $resourcePaths -join [IO.Path]::PathSeparator
+    $pandocCmdArgs += "--resource-path=$resourcePathStr"
     $pandocCmdArgs += $pandocArgs
     
     Write-Host "执行: pandoc $($pandocCmdArgs -join ' ')" -ForegroundColor Gray

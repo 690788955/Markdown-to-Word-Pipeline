@@ -767,7 +767,21 @@ else
     [ "$pdf_toc" = "true" ] && pandoc_cmd+=(--toc --toc-depth="$pdf_toc_depth")
 fi
 
-pandoc_cmd+=(--resource-path="$SRC_DIR")
+# 构建 resource-path：包含 src 目录及其所有子目录
+resource_paths="$SRC_DIR"
+# 添加所有包含 images 目录的子目录
+for img_dir in $(find "$SRC_DIR" -type d -name "images" 2>/dev/null); do
+    parent_dir=$(dirname "$img_dir")
+    resource_paths="${resource_paths}:${parent_dir}"
+done
+# 添加模块所在的目录（处理相对路径引用）
+for module in "${processed_modules[@]}"; do
+    module_dir=$(dirname "$module")
+    if [ "$module_dir" != "." ] && [[ ":$resource_paths:" != *":$module_dir:"* ]]; then
+        resource_paths="${resource_paths}:${module_dir}"
+    fi
+done
+pandoc_cmd+=(--resource-path="$resource_paths")
 pandoc_cmd+=("${pandoc_args[@]}")
 
 echo "执行: ${pandoc_cmd[*]}"
