@@ -710,9 +710,8 @@ async function loadModules() {
         availableModules = data.data.modules || [];
         moduleTree = data.data.tree || { rootModules: [], directories: [] };
         
-        // 默认展开所有目录
+        // 默认全部折叠
         expandedDirs = new Set();
-        moduleTree.directories.forEach(dir => expandedDirs.add(dir.name));
         
         renderTransferUI();
     } catch (e) {
@@ -751,27 +750,56 @@ function renderAvailableModules() {
     container.innerHTML = '';
     const query = searchQuery.toLowerCase();
     
-    // 渲染根目录模块
+    // 渲染根目录模块（可折叠）
     const rootModules = moduleTree.rootModules.filter(mod => {
         if (selectedModules.includes(mod.path)) return false;
         if (query && !mod.displayName.toLowerCase().includes(query) && !mod.fileName.toLowerCase().includes(query)) return false;
         return true;
     });
     
-    if (rootModules.length > 0) {
-        const section = document.createElement('div');
-        section.className = 'root-modules-section';
+    if (rootModules.length > 0 || moduleTree.rootModules.length > 0) {
+        const group = document.createElement('div');
+        group.className = 'module-group';
         
+        // 根目录头部（可折叠）
         const header = document.createElement('div');
-        header.className = 'root-modules-header';
-        header.textContent = '📁 根目录';
-        section.appendChild(header);
+        header.className = 'module-group-header' + (expandedDirs.has('__root__') ? '' : ' collapsed');
+        header.onclick = () => toggleDirectory('__root__');
+        
+        const toggle = document.createElement('span');
+        toggle.className = 'module-group-toggle';
+        toggle.textContent = '▼';
+        
+        const name = document.createElement('span');
+        name.className = 'module-group-name';
+        name.textContent = '📁 根目录';
+        
+        const count = document.createElement('span');
+        count.className = 'module-group-count';
+        count.textContent = rootModules.length + '/' + moduleTree.rootModules.length;
+        
+        const selectBtn = document.createElement('button');
+        selectBtn.type = 'button';
+        selectBtn.className = 'module-group-select';
+        selectBtn.textContent = '全选';
+        selectBtn.onclick = (e) => { e.stopPropagation(); selectRootModules(); };
+        
+        header.appendChild(toggle);
+        header.appendChild(name);
+        header.appendChild(count);
+        header.appendChild(selectBtn);
+        group.appendChild(header);
+        
+        // 根目录内容
+        const items = document.createElement('div');
+        items.className = 'module-group-items';
         
         rootModules.forEach(mod => {
-            section.appendChild(createAvailableModuleItem(mod));
+            items.appendChild(createAvailableModuleItem(mod));
         });
         
-        container.appendChild(section);
+        group.appendChild(items);
+        container.appendChild(group);
     }
     
     // 渲染子目录
@@ -838,7 +866,11 @@ function createAvailableModuleItem(mod) {
     const item = document.createElement('div');
     item.className = 'transfer-module-item';
     item.dataset.path = mod.path;
-    item.onclick = () => addModule(mod.path);
+    item.onclick = (e) => {
+        // 如果点击的是编辑按钮，不触发添加模块
+        if (e.target.classList.contains('module-edit-btn')) return;
+        addModule(mod.path);
+    };
     
     const label = document.createElement('span');
     label.className = 'module-label';
@@ -852,6 +884,20 @@ function createAvailableModuleItem(mod) {
         path.textContent = mod.directory;
         item.appendChild(path);
     }
+    
+    // 添加编辑按钮
+    const editBtn = document.createElement('button');
+    editBtn.type = 'button';
+    editBtn.className = 'module-edit-btn';
+    editBtn.textContent = '✏️ 编辑';
+    editBtn.title = '编辑此模块';
+    editBtn.onclick = (e) => {
+        e.stopPropagation();
+        if (typeof openEditor === 'function') {
+            openEditor(mod.path);
+        }
+    };
+    item.appendChild(editBtn);
     
     return item;
 }
@@ -1001,6 +1047,16 @@ function selectDirectory(dirName) {
         }
     });
     
+    renderTransferUI();
+}
+
+// 选择根目录所有模块
+function selectRootModules() {
+    moduleTree.rootModules.forEach(mod => {
+        if (!selectedModules.includes(mod.path)) {
+            selectedModules.push(mod.path);
+        }
+    });
     renderTransferUI();
 }
 

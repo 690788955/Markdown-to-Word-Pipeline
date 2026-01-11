@@ -24,3 +24,8 @@ Thumbs.db
 *.log
 *.out
 .kiro/*
+
+# 前端依赖
+web/static/node_modules/
+web/static/vendor/
+web/static/package-lock.json

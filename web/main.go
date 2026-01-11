@@ -98,9 +98,10 @@ func main() {
 	moduleSvc := service.NewModuleService(cfg.SrcDir)
 	templateSvc := service.NewTemplateService(cfg.TemplatesDir)
 	configMgr := service.NewConfigManager(cfg.ClientsDir)
+	editorSvc := service.NewEditorService(cfg.SrcDir)
 
 	// 创建 API 处理器
-	apiHandler := handler.NewAPIHandler(clientSvc, docSvc, buildSvc, moduleSvc, templateSvc, configMgr, cfg.SrcDir, cfg.AdminPassword)
+	apiHandler := handler.NewAPIHandler(clientSvc, docSvc, buildSvc, moduleSvc, templateSvc, configMgr, editorSvc, cfg.SrcDir, cfg.AdminPassword)
 
 	// 创建路由
 	mux := http.NewServeMux()
@@ -111,6 +112,11 @@ func main() {
 	// 静态文件服务 - 直接从文件系统读取
 	fileServer := http.FileServer(http.Dir(staticDir))
 	mux.Handle("/static/", http.StripPrefix("/static/", fileServer))
+
+	// favicon.ico 处理（返回空响应避免 404 错误）
+	mux.HandleFunc("/favicon.ico", func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusNoContent)
+	})
 
 	// 根路径返回 index.html
 	mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {

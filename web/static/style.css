@@ -2298,3 +2298,233 @@ a:focus:not(:focus-visible) {
         width: auto;
     }
 }
+
+
+/* ==================== Markdown 编辑器模态框 ==================== */
+.modal-fullscreen {
+    width: 95vw;
+    height: 95vh;
+    max-width: none;
+    max-height: none;
+}
+
+.editor-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: var(--spacing-md) var(--spacing-lg);
+    background: linear-gradient(135deg, var(--color-surface) 0%, var(--color-bg) 100%);
+    border-bottom: 1px solid var(--color-border);
+}
+
+.editor-title-section {
+    display: flex;
+    flex-direction: column;
+    gap: var(--spacing-xs);
+}
+
+.editor-title-section h2 {
+    font-size: 1.1rem;
+    font-weight: 600;
+    color: var(--color-text);
+    margin: 0;
+}
+
+.editor-path {
+    font-size: 0.8rem;
+    color: var(--color-text-muted);
+    font-family: 'Consolas', 'Monaco', monospace;
+}
+
+.editor-actions {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-md);
+}
+
+.editor-mode-select {
+    padding: 8px 12px;
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-sm);
+    font-size: 0.85rem;
+    background: var(--color-surface);
+    color: var(--color-text);
+    cursor: pointer;
+    transition: all var(--transition-fast);
+}
+
+.editor-mode-select:hover {
+    border-color: var(--color-primary);
+}
+
+.editor-mode-select:focus {
+    outline: none;
+    border-color: var(--color-primary);
+    box-shadow: 0 0 0 3px rgba(52, 152, 219, 0.15);
+}
+
+/* 编辑器模态框样式 */
+#editorModal .modal-content {
+    max-width: 95vw;
+    width: 95vw;
+    height: 90vh;
+    max-height: 90vh;
+}
+
+.editor-body {
+    flex: 1;
+    overflow: hidden;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+}
+
+.editor-body #vditor {
+    flex: 1;
+    height: 100% !important;
+}
+
+/* Vditor 样式覆盖 */
+.vditor {
+    border: none !important;
+    border-radius: 0 !important;
+}
+
+.vditor-toolbar {
+    border-bottom: 1px solid var(--color-border) !important;
+    background: var(--color-surface) !important;
+    padding: var(--spacing-sm) !important;
+}
+
+/* 修复 Vditor tooltip - 改为显示在下方 */
+.vditor-toolbar .vditor-tooltipped::after,
+.vditor-toolbar .vditor-tooltipped::before {
+    top: 100% !important;
+    bottom: auto !important;
+    transform: translateX(-50%) !important;
+    margin-top: 5px !important;
+    margin-bottom: 0 !important;
+}
+
+/* tooltip 箭头朝上 */
+.vditor-toolbar .vditor-tooltipped::before {
+    border-bottom-color: rgba(0, 0, 0, 0.8) !important;
+    border-top-color: transparent !important;
+    border-left-color: transparent !important;
+    border-right-color: transparent !important;
+    top: 100% !important;
+    margin-top: 0 !important;
+}
+
+.vditor-toolbar .vditor-tooltipped::after {
+    margin-top: 8px !important;
+}
+
+/* 确保 tooltip 不被裁剪 */
+#editorModal .modal-content {
+    overflow: visible !important;
+}
+
+#editorModal .modal-header {
+    overflow: visible !important;
+}
+
+#editorModal .editor-body {
+    overflow: visible !important;
+}
+
+.vditor {
+    overflow: visible !important;
+}
+
+.vditor-toolbar {
+    overflow: visible !important;
+    position: relative;
+    z-index: 10;
+}
+
+.vditor-content {
+    background: var(--color-surface) !important;
+}
+
+.vditor-ir {
+    padding: var(--spacing-lg) !important;
+}
+
+.vditor-wysiwyg {
+    padding: var(--spacing-lg) !important;
+}
+
+.vditor-sv {
+    padding: var(--spacing-lg) !important;
+}
+
+/* 深色模式下的 Vditor */
+@media (prefers-color-scheme: dark) {
+    .vditor-toolbar {
+        background: var(--color-surface) !important;
+        border-color: var(--color-border) !important;
+    }
+    
+    .vditor-content {
+        background: var(--color-surface) !important;
+    }
+    
+    .vditor--dark {
+        --panel-background-color: var(--color-surface);
+        --toolbar-background-color: var(--color-surface);
+    }
+}
+
+/* 编辑器保存按钮特殊样式 */
+#editorSaveBtn {
+    min-width: 100px;
+}
+
+#editorSaveBtn .btn-text {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--spacing-xs);
+}
+
+/* 新建模块按钮 */
+.new-module-btn {
+    margin-top: var(--spacing-md);
+    width: 100%;
+    justify-content: center;
+    border-style: dashed;
+}
+
+.new-module-btn:hover {
+    border-style: solid;
+}
+
+/* 模块编辑按钮 */
+.module-edit-btn {
+    padding: 4px 8px;
+    font-size: 0.75rem;
+    background: transparent;
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-sm);
+    color: var(--color-text-secondary);
+    cursor: pointer;
+    transition: all var(--transition-fast);
+    margin-left: auto;
+}
+
+.module-edit-btn:hover {
+    background: var(--color-primary);
+    border-color: var(--color-primary);
+    color: white;
+}
+
+/* 穿梭框模块项中的编辑按钮 */
+.transfer-module-item .module-edit-btn {
+    opacity: 0;
+    transform: translateX(5px);
+}
+
+.transfer-module-item:hover .module-edit-btn {
+    opacity: 1;
+    transform: translateX(0);
+}

@@ -62,12 +62,13 @@ type APIHandler struct {
 	templateSvc   *service.TemplateService
 	configMgr     *service.ConfigManager
 	variableSvc   *service.VariableService
+	editorSvc     *service.EditorService
 	srcDir        string
 	adminPassword string
 }
 
 // NewAPIHandler 创建 API 处理器实例
-func NewAPIHandler(clientSvc *service.ClientService, docSvc *service.DocumentService, buildSvc *service.BuildService, moduleSvc *service.ModuleService, templateSvc *service.TemplateService, configMgr *service.ConfigManager, srcDir string, adminPassword string) *APIHandler {
+func NewAPIHandler(clientSvc *service.ClientService, docSvc *service.DocumentService, buildSvc *service.BuildService, moduleSvc *service.ModuleService, templateSvc *service.TemplateService, configMgr *service.ConfigManager, editorSvc *service.EditorService, srcDir string, adminPassword string) *APIHandler {
 	// 创建变量服务
 	variableSvc := service.NewVariableService(srcDir)
 	
@@ -79,6 +80,7 @@ func NewAPIHandler(clientSvc *service.ClientService, docSvc *service.DocumentSer
 		templateSvc:   templateSvc,
 		configMgr:     configMgr,
 		variableSvc:   variableSvc,
+		editorSvc:     editorSvc,
 		srcDir:        srcDir,
 		adminPassword: adminPassword,
 	}
@@ -100,6 +102,9 @@ func (h *APIHandler) RegisterRoutes(mux *http.ServeMux) {
 	mux.HandleFunc("/api/variables", h.handleVariables)
 	// 新增：客户锁定相关路由
 	mux.HandleFunc("/api/lock/", h.handleClientLock)
+	// 新增：编辑器相关路由
+	mux.HandleFunc("/api/editor/module", h.handleEditorModule)
+	mux.HandleFunc("/api/src/", h.handleSrcStatic)
 }
 
 // handleClients 处理客户列表请求
@@ -845,3 +850,175 @@ func extractErrorDetail(output string) string {
 
 
 
+
+
+// ==================== 编辑器相关处理 ====================
+
+// SaveModuleRequest 保存模块请求
+type SaveModuleRequest struct {
+	Path    string `json:"path"`
+	Content string `json:"content"`
+}
+
+// CreateModuleRequest 创建模块请求
+type CreateModuleRequest struct {
+	Path string `json:"path"`
+}
+
+// handleEditorModule 处理编辑器模块请求
+func (h *APIHandler) handleEditorModule(w http.ResponseWriter, r *http.Request) {
+	switch r.Method {
+	case http.MethodGet:
+		h.getModule(w, r)
+	case http.MethodPut:
+		h.saveModule(w, r)
+	case http.MethodPost:
+		h.createModule(w, r)
+	default:
+		h.methodNotAllowed(w)
+	}
+}
+
+// getModule 读取模块内容
+func (h *APIHandler) getModule(w http.ResponseWriter, r *http.Request) {
+	path := r.URL.Query().Get("path")
+	if path == "" {
+		h.errorResponse(w, http.StatusBadRequest, "path 参数不能为空", ErrInvalidInput)
+		return
+	}
+
+	content, err := h.editorSvc.ReadModule(path)
+	if err != nil {
+		switch err {
+		case service.ErrFileNotFound:
+			h.errorResponse(w, http.StatusNotFound, err.Error(), ErrFileNotFound)
+		case service.ErrPathForbidden:
+			h.errorResponse(w, http.StatusForbidden, err.Error(), "PATH_FORBIDDEN")
+		case service.ErrInvalidFileType:
+			h.errorResponse(w, http.StatusBadRequest, err.Error(), "INVALID_FILE_TYPE")
+		default:
+			h.errorResponse(w, http.StatusInternalServerError, err.Error(), "")
+		}
+		return
+	}
+
+	h.successResponse(w, content)
+}
+
+// saveModule 保存模块内容
+func (h *APIHandler) saveModule(w http.ResponseWriter, r *http.Request) {
+	var req SaveModuleRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		h.errorResponse(w, http.StatusBadRequest, "无效的请求格式", ErrInvalidInput)
+		return
+	}
+
+	if req.Path == "" {
+		h.errorResponse(w, http.StatusBadRequest, "path 不能为空", ErrInvalidInput)
+		return
+	}
+
+	if err := h.editorSvc.SaveModule(req.Path, req.Content); err != nil {
+		switch err {
+		case service.ErrFileNotFound:
+			h.errorResponse(w, http.StatusNotFound, err.Error(), ErrFileNotFound)
+		case service.ErrPathForbidden:
+			h.errorResponse(w, http.StatusForbidden, err.Error(), "PATH_FORBIDDEN")
+		case service.ErrInvalidFileType:
+			h.errorResponse(w, http.StatusBadRequest, err.Error(), "INVALID_FILE_TYPE")
+		default:
+			h.errorResponse(w, http.StatusInternalServerError, err.Error(), "")
+		}
+		return
+	}
+
+	h.successResponse(w, map[string]interface{}{
+		"message": "保存成功",
+	})
+}
+
+// createModule 创建新模块
+func (h *APIHandler) createModule(w http.ResponseWriter, r *http.Request) {
+	var req CreateModuleRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		h.errorResponse(w, http.StatusBadRequest, "无效的请求格式", ErrInvalidInput)
+		return
+	}
+
+	if req.Path == "" {
+		h.errorResponse(w, http.StatusBadRequest, "path 不能为空", ErrInvalidInput)
+		return
+	}
+
+	if err := h.editorSvc.CreateModule(req.Path); err != nil {
+		switch err {
+		case service.ErrFileExists:
+			h.errorResponse(w, http.StatusConflict, err.Error(), "FILE_EXISTS")
+		case service.ErrPathForbidden:
+			h.errorResponse(w, http.StatusForbidden, err.Error(), "PATH_FORBIDDEN")
+		case service.ErrInvalidFileType:
+			h.errorResponse(w, http.StatusBadRequest, err.Error(), "INVALID_FILE_TYPE")
+		case service.ErrInvalidFilename:
+			h.errorResponse(w, http.StatusBadRequest, err.Error(), "INVALID_FILENAME")
+		default:
+			h.errorResponse(w, http.StatusInternalServerError, err.Error(), "")
+		}
+		return
+	}
+
+	h.successResponse(w, map[string]interface{}{
+		"path":    req.Path,
+		"message": "创建成功",
+	})
+}
+
+// handleSrcStatic 处理 src 目录静态文件请求
+func (h *APIHandler) handleSrcStatic(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodGet {
+		h.methodNotAllowed(w)
+		return
+	}
+
+	// 解析路径: /api/src/{path}
+	path := strings.TrimPrefix(r.URL.Path, "/api/src/")
+	if path == "" {
+		h.errorResponse(w, http.StatusBadRequest, "路径不能为空", ErrInvalidInput)
+		return
+	}
+
+	// 安全检查：防止目录遍历
+	if strings.Contains(path, "..") {
+		h.errorResponse(w, http.StatusForbidden, "禁止访问该路径", "PATH_FORBIDDEN")
+		return
+	}
+
+	// 构建完整路径
+	fullPath := filepath.Join(h.srcDir, path)
+
+	// 确保路径在 srcDir 内
+	absPath, err := filepath.Abs(fullPath)
+	if err != nil {
+		h.errorResponse(w, http.StatusForbidden, "无效的路径", "PATH_FORBIDDEN")
+		return
+	}
+
+	absSrcDir, err := filepath.Abs(h.srcDir)
+	if err != nil {
+		h.errorResponse(w, http.StatusInternalServerError, "服务器错误", "")
+		return
+	}
+
+	if !strings.HasPrefix(absPath, absSrcDir) {
+		h.errorResponse(w, http.StatusForbidden, "禁止访问该路径", "PATH_FORBIDDEN")
+		return
+	}
+
+	// 检查文件是否存在
+	if _, err := os.Stat(absPath); os.IsNotExist(err) {
+		h.errorResponse(w, http.StatusNotFound, "文件不存在", ErrFileNotFound)
+		return
+	}
+
+	// 提供文件服务
+	http.ServeFile(w, r, absPath)
+}

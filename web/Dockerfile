@@ -19,6 +19,13 @@
 #     -v /path/to/output:/app/build \
 #     doc-generator
 
+# 阶段0: 构建前端依赖
+FROM node:20-alpine AS frontend-builder
+
+WORKDIR /build/static
+COPY web/static/package.json web/static/scripts/ ./scripts/
+RUN npm install
+
 # 阶段1: 构建 Go 应用
 FROM --platform=$BUILDPLATFORM golang:1.21-alpine AS builder
 
@@ -75,6 +82,8 @@ RUN chmod +x /app/entrypoint.sh
 
 # 复制静态资源（Web 界面）
 COPY web/static/ /app/static/
+# 复制前端依赖（从 frontend-builder 阶段）
+COPY --from=frontend-builder /build/static/vendor/ /app/static/vendor/
 
 # 复制项目文件（作为默认内容，可被挂载覆盖）
 COPY Makefile /app/

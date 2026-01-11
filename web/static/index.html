@@ -5,6 +5,9 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>运维文档生成系统</title>
     <link rel="stylesheet" href="/static/style.css">
+    <!-- Vditor Markdown 编辑器（本地文件，支持离线使用） -->
+    <link rel="stylesheet" href="/static/vendor/vditor/dist/index.css" />
+    <script src="/static/vendor/vditor/dist/index.min.js"></script>
 </head>
 <body>
     <div class="container">
@@ -121,6 +124,7 @@
                                     <span>可选模块</span>
                                     <div class="transfer-actions">
                                         <input type="text" id="moduleSearch" class="module-search" placeholder="搜索模块...">
+                                        <button type="button" class="btn btn-sm btn-outline" onclick="showNewModuleModal()" title="新建模块">+ 新建</button>
                                         <button type="button" class="btn btn-sm btn-outline" onclick="selectAllModules()">全选</button>
                                     </div>
                                 </div>
@@ -523,6 +527,67 @@
         </div>
     </div>
 
+    <!-- Markdown 编辑器模态框 -->
+    <div id="editorModal" class="modal">
+        <div class="modal-content modal-fullscreen">
+            <div class="modal-header editor-header">
+                <div class="editor-title-section">
+                    <h2 id="editorTitle">编辑模块</h2>
+                    <span id="editorPath" class="editor-path"></span>
+                </div>
+                <div class="editor-actions">
+                    <select id="editorModeSelect" class="editor-mode-select" onchange="changeEditorMode()">
+                        <option value="ir">即时渲染</option>
+                        <option value="wysiwyg">所见即所得</option>
+                        <option value="sv">分屏预览</option>
+                    </select>
+                    <button id="editorSaveBtn" class="btn btn-primary" onclick="saveModule()">
+                        <span class="btn-text">💾 保存</span>
+                        <span class="btn-loading" style="display:none;">保存中...</span>
+                    </button>
+                    <button class="modal-close" onclick="closeEditor()">&times;</button>
+                </div>
+            </div>
+            <div class="modal-body editor-body">
+                <div id="vditor"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 新建模块对话框 -->
+    <div id="newModuleModal" class="modal">
+        <div class="modal-content modal-sm">
+            <div class="modal-header">
+                <h2>新建模块</h2>
+                <button class="modal-close" onclick="hideNewModuleModal()">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div class="form-group">
+                    <label for="newModuleDir">目标目录</label>
+                    <select id="newModuleDir" class="form-select" onchange="toggleNewDirInput()">
+                        <option value="">根目录</option>
+                        <option value="__new__">+ 新建目录...</option>
+                    </select>
+                </div>
+                <div class="form-group" id="newDirGroup" style="display: none;">
+                    <label for="newDirName">新目录名称</label>
+                    <input type="text" id="newDirName" placeholder="例如：03-测试">
+                    <small class="form-hint">建议使用数字前缀排序，如 01-运维</small>
+                </div>
+                <div class="form-group">
+                    <label for="newModuleName">文件名</label>
+                    <input type="text" id="newModuleName" placeholder="例如：01-概述.md">
+                    <small class="form-hint">建议使用数字前缀排序，如 01-概述.md</small>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" onclick="hideNewModuleModal()">取消</button>
+                <button type="button" class="btn btn-primary" onclick="createNewModule()">创建</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="/static/editor.js"></script>
     <script src="/static/app.js"></script>
 </body>
 </html>
