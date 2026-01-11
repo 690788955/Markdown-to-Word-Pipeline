@@ -115,6 +115,78 @@ async function openEditor(modulePath) {
     }
 }
 
+// 查看模块（只读预览模式）
+async function viewModule(modulePath) {
+    const modal = document.getElementById('editorModal');
+    const titleEl = document.getElementById('editorTitle');
+    const pathEl = document.getElementById('editorPath');
+    const saveBtn = document.getElementById('editorSaveBtn');
+    const modeSelect = document.getElementById('editorModeSelect');
+    const vditorContainer = document.getElementById('vditor');
+    
+    if (!modal) return;
+    
+    // 显示加载状态
+    titleEl.textContent = '加载中...';
+    pathEl.textContent = modulePath;
+    openModal(modal);
+    
+    // 隐藏保存按钮和模式选择
+    if (saveBtn) saveBtn.style.display = 'none';
+    if (modeSelect) modeSelect.style.display = 'none';
+    
+    try {
+        const response = await fetch('/api/editor/module?path=' + encodeURIComponent(modulePath));
+        const data = await response.json();
+        
+        if (!data.success) {
+            throw new Error(data.error || '加载失败');
+        }
+        
+        currentEditPath = modulePath;
+        const content = data.data.content || '';
+        
+        // 更新标题
+        const fileName = modulePath.split('/').pop();
+        titleEl.textContent = '查看: ' + fileName;
+        
+        // 使用静态预览方法渲染 Markdown
+        if (vditorContainer) {
+            // 销毁已有实例
+            if (vditorInstance) {
+                vditorInstance.destroy();
+                vditorInstance = null;
+            }
+            
+            // 使用 Vditor.preview 静态方法渲染
+            Vditor.preview(vditorContainer, content, {
+                markdown: {
+                    linkBase: '/api/src/'
+                },
+                hljs: {
+                    enable: true,
+                    style: 'github',
+                    lineNumber: true
+                }
+            });
+        }
+        
+        originalContent = content;
+        hasUnsavedChanges = false;
+        editorReady = true;
+        
+    } catch (e) {
+        closeModal(modal);
+        showToast('加载模块失败: ' + e.message, 'error');
+        console.error('加载模块失败:', e);
+    }
+}
+
+// 初始化只读 Vditor 预览（已废弃，使用 viewModule 中的静态方法）
+function initVditorReadonly(content) {
+    // 此函数已不再使用
+}
+
 // 保存模块内容
 async function saveModule() {
     if (!vditorInstance || !currentEditPath) {
@@ -181,9 +253,16 @@ function closeEditor() {
     }
     
     const modal = document.getElementById('editorModal');
+    const saveBtn = document.getElementById('editorSaveBtn');
+    const modeSelect = document.getElementById('editorModeSelect');
+    
     if (modal) {
         closeModal(modal);
     }
+    
+    // 恢复保存按钮和模式选择的显示状态（下次打开编辑模式时需要）
+    if (saveBtn) saveBtn.style.display = '';
+    if (modeSelect) modeSelect.style.display = '';
     
     // 清理状态
     if (vditorInstance) {
@@ -343,6 +422,7 @@ async function createNewModule() {
 
 // 暴露函数到全局
 window.openEditor = openEditor;
+window.viewModule = viewModule;
 window.saveModule = saveModule;
 window.closeEditor = closeEditor;
 window.changeEditorMode = changeEditorMode;

@@ -1,0 +1,689 @@
+/* 知识库编辑器样式 */
+
+/* ==================== 基础布局 ==================== */
+
+.editor-page {
+    margin: 0;
+    padding: 0;
+    height: 100vh;
+    overflow: hidden;
+    background: #f5f5f5;
+}
+
+.editor-container {
+    display: flex;
+    flex-direction: column;
+    height: 100vh;
+    max-width: none;
+    padding: 0;
+}
+
+/* ==================== 顶部导航栏 ==================== */
+
+.editor-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0 16px;
+    height: 48px;
+    background: #2c3e50;
+    color: white;
+    flex-shrink: 0;
+}
+
+.header-left {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+}
+
+.back-btn {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    color: white;
+    text-decoration: none;
+    padding: 6px 12px;
+    border-radius: 4px;
+    transition: background 0.2s;
+}
+
+.back-btn:hover {
+    background: rgba(255, 255, 255, 0.1);
+}
+
+.back-icon {
+    font-size: 18px;
+}
+
+.editor-title {
+    font-size: 16px;
+    font-weight: 500;
+    margin: 0;
+}
+
+.header-right {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.header-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 36px;
+    height: 36px;
+    background: transparent;
+    border: none;
+    border-radius: 4px;
+    color: white;
+    cursor: pointer;
+    position: relative;
+    transition: background 0.2s;
+}
+
+.header-btn:hover {
+    background: rgba(255, 255, 255, 0.1);
+}
+
+.git-badge {
+    position: absolute;
+    top: 2px;
+    right: 2px;
+    min-width: 16px;
+    height: 16px;
+    padding: 0 4px;
+    background: #e74c3c;
+    color: white;
+    font-size: 10px;
+    border-radius: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+/* ==================== 主内容区域 ==================== */
+
+.editor-main {
+    display: flex;
+    flex: 1;
+    overflow: hidden;
+}
+
+/* ==================== 文件树面板 ==================== */
+
+.file-tree-panel {
+    width: 260px;
+    min-width: 180px;
+    max-width: 400px;
+    background: #fff;
+    border-right: 1px solid #e0e0e0;
+    display: flex;
+    flex-direction: column;
+    transition: width 0.2s, margin-left 0.2s;
+}
+
+.file-tree-panel.collapsed {
+    margin-left: -260px;
+}
+
+.panel-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 12px 16px;
+    border-bottom: 1px solid #e0e0e0;
+    background: #fafafa;
+}
+
+.panel-title {
+    font-weight: 500;
+    font-size: 14px;
+    color: #333;
+}
+
+.panel-actions {
+    display: flex;
+    gap: 4px;
+}
+
+.panel-btn {
+    width: 28px;
+    height: 28px;
+    background: transparent;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 14px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.2s;
+}
+
+.panel-btn:hover {
+    background: #f0f0f0;
+    border-color: #ccc;
+}
+
+.search-box {
+    padding: 8px 12px;
+    border-bottom: 1px solid #e0e0e0;
+}
+
+.search-box input {
+    width: 100%;
+    padding: 8px 12px;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    font-size: 13px;
+    outline: none;
+    transition: border-color 0.2s;
+}
+
+.search-box input:focus {
+    border-color: #3498db;
+}
+
+.file-tree {
+    flex: 1;
+    overflow-y: auto;
+    padding: 8px 0;
+}
+
+.tree-loading {
+    padding: 20px;
+    text-align: center;
+    color: #999;
+}
+
+/* 文件树项目 */
+.tree-item {
+    display: flex;
+    align-items: center;
+    padding: 6px 12px 6px 16px;
+    cursor: pointer;
+    user-select: none;
+    transition: background 0.15s;
+}
+
+.tree-item:hover {
+    background: #f5f5f5;
+}
+
+.tree-item.selected {
+    background: #e3f2fd;
+}
+
+.tree-item.modified .tree-item-name::after {
+    content: '●';
+    color: #f39c12;
+    margin-left: 4px;
+    font-size: 10px;
+}
+
+.tree-item-icon {
+    width: 20px;
+    flex-shrink: 0;
+    text-align: center;
+}
+
+.tree-item-name {
+    flex: 1;
+    font-size: 13px;
+    color: #333;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.tree-folder {
+    font-weight: 500;
+}
+
+.tree-folder-toggle {
+    width: 16px;
+    height: 16px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-right: 4px;
+    font-size: 10px;
+    color: #666;
+    transition: transform 0.2s;
+}
+
+.tree-folder-toggle.expanded {
+    transform: rotate(90deg);
+}
+
+.tree-children {
+    padding-left: 16px;
+}
+
+.tree-children.collapsed {
+    display: none;
+}
+
+/* ==================== 拖拽分隔条 ==================== */
+
+.resizer {
+    width: 4px;
+    background: transparent;
+    cursor: col-resize;
+    flex-shrink: 0;
+    transition: background 0.2s;
+}
+
+.resizer:hover,
+.resizer.dragging {
+    background: #3498db;
+}
+
+/* ==================== 编辑区域 ==================== */
+
+.editor-section {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    min-width: 300px;
+    background: #fff;
+}
+
+/* 标签栏 */
+.tab-bar {
+    display: flex;
+    align-items: center;
+    height: 40px;
+    background: #f5f5f5;
+    border-bottom: 1px solid #e0e0e0;
+    overflow: hidden;
+}
+
+.tab-list {
+    display: flex;
+    flex: 1;
+    overflow-x: auto;
+    scrollbar-width: none;
+}
+
+.tab-list::-webkit-scrollbar {
+    display: none;
+}
+
+.tab-empty {
+    padding: 0 16px;
+    color: #999;
+    font-size: 13px;
+    line-height: 40px;
+}
+
+.tab-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 0 12px;
+    height: 40px;
+    background: transparent;
+    border: none;
+    border-right: 1px solid #e0e0e0;
+    cursor: pointer;
+    font-size: 13px;
+    color: #666;
+    white-space: nowrap;
+    transition: all 0.15s;
+}
+
+.tab-item:hover {
+    background: #fff;
+}
+
+.tab-item.active {
+    background: #fff;
+    color: #333;
+    border-bottom: 2px solid #3498db;
+    margin-bottom: -1px;
+}
+
+.tab-item.dirty .tab-name::after {
+    content: '●';
+    color: #f39c12;
+    margin-left: 4px;
+    font-size: 10px;
+}
+
+.tab-close {
+    width: 18px;
+    height: 18px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 3px;
+    font-size: 14px;
+    color: #999;
+    transition: all 0.15s;
+}
+
+.tab-close:hover {
+    background: #e0e0e0;
+    color: #333;
+}
+
+/* 编辑器内容 */
+.editor-content {
+    flex: 1;
+    overflow: hidden;
+    position: relative;
+}
+
+.editor-placeholder {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    height: 100%;
+    color: #999;
+}
+
+.placeholder-icon {
+    font-size: 64px;
+    margin-bottom: 16px;
+    opacity: 0.5;
+}
+
+.placeholder-text {
+    font-size: 16px;
+}
+
+/* Vditor 编辑器容器 */
+.vditor-container {
+    height: 100%;
+}
+
+.vditor-container .vditor {
+    border: none !important;
+    border-radius: 0 !important;
+}
+
+/* ==================== Git 面板 ==================== */
+
+.git-panel {
+    width: 280px;
+    min-width: 200px;
+    max-width: 400px;
+    background: #fff;
+    border-left: 1px solid #e0e0e0;
+    display: flex;
+    flex-direction: column;
+    transition: width 0.2s, margin-right 0.2s;
+}
+
+.git-panel.collapsed {
+    margin-right: -280px;
+}
+
+.git-content {
+    flex: 1;
+    overflow-y: auto;
+    padding: 12px;
+}
+
+.git-loading {
+    text-align: center;
+    color: #999;
+    padding: 20px;
+}
+
+/* Git 状态区域 */
+.git-status {
+    margin-bottom: 16px;
+    padding: 12px;
+    background: #f8f9fa;
+    border-radius: 6px;
+}
+
+.git-branch {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 13px;
+    color: #333;
+}
+
+.git-branch-icon {
+    color: #27ae60;
+}
+
+/* 变更列表 */
+.git-changes-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 8px;
+}
+
+.git-changes-title {
+    font-size: 13px;
+    font-weight: 500;
+    color: #333;
+}
+
+.git-changes-count {
+    font-size: 12px;
+    color: #666;
+    background: #e0e0e0;
+    padding: 2px 8px;
+    border-radius: 10px;
+}
+
+.git-change-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px;
+    border-radius: 4px;
+    cursor: pointer;
+    transition: background 0.15s;
+}
+
+.git-change-item:hover {
+    background: #f5f5f5;
+}
+
+.git-change-item input[type="checkbox"] {
+    flex-shrink: 0;
+}
+
+.git-change-status {
+    width: 20px;
+    text-align: center;
+    font-size: 12px;
+    font-weight: 500;
+}
+
+.git-change-status.added { color: #27ae60; }
+.git-change-status.modified { color: #f39c12; }
+.git-change-status.deleted { color: #e74c3c; }
+.git-change-status.untracked { color: #95a5a6; }
+
+.git-change-path {
+    flex: 1;
+    font-size: 12px;
+    color: #333;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+/* 提交区域 */
+.git-commit-section {
+    margin-top: 16px;
+    padding-top: 16px;
+    border-top: 1px solid #e0e0e0;
+}
+
+.git-commit-input {
+    width: 100%;
+    padding: 10px;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    font-size: 13px;
+    resize: vertical;
+    min-height: 60px;
+    margin-bottom: 8px;
+}
+
+.git-commit-input:focus {
+    outline: none;
+    border-color: #3498db;
+}
+
+.git-actions {
+    display: flex;
+    gap: 8px;
+}
+
+.git-actions .btn {
+    flex: 1;
+    font-size: 12px;
+    padding: 8px 12px;
+}
+
+/* ==================== 右键菜单 ==================== */
+
+.context-menu {
+    position: fixed;
+    background: #fff;
+    border: 1px solid #ddd;
+    border-radius: 6px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+    min-width: 160px;
+    z-index: 1000;
+    padding: 4px 0;
+}
+
+.context-item {
+    padding: 8px 16px;
+    font-size: 13px;
+    cursor: pointer;
+    transition: background 0.15s;
+}
+
+.context-item:hover {
+    background: #f5f5f5;
+}
+
+.context-divider {
+    height: 1px;
+    background: #e0e0e0;
+    margin: 4px 0;
+}
+
+/* ==================== 模态框样式 ==================== */
+
+.modal-sm {
+    max-width: 400px;
+}
+
+/* ==================== 响应式布局 ==================== */
+
+@media (max-width: 768px) {
+    .file-tree-panel {
+        position: absolute;
+        left: 0;
+        top: 48px;
+        bottom: 0;
+        z-index: 100;
+        box-shadow: 2px 0 8px rgba(0, 0, 0, 0.1);
+    }
+
+    .file-tree-panel.collapsed {
+        margin-left: -100%;
+    }
+
+    .git-panel {
+        position: absolute;
+        right: 0;
+        top: 48px;
+        bottom: 0;
+        z-index: 100;
+        box-shadow: -2px 0 8px rgba(0, 0, 0, 0.1);
+    }
+
+    .git-panel.collapsed {
+        margin-right: -100%;
+    }
+
+    .resizer {
+        display: none;
+    }
+
+    .back-text {
+        display: none;
+    }
+}
+
+/* ==================== Toast 通知 ==================== */
+
+.toast-container {
+    position: fixed;
+    bottom: 20px;
+    right: 20px;
+    z-index: 9999;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.toast {
+    padding: 12px 20px;
+    background: #333;
+    color: #fff;
+    border-radius: 6px;
+    font-size: 14px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+    transform: translateX(100%);
+    opacity: 0;
+    transition: all 0.3s ease;
+}
+
+.toast.show {
+    transform: translateX(0);
+    opacity: 1;
+}
+
+.toast-success {
+    background: #27ae60;
+}
+
+.toast-error {
+    background: #e74c3c;
+}
+
+.toast-warning {
+    background: #f39c12;
+}
+
+/* ==================== 滚动条样式 ==================== */
+
+.file-tree::-webkit-scrollbar,
+.git-content::-webkit-scrollbar {
+    width: 6px;
+}
+
+.file-tree::-webkit-scrollbar-track,
+.git-content::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+.file-tree::-webkit-scrollbar-thumb,
+.git-content::-webkit-scrollbar-thumb {
+    background: #ccc;
+    border-radius: 3px;
+}
+
+.file-tree::-webkit-scrollbar-thumb:hover,
+.git-content::-webkit-scrollbar-thumb:hover {
+    background: #aaa;
+}

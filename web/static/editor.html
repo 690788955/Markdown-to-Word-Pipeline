@@ -1,0 +1,181 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>知识库编辑器 - 运维文档生成系统</title>
+    <link rel="stylesheet" href="/static/style.css">
+    <link rel="stylesheet" href="/static/editor.css">
+    <!-- Vditor Markdown 编辑器 -->
+    <link rel="stylesheet" href="/static/vendor/vditor/dist/index.css" />
+    <script src="/static/vendor/vditor/dist/index.min.js"></script>
+</head>
+<body class="editor-page">
+    <div class="editor-container">
+        <!-- 顶部导航栏 -->
+        <header class="editor-header">
+            <div class="header-left">
+                <a href="/" class="back-btn" title="返回主页">
+                    <span class="back-icon">←</span>
+                    <span class="back-text">返回</span>
+                </a>
+                <h1 class="editor-title">知识库编辑器</h1>
+            </div>
+            <div class="header-right">
+                <button id="toggleFileTree" class="header-btn" title="切换文件树">
+                    <span>📁</span>
+                </button>
+                <button id="toggleGitPanel" class="header-btn" title="切换 Git 面板">
+                    <span class="git-icon">🔀</span>
+                    <span id="gitBadge" class="git-badge" style="display:none;">0</span>
+                </button>
+            </div>
+        </header>
+
+        <!-- 主内容区域 -->
+        <main class="editor-main">
+            <!-- 左侧：文件树面板 -->
+            <aside id="fileTreePanel" class="file-tree-panel">
+                <div class="panel-header">
+                    <span class="panel-title">📂 文档</span>
+                    <div class="panel-actions">
+                        <button id="newFileBtn" class="panel-btn" title="新建文件">+</button>
+                        <button id="refreshTreeBtn" class="panel-btn" title="刷新">↻</button>
+                    </div>
+                </div>
+                <div class="search-box">
+                    <input type="text" id="fileSearch" placeholder="搜索文件..." />
+                </div>
+                <div id="fileTree" class="file-tree">
+                    <div class="tree-loading">加载中...</div>
+                </div>
+            </aside>
+
+            <!-- 左侧拖拽分隔条 -->
+            <div id="leftResizer" class="resizer resizer-left"></div>
+
+            <!-- 中间：编辑区域 -->
+            <section class="editor-section">
+                <!-- 标签栏 -->
+                <div id="tabBar" class="tab-bar">
+                    <div id="tabList" class="tab-list">
+                        <div class="tab-empty">打开文件开始编辑</div>
+                    </div>
+                </div>
+                <!-- 编辑器容器 -->
+                <div id="editorContainer" class="editor-content">
+                    <div class="editor-placeholder">
+                        <div class="placeholder-icon">📝</div>
+                        <div class="placeholder-text">从左侧选择文件开始编辑</div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- 右侧拖拽分隔条 -->
+            <div id="rightResizer" class="resizer resizer-right"></div>
+
+            <!-- 右侧：Git 面板 -->
+            <aside id="gitPanel" class="git-panel">
+                <div class="panel-header">
+                    <span class="panel-title">🔀 版本控制</span>
+                    <button id="gitRefreshBtn" class="panel-btn" title="刷新">↻</button>
+                </div>
+                <div id="gitContent" class="git-content">
+                    <div class="git-loading">加载中...</div>
+                </div>
+            </aside>
+        </main>
+    </div>
+
+    <!-- 右键上下文菜单 -->
+    <div id="contextMenu" class="context-menu" style="display:none;">
+        <div class="context-item" data-action="new">📄 新建文件</div>
+        <div class="context-item" data-action="newFolder">📁 新建文件夹</div>
+        <div class="context-divider"></div>
+        <div class="context-item" data-action="rename">✏️ 重命名</div>
+        <div class="context-item" data-action="delete">🗑️ 删除</div>
+    </div>
+
+    <!-- 模态框：新建文件 -->
+    <div id="newFileModal" class="modal">
+        <div class="modal-content modal-sm">
+            <div class="modal-header">
+                <h3>新建文件</h3>
+                <button class="modal-close" onclick="hideNewFileModal()">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div class="form-group">
+                    <label for="newFilePath">文件路径</label>
+                    <input type="text" id="newFilePath" placeholder="例如：01-运维/新文档.md">
+                    <small class="form-hint">相对于 src/ 目录，必须以 .md 结尾</small>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-secondary" onclick="hideNewFileModal()">取消</button>
+                <button class="btn btn-primary" onclick="createNewFile()">创建</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 模态框：重命名 -->
+    <div id="renameModal" class="modal">
+        <div class="modal-content modal-sm">
+            <div class="modal-header">
+                <h3>重命名</h3>
+                <button class="modal-close" onclick="hideRenameModal()">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div class="form-group">
+                    <label for="newFileName">新文件名</label>
+                    <input type="text" id="newFileName" placeholder="新文件名.md">
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-secondary" onclick="hideRenameModal()">取消</button>
+                <button class="btn btn-primary" onclick="confirmRename()">确认</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 模态框：确认删除 -->
+    <div id="deleteModal" class="modal">
+        <div class="modal-content modal-sm">
+            <div class="modal-header">
+                <h3>确认删除</h3>
+                <button class="modal-close" onclick="hideDeleteModal()">&times;</button>
+            </div>
+            <div class="modal-body">
+                <p id="deleteMessage">确定要删除此文件吗？此操作不可撤销。</p>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-secondary" onclick="hideDeleteModal()">取消</button>
+                <button class="btn btn-danger" onclick="confirmDelete()">删除</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 模态框：未保存提示 -->
+    <div id="unsavedModal" class="modal">
+        <div class="modal-content modal-sm">
+            <div class="modal-header">
+                <h3>未保存的更改</h3>
+                <button class="modal-close" onclick="hideUnsavedModal()">&times;</button>
+            </div>
+            <div class="modal-body">
+                <p>当前文件有未保存的更改，是否保存？</p>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-secondary" onclick="discardChanges()">不保存</button>
+                <button class="btn btn-primary" onclick="saveAndClose()">保存</button>
+                <button class="btn btn-outline" onclick="hideUnsavedModal()">取消</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Toast 容器 -->
+    <div id="toastContainer" class="toast-container"></div>
+
+    <!-- JavaScript 文件 -->
+    <script src="/static/editor-app.js"></script>
+</body>
+</html>

@@ -44,6 +44,11 @@ document.addEventListener('DOMContentLoaded', function() {
     
     // 初始化模态框事件
     initModalEvents();
+    
+    // 初始化 Git 面板
+    if (typeof initGitPanel === 'function') {
+        initGitPanel();
+    }
 });
 
 // ==================== 模态框通用功能 ====================
@@ -885,16 +890,16 @@ function createAvailableModuleItem(mod) {
         item.appendChild(path);
     }
     
-    // 添加编辑按钮
+    // 添加查看按钮
     const editBtn = document.createElement('button');
     editBtn.type = 'button';
     editBtn.className = 'module-edit-btn';
-    editBtn.textContent = '✏️ 编辑';
-    editBtn.title = '编辑此模块';
+    editBtn.textContent = '查看';
+    editBtn.title = '查看此模块';
     editBtn.onclick = (e) => {
         e.stopPropagation();
-        if (typeof openEditor === 'function') {
-            openEditor(mod.path);
+        if (typeof viewModule === 'function') {
+            viewModule(mod.path);
         }
     };
     item.appendChild(editBtn);

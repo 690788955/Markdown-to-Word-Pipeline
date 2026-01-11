@@ -118,6 +118,11 @@ func main() {
 		w.WriteHeader(http.StatusNoContent)
 	})
 
+	// 编辑器页面
+	mux.HandleFunc("/editor", func(w http.ResponseWriter, r *http.Request) {
+		http.ServeFile(w, r, filepath.Join(staticDir, "editor.html"))
+	})
+
 	// 根路径返回 index.html
 	mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
 		if r.URL.Path != "/" {

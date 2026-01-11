@@ -50,7 +50,7 @@ FROM alpine:3.19 AS base
 
 # 安装基础工具和 Pandoc
 RUN apk add --no-cache \
-    make bash wget curl \
+    make bash wget curl git \
     pandoc \
     texlive-xetex \
     texmf-dist-latexextra \

@@ -203,3 +203,159 @@ func (s *EditorService) CreateModule(modulePath string) error {
 func (s *EditorService) GetSrcDir() string {
 	return s.srcDir
 }
+
+// FileTreeNode 文件树节点
+type FileTreeNode struct {
+	Name        string          `json:"name"`
+	Path        string          `json:"path"`
+	Type        string          `json:"type"` // "file" or "directory"
+	DisplayName string          `json:"displayName,omitempty"`
+	Children    []*FileTreeNode `json:"children,omitempty"`
+}
+
+// GetFileTree 获取文件树
+// 返回: 文件树根节点和错误
+func (s *EditorService) GetFileTree() (*FileTreeNode, error) {
+	root := &FileTreeNode{
+		Name:     "src",
+		Path:     "",
+		Type:     "directory",
+		Children: []*FileTreeNode{},
+	}
+
+	err := s.buildFileTree(s.srcDir, "", root)
+	if err != nil {
+		return nil, err
+	}
+
+	return root, nil
+}
+
+// buildFileTree 递归构建文件树
+func (s *EditorService) buildFileTree(basePath, relativePath string, parent *FileTreeNode) error {
+	fullPath := basePath
+	if relativePath != "" {
+		fullPath = filepath.Join(basePath, relativePath)
+	}
+
+	entries, err := os.ReadDir(fullPath)
+	if err != nil {
+		return err
+	}
+
+	for _, entry := range entries {
+		name := entry.Name()
+		
+		// 跳过隐藏文件和 .gitkeep
+		if strings.HasPrefix(name, ".") {
+			continue
+		}
+
+		childPath := name
+		if relativePath != "" {
+			childPath = relativePath + "/" + name
+		}
+
+		node := &FileTreeNode{
+			Name:        name,
+			Path:        childPath,
+			DisplayName: extractDisplayName(name),
+		}
+
+		if entry.IsDir() {
+			node.Type = "directory"
+			node.Children = []*FileTreeNode{}
+			if err := s.buildFileTree(basePath, childPath, node); err != nil {
+				log.Printf("[Editor] 读取目录失败 %s: %v", childPath, err)
+				continue
+			}
+			parent.Children = append(parent.Children, node)
+		} else if strings.HasSuffix(strings.ToLower(name), ".md") {
+			node.Type = "file"
+			parent.Children = append(parent.Children, node)
+		}
+	}
+
+	return nil
+}
+
+// extractDisplayName 从文件名提取显示名称（去除编号前缀）
+func extractDisplayName(name string) string {
+	// 去除 .md 后缀
+	displayName := strings.TrimSuffix(name, ".md")
+	
+	// 去除编号前缀（如 "01-", "02-" 等）
+	if len(displayName) > 3 && displayName[2] == '-' {
+		if displayName[0] >= '0' && displayName[0] <= '9' &&
+			displayName[1] >= '0' && displayName[1] <= '9' {
+			displayName = displayName[3:]
+		}
+	}
+	
+	return displayName
+}
+
+// DeleteModule 删除模块
+// 参数: modulePath - 相对于 src/ 的文件路径
+// 返回: 错误
+func (s *EditorService) DeleteModule(modulePath string) error {
+	// 验证路径
+	absPath, err := s.ValidatePath(modulePath)
+	if err != nil {
+		return err
+	}
+
+	// 检查文件是否存在
+	if _, err := os.Stat(absPath); os.IsNotExist(err) {
+		return ErrFileNotFound
+	}
+
+	// 删除文件
+	if err := os.Remove(absPath); err != nil {
+		return fmt.Errorf("%w: %v", ErrWriteError, err)
+	}
+
+	log.Printf("[Editor] 文件已删除: %s", modulePath)
+	return nil
+}
+
+// RenameModule 重命名模块
+// 参数: oldPath - 原路径, newPath - 新路径
+// 返回: 错误
+func (s *EditorService) RenameModule(oldPath, newPath string) error {
+	// 验证原路径
+	absOldPath, err := s.ValidatePath(oldPath)
+	if err != nil {
+		return err
+	}
+
+	// 验证新路径
+	absNewPath, err := s.ValidatePath(newPath)
+	if err != nil {
+		return err
+	}
+
+	// 检查原文件是否存在
+	if _, err := os.Stat(absOldPath); os.IsNotExist(err) {
+		return ErrFileNotFound
+	}
+
+	// 检查新文件是否已存在
+	if _, err := os.Stat(absNewPath); err == nil {
+		return ErrFileExists
+	}
+
+	// 确保目标目录存在
+	dir := filepath.Dir(absNewPath)
+	if err := os.MkdirAll(dir, 0755); err != nil {
+		return fmt.Errorf("%w: %v", ErrWriteError, err)
+	}
+
+	// 重命名文件
+	if err := os.Rename(absOldPath, absNewPath); err != nil {
+		return fmt.Errorf("%w: %v", ErrWriteError, err)
+	}
+
+	log.Printf("[Editor] 文件已重命名: %s -> %s", oldPath, newPath)
+	return nil
+}

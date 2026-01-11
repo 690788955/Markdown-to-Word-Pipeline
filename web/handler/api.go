@@ -4,6 +4,7 @@ package handler
 import (
 	"archive/zip"
 	"encoding/json"
+	"fmt"
 	"io"
 	"log"
 	"net/http"
@@ -63,6 +64,7 @@ type APIHandler struct {
 	configMgr     *service.ConfigManager
 	variableSvc   *service.VariableService
 	editorSvc     *service.EditorService
+	gitSvc        *service.GitService
 	srcDir        string
 	adminPassword string
 }
@@ -71,6 +73,18 @@ type APIHandler struct {
 func NewAPIHandler(clientSvc *service.ClientService, docSvc *service.DocumentService, buildSvc *service.BuildService, moduleSvc *service.ModuleService, templateSvc *service.TemplateService, configMgr *service.ConfigManager, editorSvc *service.EditorService, srcDir string, adminPassword string) *APIHandler {
 	// 创建变量服务
 	variableSvc := service.NewVariableService(srcDir)
+	
+	// 创建 Git 服务（工作目录为 srcDir 的父目录，即项目根目录）
+	workDir := filepath.Dir(srcDir)
+	gitSvc := service.NewGitService(workDir)
+	gitSvc.LoadCredentialsFromEnv()
+	
+	// 检测 Git 是否可用
+	if version, err := gitSvc.CheckGitAvailable(); err == nil {
+		log.Printf("[APIHandler] Git 可用，版本: %s", version)
+	} else {
+		log.Printf("[APIHandler] Git 不可用: %v", err)
+	}
 	
 	return &APIHandler{
 		clientSvc:     clientSvc,
@@ -81,6 +95,7 @@ func NewAPIHandler(clientSvc *service.ClientService, docSvc *service.DocumentSer
 		configMgr:     configMgr,
 		variableSvc:   variableSvc,
 		editorSvc:     editorSvc,
+		gitSvc:        gitSvc,
 		srcDir:        srcDir,
 		adminPassword: adminPassword,
 	}
@@ -104,7 +119,20 @@ func (h *APIHandler) RegisterRoutes(mux *http.ServeMux) {
 	mux.HandleFunc("/api/lock/", h.handleClientLock)
 	// 新增：编辑器相关路由
 	mux.HandleFunc("/api/editor/module", h.handleEditorModule)
+	mux.HandleFunc("/api/editor/module/", h.handleEditorModuleWithPath)
+	mux.HandleFunc("/api/editor/tree", h.handleEditorTree)
 	mux.HandleFunc("/api/src/", h.handleSrcStatic)
+	// 新增：Git 相关路由
+	mux.HandleFunc("/api/git/check", h.handleGitCheck)
+	mux.HandleFunc("/api/git/status", h.handleGitStatus)
+	mux.HandleFunc("/api/git/changes", h.handleGitChanges)
+	mux.HandleFunc("/api/git/init", h.handleGitInit)
+	mux.HandleFunc("/api/git/commit", h.handleGitCommit)
+	mux.HandleFunc("/api/git/push", h.handleGitPush)
+	mux.HandleFunc("/api/git/pull", h.handleGitPull)
+	mux.HandleFunc("/api/git/log", h.handleGitLog)
+	mux.HandleFunc("/api/git/remote", h.handleGitRemote)
+	mux.HandleFunc("/api/git/credentials", h.handleGitCredentials)
 }
 
 // handleClients 处理客户列表请求
@@ -972,6 +1000,118 @@ func (h *APIHandler) createModule(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
+// handleEditorTree 获取文件树
+func (h *APIHandler) handleEditorTree(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodGet {
+		h.methodNotAllowed(w)
+		return
+	}
+
+	tree, err := h.editorSvc.GetFileTree()
+	if err != nil {
+		h.errorResponse(w, http.StatusInternalServerError, err.Error(), "")
+		return
+	}
+
+	h.successResponse(w, map[string]interface{}{
+		"tree": tree,
+	})
+}
+
+// RenameModuleRequest 重命名模块请求
+type RenameModuleRequest struct {
+	NewPath string `json:"newPath"`
+}
+
+// handleEditorModuleWithPath 处理带路径的编辑器模块请求（DELETE, PUT rename）
+func (h *APIHandler) handleEditorModuleWithPath(w http.ResponseWriter, r *http.Request) {
+	// 解析路径: /api/editor/module/{path} 或 /api/editor/module/{path}/rename
+	path := strings.TrimPrefix(r.URL.Path, "/api/editor/module/")
+	
+	// 检查是否是重命名请求
+	if strings.HasSuffix(path, "/rename") {
+		path = strings.TrimSuffix(path, "/rename")
+		path, _ = url.PathUnescape(path)
+		h.renameModule(w, r, path)
+		return
+	}
+	
+	path, _ = url.PathUnescape(path)
+	
+	switch r.Method {
+	case http.MethodDelete:
+		h.deleteModule(w, path)
+	default:
+		h.methodNotAllowed(w)
+	}
+}
+
+// deleteModule 删除模块
+func (h *APIHandler) deleteModule(w http.ResponseWriter, path string) {
+	if path == "" {
+		h.errorResponse(w, http.StatusBadRequest, "path 不能为空", ErrInvalidInput)
+		return
+	}
+
+	if err := h.editorSvc.DeleteModule(path); err != nil {
+		switch err {
+		case service.ErrFileNotFound:
+			h.errorResponse(w, http.StatusNotFound, err.Error(), ErrFileNotFound)
+		case service.ErrPathForbidden:
+			h.errorResponse(w, http.StatusForbidden, err.Error(), "PATH_FORBIDDEN")
+		case service.ErrInvalidFileType:
+			h.errorResponse(w, http.StatusBadRequest, err.Error(), "INVALID_FILE_TYPE")
+		default:
+			h.errorResponse(w, http.StatusInternalServerError, err.Error(), "")
+		}
+		return
+	}
+
+	h.successResponse(w, map[string]interface{}{
+		"message": "删除成功",
+	})
+}
+
+// renameModule 重命名模块
+func (h *APIHandler) renameModule(w http.ResponseWriter, r *http.Request, oldPath string) {
+	if r.Method != http.MethodPut {
+		h.methodNotAllowed(w)
+		return
+	}
+
+	var req RenameModuleRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		h.errorResponse(w, http.StatusBadRequest, "无效的请求格式", ErrInvalidInput)
+		return
+	}
+
+	if oldPath == "" || req.NewPath == "" {
+		h.errorResponse(w, http.StatusBadRequest, "路径不能为空", ErrInvalidInput)
+		return
+	}
+
+	if err := h.editorSvc.RenameModule(oldPath, req.NewPath); err != nil {
+		switch err {
+		case service.ErrFileNotFound:
+			h.errorResponse(w, http.StatusNotFound, err.Error(), ErrFileNotFound)
+		case service.ErrFileExists:
+			h.errorResponse(w, http.StatusConflict, err.Error(), "FILE_EXISTS")
+		case service.ErrPathForbidden:
+			h.errorResponse(w, http.StatusForbidden, err.Error(), "PATH_FORBIDDEN")
+		case service.ErrInvalidFileType:
+			h.errorResponse(w, http.StatusBadRequest, err.Error(), "INVALID_FILE_TYPE")
+		default:
+			h.errorResponse(w, http.StatusInternalServerError, err.Error(), "")
+		}
+		return
+	}
+
+	h.successResponse(w, map[string]interface{}{
+		"message": "重命名成功",
+		"newPath": req.NewPath,
+	})
+}
+
 // handleSrcStatic 处理 src 目录静态文件请求
 func (h *APIHandler) handleSrcStatic(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodGet {
@@ -1021,4 +1161,273 @@ func (h *APIHandler) handleSrcStatic(w http.ResponseWriter, r *http.Request) {
 
 	// 提供文件服务
 	http.ServeFile(w, r, absPath)
+}
+
+
+// ==================== Git 相关处理 ====================
+
+// handleGitCheck 检测 Git 是否可用
+func (h *APIHandler) handleGitCheck(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodGet {
+		h.methodNotAllowed(w)
+		return
+	}
+
+	version, err := h.gitSvc.CheckGitAvailable()
+	if err != nil {
+		h.successResponse(w, map[string]interface{}{
+			"available": false,
+			"error":     err.Error(),
+		})
+		return
+	}
+
+	h.successResponse(w, map[string]interface{}{
+		"available": true,
+		"version":   version,
+	})
+}
+
+// handleGitStatus 获取 Git 仓库状态
+func (h *APIHandler) handleGitStatus(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodGet {
+		h.methodNotAllowed(w)
+		return
+	}
+
+	status, err := h.gitSvc.GetStatus()
+	if err != nil {
+		h.errorResponse(w, http.StatusInternalServerError, err.Error(), "GIT_ERROR")
+		return
+	}
+
+	h.successResponse(w, status)
+}
+
+// handleGitChanges 获取变更文件列表
+func (h *APIHandler) handleGitChanges(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodGet {
+		h.methodNotAllowed(w)
+		return
+	}
+
+	changes, err := h.gitSvc.GetChanges()
+	if err != nil {
+		h.errorResponse(w, http.StatusInternalServerError, err.Error(), "GIT_ERROR")
+		return
+	}
+
+	byDir, _ := h.gitSvc.GetChangesByDirectory()
+
+	h.successResponse(w, map[string]interface{}{
+		"changes": changes,
+		"byDir":   byDir,
+	})
+}
+
+// handleGitInit 初始化 Git 仓库
+func (h *APIHandler) handleGitInit(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		h.methodNotAllowed(w)
+		return
+	}
+
+	if err := h.gitSvc.Init(); err != nil {
+		h.errorResponse(w, http.StatusInternalServerError, err.Error(), "GIT_ERROR")
+		return
+	}
+
+	h.successResponse(w, map[string]interface{}{
+		"message": "Git 仓库初始化成功",
+	})
+}
+
+// GitCommitRequest 提交请求
+type GitCommitRequest struct {
+	Message string   `json:"message"`
+	Files   []string `json:"files,omitempty"`
+}
+
+// handleGitCommit 提交变更
+func (h *APIHandler) handleGitCommit(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		h.methodNotAllowed(w)
+		return
+	}
+
+	var req GitCommitRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		h.errorResponse(w, http.StatusBadRequest, "无效的请求格式", ErrInvalidInput)
+		return
+	}
+
+	hash, err := h.gitSvc.Commit(req.Message, req.Files)
+	if err != nil {
+		h.errorResponse(w, http.StatusInternalServerError, err.Error(), "GIT_ERROR")
+		return
+	}
+
+	h.successResponse(w, map[string]interface{}{
+		"message": "提交成功",
+		"hash":    hash,
+	})
+}
+
+// handleGitPush 推送到远程
+func (h *APIHandler) handleGitPush(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		h.methodNotAllowed(w)
+		return
+	}
+
+	if err := h.gitSvc.Push(); err != nil {
+		h.errorResponse(w, http.StatusInternalServerError, err.Error(), "GIT_ERROR")
+		return
+	}
+
+	h.successResponse(w, map[string]interface{}{
+		"message": "推送成功",
+	})
+}
+
+// handleGitPull 从远程拉取
+func (h *APIHandler) handleGitPull(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		h.methodNotAllowed(w)
+		return
+	}
+
+	conflicts, err := h.gitSvc.Pull()
+	if err != nil {
+		response := map[string]interface{}{
+			"error": err.Error(),
+		}
+		if len(conflicts) > 0 {
+			response["conflicts"] = conflicts
+		}
+		h.errorResponse(w, http.StatusInternalServerError, err.Error(), "GIT_CONFLICT")
+		return
+	}
+
+	h.successResponse(w, map[string]interface{}{
+		"message": "拉取成功",
+	})
+}
+
+// handleGitLog 获取提交历史
+func (h *APIHandler) handleGitLog(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodGet {
+		h.methodNotAllowed(w)
+		return
+	}
+
+	// 解析分页参数
+	limit := 20
+	offset := 0
+	if l := r.URL.Query().Get("limit"); l != "" {
+		if n, err := parseInt(l); err == nil && n > 0 {
+			limit = n
+		}
+	}
+	if o := r.URL.Query().Get("offset"); o != "" {
+		if n, err := parseInt(o); err == nil && n >= 0 {
+			offset = n
+		}
+	}
+
+	commits, total, err := h.gitSvc.GetLog(limit, offset)
+	if err != nil {
+		h.errorResponse(w, http.StatusInternalServerError, err.Error(), "GIT_ERROR")
+		return
+	}
+
+	h.successResponse(w, map[string]interface{}{
+		"commits": commits,
+		"total":   total,
+	})
+}
+
+// parseInt 解析整数
+func parseInt(s string) (int, error) {
+	var n int
+	_, err := fmt.Sscanf(s, "%d", &n)
+	return n, err
+}
+
+// GitRemoteRequest 远程仓库配置请求
+type GitRemoteRequest struct {
+	URL string `json:"url"`
+}
+
+// handleGitRemote 处理远程仓库配置
+func (h *APIHandler) handleGitRemote(w http.ResponseWriter, r *http.Request) {
+	switch r.Method {
+	case http.MethodGet:
+		url, err := h.gitSvc.GetRemote()
+		if err != nil {
+			h.errorResponse(w, http.StatusInternalServerError, err.Error(), "GIT_ERROR")
+			return
+		}
+		protocol := h.gitSvc.GetRemoteProtocol(url)
+		h.successResponse(w, map[string]interface{}{
+			"url":      url,
+			"protocol": protocol,
+		})
+	case http.MethodPost:
+		var req GitRemoteRequest
+		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+			h.errorResponse(w, http.StatusBadRequest, "无效的请求格式", ErrInvalidInput)
+			return
+		}
+		if err := h.gitSvc.SetRemote(req.URL); err != nil {
+			h.errorResponse(w, http.StatusInternalServerError, err.Error(), "GIT_ERROR")
+			return
+		}
+		h.successResponse(w, map[string]interface{}{
+			"message": "远程仓库配置成功",
+		})
+	default:
+		h.methodNotAllowed(w)
+	}
+}
+
+// GitCredentialsRequest 凭据配置请求
+type GitCredentialsRequest struct {
+	Username string `json:"username"`
+	Password string `json:"password,omitempty"`
+	Token    string `json:"token,omitempty"`
+}
+
+// handleGitCredentials 处理凭据配置
+func (h *APIHandler) handleGitCredentials(w http.ResponseWriter, r *http.Request) {
+	switch r.Method {
+	case http.MethodGet:
+		creds := h.gitSvc.GetCredentials()
+		if creds == nil {
+			h.successResponse(w, map[string]interface{}{
+				"configured": false,
+			})
+			return
+		}
+		h.successResponse(w, map[string]interface{}{
+			"configured": true,
+			"username":   creds.Username,
+		})
+	case http.MethodPost:
+		var req GitCredentialsRequest
+		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+			h.errorResponse(w, http.StatusBadRequest, "无效的请求格式", ErrInvalidInput)
+			return
+		}
+		h.gitSvc.SetCredentials(&service.GitCredentials{
+			Username: req.Username,
+			Password: req.Password,
+			Token:    req.Token,
+		})
+		h.successResponse(w, map[string]interface{}{
+			"message": "凭据配置成功",
+		})
+	default:
+		h.methodNotAllowed(w)
+	}
 }
