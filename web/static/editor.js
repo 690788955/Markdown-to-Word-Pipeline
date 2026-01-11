@@ -11,11 +11,18 @@ let editorReady = false; // 编辑器是否已完全初始化
 // 初始化 Vditor 编辑器
 function initVditor(content, mode = 'ir') {
     editorReady = false; // 重置初始化状态
-    
+
     // 销毁已有实例
     if (vditorInstance) {
         vditorInstance.destroy();
         vditorInstance = null;
+    }
+
+    // 计算 linkBase
+    let linkBase = '/api/src/';
+    if (currentEditPath && currentEditPath.includes('/')) {
+        const dir = currentEditPath.substring(0, currentEditPath.lastIndexOf('/'));
+        linkBase = '/api/src/' + dir + '/';
     }
 
     vditorInstance = new Vditor('vditor', {
@@ -34,7 +41,7 @@ function initVditor(content, mode = 'ir') {
         ],
         preview: {
             markdown: {
-                linkBase: '/api/src/'
+                linkBase: linkBase
             },
             hljs: {
                 enable: true,
@@ -43,18 +50,23 @@ function initVditor(content, mode = 'ir') {
             }
         },
         upload: {
-            // 图片上传暂不支持，使用本地路径
             accept: 'image/*',
-            handler: function(files) {
-                showToast('图片上传功能暂未开放，请将图片放入 src/images/ 目录后使用相对路径引用', 'warning', 5000);
-                return null;
+            url: '/api/editor/upload',
+            linkToImgUrl: '', // 空值表示不转换
+            filename(name) {
+                return name.replace(/[^\w\d\._-]/g, ''); // 简单过滤文件名
+            },
+            extraData: {
+                modulePath: currentEditPath || '' // 传递当前模块路径
             }
         },
-        input: function(value) {
+        // 修复 "e.options.customWysiwygToolbar is not a function" 错误
+        customWysiwygToolbar: function () { },
+        input: function (value) {
             hasUnsavedChanges = value !== originalContent;
             updateSaveButtonState();
         },
-        after: function() {
+        after: function () {
             originalContent = content;
             hasUnsavedChanges = false;
             editorReady = true; // 标记编辑器已完全初始化
@@ -81,33 +93,33 @@ async function openEditor(modulePath) {
     const titleEl = document.getElementById('editorTitle');
     const pathEl = document.getElementById('editorPath');
     const modeSelect = document.getElementById('editorModeSelect');
-    
+
     if (!modal) return;
-    
+
     // 显示加载状态
     titleEl.textContent = '加载中...';
     pathEl.textContent = modulePath;
     openModal(modal);
-    
+
     try {
         const response = await fetch('/api/editor/module?path=' + encodeURIComponent(modulePath));
         const data = await response.json();
-        
+
         if (!data.success) {
             throw new Error(data.error || '加载失败');
         }
-        
+
         currentEditPath = modulePath;
         const content = data.data.content || '';
-        
+
         // 更新标题
         const fileName = modulePath.split('/').pop();
         titleEl.textContent = '编辑: ' + fileName;
-        
+
         // 初始化编辑器
         const mode = modeSelect ? modeSelect.value : 'ir';
         initVditor(content, mode);
-        
+
     } catch (e) {
         closeModal(modal);
         showToast('加载模块失败: ' + e.message, 'error');
@@ -123,33 +135,37 @@ async function viewModule(modulePath) {
     const saveBtn = document.getElementById('editorSaveBtn');
     const modeSelect = document.getElementById('editorModeSelect');
     const vditorContainer = document.getElementById('vditor');
-    
+    const editorBody = document.querySelector('#editorModal .editor-body');
+
     if (!modal) return;
-    
+
     // 显示加载状态
     titleEl.textContent = '加载中...';
     pathEl.textContent = modulePath;
     openModal(modal);
-    
+
     // 隐藏保存按钮和模式选择
     if (saveBtn) saveBtn.style.display = 'none';
     if (modeSelect) modeSelect.style.display = 'none';
-    
+
+    // 添加预览模式类以启用滚动
+    if (editorBody) editorBody.classList.add('preview-mode');
+
     try {
         const response = await fetch('/api/editor/module?path=' + encodeURIComponent(modulePath));
         const data = await response.json();
-        
+
         if (!data.success) {
             throw new Error(data.error || '加载失败');
         }
-        
+
         currentEditPath = modulePath;
         const content = data.data.content || '';
-        
+
         // 更新标题
         const fileName = modulePath.split('/').pop();
         titleEl.textContent = '查看: ' + fileName;
-        
+
         // 使用静态预览方法渲染 Markdown
         if (vditorContainer) {
             // 销毁已有实例
@@ -157,7 +173,7 @@ async function viewModule(modulePath) {
                 vditorInstance.destroy();
                 vditorInstance = null;
             }
-            
+
             // 使用 Vditor.preview 静态方法渲染
             Vditor.preview(vditorContainer, content, {
                 markdown: {
@@ -170,11 +186,11 @@ async function viewModule(modulePath) {
                 }
             });
         }
-        
+
         originalContent = content;
         hasUnsavedChanges = false;
         editorReady = true;
-        
+
     } catch (e) {
         closeModal(modal);
         showToast('加载模块失败: ' + e.message, 'error');
@@ -193,10 +209,10 @@ async function saveModule() {
         showToast('编辑器未初始化', 'error');
         return;
     }
-    
+
     const saveBtn = document.getElementById('editorSaveBtn');
     const content = vditorInstance.getValue();
-    
+
     // 设置加载状态
     if (saveBtn) {
         saveBtn.disabled = true;
@@ -205,7 +221,7 @@ async function saveModule() {
         if (btnText) btnText.style.display = 'none';
         if (btnLoading) btnLoading.style.display = 'inline';
     }
-    
+
     try {
         const response = await fetch('/api/editor/module', {
             method: 'PUT',
@@ -215,20 +231,20 @@ async function saveModule() {
                 content: content
             })
         });
-        
+
         const data = await response.json();
-        
+
         if (!data.success) {
             throw new Error(data.error || '保存失败');
         }
-        
+
         // 更新原始内容
         originalContent = content;
         hasUnsavedChanges = false;
         updateSaveButtonState();
-        
+
         showToast('保存成功', 'success');
-        
+
     } catch (e) {
         showToast('保存失败: ' + e.message, 'error');
         console.error('保存模块失败:', e);
@@ -251,19 +267,23 @@ function closeEditor() {
             return;
         }
     }
-    
+
     const modal = document.getElementById('editorModal');
     const saveBtn = document.getElementById('editorSaveBtn');
     const modeSelect = document.getElementById('editorModeSelect');
-    
+    const editorBody = document.querySelector('#editorModal .editor-body');
+
     if (modal) {
         closeModal(modal);
     }
-    
+
     // 恢复保存按钮和模式选择的显示状态（下次打开编辑模式时需要）
     if (saveBtn) saveBtn.style.display = '';
     if (modeSelect) modeSelect.style.display = '';
-    
+
+    // 移除预览模式类
+    if (editorBody) editorBody.classList.remove('preview-mode');
+
     // 清理状态
     if (vditorInstance) {
         vditorInstance.destroy();
@@ -279,15 +299,15 @@ function closeEditor() {
 function changeEditorMode() {
     const modeSelect = document.getElementById('editorModeSelect');
     if (!modeSelect || !vditorInstance) return;
-    
+
     // 如果编辑器未完全初始化，忽略模式切换
     if (!editorReady) {
         console.log('编辑器正在初始化，忽略模式切换');
         return;
     }
-    
+
     const newMode = modeSelect.value;
-    
+
     // 安全获取当前内容
     let currentContent;
     try {
@@ -296,10 +316,10 @@ function changeEditorMode() {
         console.warn('获取编辑器内容失败，使用原始内容');
         currentContent = originalContent;
     }
-    
+
     // 重新初始化编辑器
     initVditor(currentContent, newMode);
-    
+
     // 保持未保存状态
     if (currentContent !== originalContent) {
         hasUnsavedChanges = true;
@@ -313,7 +333,7 @@ function changeEditorMode() {
 function toggleNewDirInput() {
     const dirSelect = document.getElementById('newModuleDir');
     const newDirGroup = document.getElementById('newDirGroup');
-    
+
     if (dirSelect && newDirGroup) {
         newDirGroup.style.display = dirSelect.value === '__new__' ? 'block' : 'none';
     }
@@ -326,7 +346,7 @@ function showNewModuleModal() {
     const nameInput = document.getElementById('newModuleName');
     const newDirInput = document.getElementById('newDirName');
     const newDirGroup = document.getElementById('newDirGroup');
-    
+
     if (modal) {
         // 填充目录选项
         if (dirSelect && typeof moduleTree !== 'undefined') {
@@ -343,11 +363,11 @@ function showNewModuleModal() {
             newOption.textContent = '+ 新建目录...';
             dirSelect.appendChild(newOption);
         }
-        
+
         if (nameInput) nameInput.value = '';
         if (newDirInput) newDirInput.value = '';
         if (newDirGroup) newDirGroup.style.display = 'none';
-        
+
         openModal(modal);
         if (nameInput) nameInput.focus();
     }
@@ -365,18 +385,18 @@ async function createNewModule() {
     const nameInput = document.getElementById('newModuleName');
     const newDirInput = document.getElementById('newDirName');
     if (!nameInput) return;
-    
+
     let fileName = nameInput.value.trim();
     if (!fileName) {
         showToast('请输入文件名', 'warning');
         return;
     }
-    
+
     // 自动添加 .md 后缀
     if (!fileName.toLowerCase().endsWith('.md')) {
         fileName += '.md';
     }
-    
+
     // 确定目录
     let dir = dirSelect ? dirSelect.value : '';
     if (dir === '__new__') {
@@ -386,34 +406,34 @@ async function createNewModule() {
             return;
         }
     }
-    
+
     // 构建完整路径
     const path = dir ? dir + '/' + fileName : fileName;
-    
+
     try {
         const response = await fetch('/api/editor/module', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ path: path })
         });
-        
+
         const data = await response.json();
-        
+
         if (!data.success) {
             throw new Error(data.error || '创建失败');
         }
-        
+
         showToast('模块创建成功', 'success');
         hideNewModuleModal();
-        
+
         // 刷新模块列表
         if (typeof loadModules === 'function') {
             await loadModules();
         }
-        
+
         // 自动打开编辑器
         openEditor(path);
-        
+
     } catch (e) {
         showToast('创建失败: ' + e.message, 'error');
         console.error('创建模块失败:', e);

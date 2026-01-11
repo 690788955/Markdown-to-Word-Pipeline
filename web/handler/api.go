@@ -117,10 +117,11 @@ func (h *APIHandler) RegisterRoutes(mux *http.ServeMux) {
 	mux.HandleFunc("/api/variables", h.handleVariables)
 	// 新增：客户锁定相关路由
 	mux.HandleFunc("/api/lock/", h.handleClientLock)
-	// 新增：编辑器相关路由
+	// 新建编辑器相关路由
 	mux.HandleFunc("/api/editor/module", h.handleEditorModule)
 	mux.HandleFunc("/api/editor/module/", h.handleEditorModuleWithPath)
 	mux.HandleFunc("/api/editor/tree", h.handleEditorTree)
+	mux.HandleFunc("/api/editor/upload", h.handleEditorUpload) // Added upload route
 	mux.HandleFunc("/api/src/", h.handleSrcStatic)
 	// 新增：Git 相关路由
 	mux.HandleFunc("/api/git/check", h.handleGitCheck)
@@ -133,6 +134,12 @@ func (h *APIHandler) RegisterRoutes(mux *http.ServeMux) {
 	mux.HandleFunc("/api/git/log", h.handleGitLog)
 	mux.HandleFunc("/api/git/remote", h.handleGitRemote)
 	mux.HandleFunc("/api/git/credentials", h.handleGitCredentials)
+	// 新增：Git 暂存区操作路由
+	mux.HandleFunc("/api/git/stage", h.handleGitStage)
+	mux.HandleFunc("/api/git/unstage", h.handleGitUnstage)
+	mux.HandleFunc("/api/git/stage-all", h.handleGitStageAll)
+	mux.HandleFunc("/api/git/unstage-all", h.handleGitUnstageAll)
+	mux.HandleFunc("/api/git/discard", h.handleGitDiscard)
 }
 
 // handleClients 处理客户列表请求
@@ -1211,17 +1218,19 @@ func (h *APIHandler) handleGitChanges(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	changes, err := h.gitSvc.GetChanges()
+	changesResult, err := h.gitSvc.GetChangesResult()
 	if err != nil {
 		h.errorResponse(w, http.StatusInternalServerError, err.Error(), "GIT_ERROR")
 		return
 	}
 
+	// 同时返回旧格式的 byDir（兼容）
 	byDir, _ := h.gitSvc.GetChangesByDirectory()
 
 	h.successResponse(w, map[string]interface{}{
-		"changes": changes,
-		"byDir":   byDir,
+		"staged":   changesResult.Staged,
+		"unstaged": changesResult.Unstaged,
+		"byDir":    byDir,
 	})
 }
 
@@ -1430,4 +1439,185 @@ func (h *APIHandler) handleGitCredentials(w http.ResponseWriter, r *http.Request
 	default:
 		h.methodNotAllowed(w)
 	}
+}
+
+// GitFilesRequest 文件列表请求
+type GitFilesRequest struct {
+	Files []string `json:"files"`
+}
+
+// handleGitStage 暂存指定文件
+func (h *APIHandler) handleGitStage(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		h.methodNotAllowed(w)
+		return
+	}
+
+	var req GitFilesRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		h.errorResponse(w, http.StatusBadRequest, "无效的请求格式", ErrInvalidInput)
+		return
+	}
+
+	if len(req.Files) == 0 {
+		h.errorResponse(w, http.StatusBadRequest, "文件列表不能为空", ErrInvalidInput)
+		return
+	}
+
+	if err := h.gitSvc.Stage(req.Files); err != nil {
+		h.errorResponse(w, http.StatusInternalServerError, err.Error(), "GIT_ERROR")
+		return
+	}
+
+	h.successResponse(w, map[string]interface{}{
+		"message": "暂存成功",
+	})
+}
+
+// handleGitUnstage 取消暂存指定文件
+func (h *APIHandler) handleGitUnstage(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		h.methodNotAllowed(w)
+		return
+	}
+
+	var req GitFilesRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		h.errorResponse(w, http.StatusBadRequest, "无效的请求格式", ErrInvalidInput)
+		return
+	}
+
+	if len(req.Files) == 0 {
+		h.errorResponse(w, http.StatusBadRequest, "文件列表不能为空", ErrInvalidInput)
+		return
+	}
+
+	if err := h.gitSvc.Unstage(req.Files); err != nil {
+		h.errorResponse(w, http.StatusInternalServerError, err.Error(), "GIT_ERROR")
+		return
+	}
+
+	h.successResponse(w, map[string]interface{}{
+		"message": "取消暂存成功",
+	})
+}
+
+// handleGitStageAll 暂存所有变更
+func (h *APIHandler) handleGitStageAll(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		h.methodNotAllowed(w)
+		return
+	}
+
+	if err := h.gitSvc.StageAll(); err != nil {
+		h.errorResponse(w, http.StatusInternalServerError, err.Error(), "GIT_ERROR")
+		return
+	}
+
+	h.successResponse(w, map[string]interface{}{
+		"message": "全部暂存成功",
+	})
+}
+
+// handleGitUnstageAll 取消暂存所有文件
+func (h *APIHandler) handleGitUnstageAll(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		h.methodNotAllowed(w)
+		return
+	}
+
+	if err := h.gitSvc.UnstageAll(); err != nil {
+		h.errorResponse(w, http.StatusInternalServerError, err.Error(), "GIT_ERROR")
+		return
+	}
+
+	h.successResponse(w, map[string]interface{}{
+		"message": "全部取消暂存成功",
+	})
+}
+
+// handleGitDiscard 放弃指定文件的更改
+func (h *APIHandler) handleGitDiscard(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		h.methodNotAllowed(w)
+		return
+	}
+
+	var req GitFilesRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		h.errorResponse(w, http.StatusBadRequest, "无效的请求格式", ErrInvalidInput)
+		return
+	}
+
+	if len(req.Files) == 0 {
+		h.errorResponse(w, http.StatusBadRequest, "文件列表不能为空", ErrInvalidInput)
+		return
+	}
+
+	if err := h.gitSvc.Discard(req.Files); err != nil {
+		h.errorResponse(w, http.StatusInternalServerError, err.Error(), "GIT_ERROR")
+		return
+	}
+
+	h.successResponse(w, map[string]interface{}{
+		"message": "放弃更改成功",
+	})
+}
+
+// handleEditorUpload 处理编辑器图片上传
+func (h *APIHandler) handleEditorUpload(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		h.methodNotAllowed(w)
+		return
+	}
+
+	// 限制上传大小 (10MB)
+	if err := r.ParseMultipartForm(10 << 20); err != nil {
+		h.errorResponse(w, http.StatusBadRequest, "请求过大或格式错误", ErrInvalidInput)
+		return
+	}
+
+	// 获取模块路径
+	modulePath := r.FormValue("modulePath")
+	
+	files := r.MultipartForm.File["file[]"]
+	succMap := make(map[string]string)
+	errFiles := make([]string, 0)
+
+	for _, fileHeader := range files {
+		file, err := fileHeader.Open()
+		if err != nil {
+			errFiles = append(errFiles, fileHeader.Filename)
+			continue
+		}
+		
+		content, err := io.ReadAll(file)
+		file.Close()
+		if err != nil {
+			errFiles = append(errFiles, fileHeader.Filename)
+			continue
+		}
+
+		// 使用 SaveImage 保存，传入模块路径
+		relPath, err := h.editorSvc.SaveImage(modulePath, fileHeader.Filename, content)
+		if err != nil {
+			log.Printf("[API] 保存图片失败: %v", err)
+			errFiles = append(errFiles, fileHeader.Filename)
+			continue
+		}
+		
+		succMap[fileHeader.Filename] = relPath
+	}
+
+	response := map[string]interface{}{
+		"msg":  "",
+		"code": 0,
+		"data": map[string]interface{}{
+			"errFiles": errFiles,
+			"succMap":  succMap,
+		},
+	}
+
+	w.Header().Set("Content-Type", "application/json; charset=utf-8")
+	json.NewEncoder(w).Encode(response)
 }

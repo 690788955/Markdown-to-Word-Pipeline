@@ -19,21 +19,32 @@ var ManagedDirectories = []string{"src", "clients", "fonts", "templates"}
 
 // GitStatus 仓库状态
 type GitStatus struct {
-	IsRepository bool   `json:"isRepository"`
-	Branch       string `json:"branch"`
-	HasChanges   bool   `json:"hasChanges"`
-	ChangedCount int    `json:"changedCount"`
-	AheadCount   int    `json:"aheadCount"`  // 待推送提交数
-	BehindCount  int    `json:"behindCount"` // 待拉取提交数
-	HasRemote    bool   `json:"hasRemote"`
-	RemoteURL    string `json:"remoteUrl"`
+	IsRepository  bool   `json:"isRepository"`
+	Branch        string `json:"branch"`
+	HasChanges    bool   `json:"hasChanges"`
+	ChangedCount  int    `json:"changedCount"`
+	StagedCount   int    `json:"stagedCount"`   // 暂存区文件数
+	UnstagedCount int    `json:"unstagedCount"` // 未暂存文件数
+	AheadCount    int    `json:"aheadCount"`    // 待推送提交数
+	BehindCount   int    `json:"behindCount"`   // 待拉取提交数
+	HasRemote     bool   `json:"hasRemote"`
+	RemoteURL     string `json:"remoteUrl"`
 }
 
 // FileChange 文件变更
 type FileChange struct {
-	Path      string `json:"path"`
-	Status    string `json:"status"`    // "added", "modified", "deleted", "untracked"
-	Directory string `json:"directory"` // 所属目录 (src, clients, etc.)
+	Path       string `json:"path"`
+	FileName   string `json:"fileName"`   // 文件名（不含路径）
+	Directory  string `json:"directory"`  // 所属目录 (src, clients, etc.)
+	Status     string `json:"status"`     // "M", "A", "D", "U", "R"
+	StatusText string `json:"statusText"` // "modified", "added", "deleted", "untracked", "renamed"
+	Staged     bool   `json:"staged"`     // 是否在暂存区
+}
+
+// ChangesResult 变更文件结果（区分 staged/unstaged）
+type ChangesResult struct {
+	Staged   []FileChange `json:"staged"`   // 暂存区文件
+	Unstaged []FileChange `json:"unstaged"` // 未暂存文件
 }
 
 // CommitInfo 提交信息
@@ -144,10 +155,12 @@ func (s *GitService) GetStatus() (*GitStatus, error) {
 		status.Branch = branch
 	}
 
-	// 获取变更数量
-	changes, err := s.GetChanges()
+	// 获取变更数量（区分 staged/unstaged）
+	changesResult, err := s.GetChangesResult()
 	if err == nil {
-		status.ChangedCount = len(changes)
+		status.StagedCount = len(changesResult.Staged)
+		status.UnstagedCount = len(changesResult.Unstaged)
+		status.ChangedCount = status.StagedCount + status.UnstagedCount
 		status.HasChanges = status.ChangedCount > 0
 	}
 
@@ -183,8 +196,21 @@ func (s *GitService) updateAheadBehind(status *GitStatus) {
 }
 
 
-// GetChanges 获取变更文件列表（仅管理目录）
+// GetChanges 获取变更文件列表（仅管理目录）- 兼容旧接口
 func (s *GitService) GetChanges() ([]FileChange, error) {
+	result, err := s.GetChangesResult()
+	if err != nil {
+		return nil, err
+	}
+	// 合并 staged 和 unstaged
+	all := make([]FileChange, 0, len(result.Staged)+len(result.Unstaged))
+	all = append(all, result.Staged...)
+	all = append(all, result.Unstaged...)
+	return all, nil
+}
+
+// GetChangesResult 获取变更文件列表（区分 staged/unstaged）
+func (s *GitService) GetChangesResult() (*ChangesResult, error) {
 	if !s.IsRepository() {
 		return nil, &GitError{
 			Operation:  "changes",
@@ -203,7 +229,11 @@ func (s *GitService) GetChanges() ([]FileChange, error) {
 		}
 	}
 
-	var changes []FileChange
+	result := &ChangesResult{
+		Staged:   []FileChange{},
+		Unstaged: []FileChange{},
+	}
+
 	scanner := bufio.NewScanner(strings.NewReader(output))
 	for scanner.Scan() {
 		line := scanner.Text()
@@ -212,7 +242,10 @@ func (s *GitService) GetChanges() ([]FileChange, error) {
 		}
 
 		// 解析状态码和文件路径
-		statusCode := line[:2]
+		// git status --porcelain 格式: XY filename
+		// X = 暂存区状态, Y = 工作区状态
+		x := line[0] // 暂存区状态
+		y := line[1] // 工作区状态
 		filePath := strings.TrimSpace(line[3:])
 
 		// 处理重命名的情况 (R  old -> new)
@@ -229,15 +262,56 @@ func (s *GitService) GetChanges() ([]FileChange, error) {
 			continue // 不在管理目录中，跳过
 		}
 
-		change := FileChange{
-			Path:      filePath,
-			Status:    s.parseStatusCode(statusCode),
-			Directory: dir,
+		fileName := filepath.Base(filePath)
+
+		// 暂存区有变更 (X 不是空格且不是 ?)
+		if x != ' ' && x != '?' {
+			result.Staged = append(result.Staged, FileChange{
+				Path:       filePath,
+				FileName:   fileName,
+				Directory:  dir,
+				Status:     string(x),
+				StatusText: statusCodeToText(x),
+				Staged:     true,
+			})
 		}
-		changes = append(changes, change)
+
+		// 工作区有变更 (Y 不是空格)
+		if y != ' ' {
+			status := y
+			if y == '?' {
+				status = 'U' // 未跟踪显示为 U
+			}
+			result.Unstaged = append(result.Unstaged, FileChange{
+				Path:       filePath,
+				FileName:   fileName,
+				Directory:  dir,
+				Status:     string(status),
+				StatusText: statusCodeToText(byte(status)),
+				Staged:     false,
+			})
+		}
 	}
 
-	return changes, nil
+	return result, nil
+}
+
+// statusCodeToText 状态码转文本
+func statusCodeToText(code byte) string {
+	switch code {
+	case 'M':
+		return "modified"
+	case 'A':
+		return "added"
+	case 'D':
+		return "deleted"
+	case 'R':
+		return "renamed"
+	case '?', 'U':
+		return "untracked"
+	default:
+		return "unknown"
+	}
 }
 
 // getFileDirectory 获取文件所属的管理目录
@@ -253,29 +327,6 @@ func (s *GitService) getFileDirectory(filePath string) string {
 	return ""
 }
 
-// parseStatusCode 解析 git status 状态码
-func (s *GitService) parseStatusCode(code string) string {
-	// git status --porcelain 格式: XY filename
-	// X = 暂存区状态, Y = 工作区状态
-	x := code[0]
-	y := code[1]
-
-	switch {
-	case x == '?' || y == '?':
-		return "untracked"
-	case x == 'A' || y == 'A':
-		return "added"
-	case x == 'D' || y == 'D':
-		return "deleted"
-	case x == 'M' || y == 'M':
-		return "modified"
-	case x == 'R':
-		return "renamed"
-	default:
-		return "modified"
-	}
-}
-
 // GetChangesByDirectory 按目录分组获取变更
 func (s *GitService) GetChangesByDirectory() (map[string][]FileChange, error) {
 	changes, err := s.GetChanges()
@@ -289,6 +340,119 @@ func (s *GitService) GetChangesByDirectory() (map[string][]FileChange, error) {
 	}
 
 	return byDir, nil
+}
+
+// Stage 暂存指定文件
+func (s *GitService) Stage(files []string) error {
+	if !s.IsRepository() {
+		return &GitError{
+			Operation:  "stage",
+			Message:    "当前目录不是 Git 仓库",
+			Suggestion: "请先初始化 Git 仓库",
+		}
+	}
+
+	for _, file := range files {
+		// 只暂存管理目录中的文件
+		if s.getFileDirectory(file) == "" {
+			continue
+		}
+		_, err := s.runGit("add", file)
+		if err != nil {
+			return &GitError{
+				Operation:  "stage",
+				Message:    "暂存文件失败: " + file,
+				Suggestion: "请检查文件路径是否正确",
+			}
+		}
+	}
+	return nil
+}
+
+// Unstage 取消暂存指定文件
+func (s *GitService) Unstage(files []string) error {
+	if !s.IsRepository() {
+		return &GitError{
+			Operation:  "unstage",
+			Message:    "当前目录不是 Git 仓库",
+			Suggestion: "请先初始化 Git 仓库",
+		}
+	}
+
+	for _, file := range files {
+		_, err := s.runGit("reset", "HEAD", file)
+		if err != nil {
+			// reset HEAD 对于新仓库可能失败，尝试 rm --cached
+			s.runGit("rm", "--cached", file)
+		}
+	}
+	return nil
+}
+
+// StageAll 暂存所有管理目录的变更
+func (s *GitService) StageAll() error {
+	if !s.IsRepository() {
+		return &GitError{
+			Operation:  "stage-all",
+			Message:    "当前目录不是 Git 仓库",
+			Suggestion: "请先初始化 Git 仓库",
+		}
+	}
+
+	for _, dir := range s.managedDirs {
+		dirPath := filepath.Join(s.workDir, dir)
+		if _, err := os.Stat(dirPath); err == nil {
+			s.runGit("add", dir)
+		}
+	}
+	return nil
+}
+
+// UnstageAll 取消暂存所有文件
+func (s *GitService) UnstageAll() error {
+	if !s.IsRepository() {
+		return &GitError{
+			Operation:  "unstage-all",
+			Message:    "当前目录不是 Git 仓库",
+			Suggestion: "请先初始化 Git 仓库",
+		}
+	}
+
+	_, err := s.runGit("reset", "HEAD")
+	if err != nil {
+		// 新仓库可能没有 HEAD，忽略错误
+		log.Printf("[GitService] reset HEAD 失败（可能是新仓库）: %v", err)
+	}
+	return nil
+}
+
+// Discard 放弃指定文件的更改
+func (s *GitService) Discard(files []string) error {
+	if !s.IsRepository() {
+		return &GitError{
+			Operation:  "discard",
+			Message:    "当前目录不是 Git 仓库",
+			Suggestion: "请先初始化 Git 仓库",
+		}
+	}
+
+	for _, file := range files {
+		// 只处理管理目录中的文件
+		if s.getFileDirectory(file) == "" {
+			continue
+		}
+
+		// 先尝试 checkout（已跟踪文件）
+		_, err := s.runGit("checkout", "--", file)
+		if err != nil {
+			// 可能是未跟踪文件，尝试删除
+			fullPath := filepath.Join(s.workDir, file)
+			if removeErr := os.Remove(fullPath); removeErr != nil {
+				log.Printf("[GitService] 放弃更改失败: %s, checkout err: %v, remove err: %v", file, err, removeErr)
+			}
+		}
+	}
+	return nil
 }
 
 
@@ -350,7 +514,7 @@ func (s *GitService) Init() error {
 }
 
 
-// Commit 提交变更
+// Commit 提交暂存区变更
 func (s *GitService) Commit(message string, files []string) (string, error) {
 	if !s.IsRepository() {
 		return "", &GitError{
@@ -370,9 +534,8 @@ func (s *GitService) Commit(message string, files []string) (string, error) {
 		}
 	}
 
-	// 暂存文件
+	// 如果指定了文件，先暂存这些文件（兼容旧行为）
 	if len(files) > 0 {
-		// 暂存指定文件
 		for _, file := range files {
 			// 只暂存管理目录中的文件
 			if s.getFileDirectory(file) == "" {
@@ -383,17 +546,22 @@ func (s *GitService) Commit(message string, files []string) (string, error) {
 				log.Printf("[GitService] 暂存文件失败: %s, %v", file, err)
 			}
 		}
-	} else {
-		// 暂存所有管理目录中的变更
-		for _, dir := range s.managedDirs {
-			dirPath := filepath.Join(s.workDir, dir)
-			if _, err := os.Stat(dirPath); err == nil {
-				s.runGit("add", dir)
-			}
+	}
+
+	// 检查暂存区是否为空
+	changesResult, err := s.GetChangesResult()
+	if err != nil {
+		return "", err
+	}
+	if len(changesResult.Staged) == 0 {
+		return "", &GitError{
+			Operation:  "commit",
+			Message:    "暂存区为空，没有需要提交的变更",
+			Suggestion: "请先暂存要提交的文件",
 		}
 	}
 
-	// 执行提交
+	// 执行提交（只提交暂存区）
 	output, err := s.runGit("commit", "-m", message)
 	if err != nil {
 		// 检查是否是没有变更的情况

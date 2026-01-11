@@ -359,3 +359,87 @@ func (s *EditorService) RenameModule(oldPath, newPath string) error {
 	log.Printf("[Editor] 文件已重命名: %s -> %s", oldPath, newPath)
 	return nil
 }
+
+// SaveImage 保存图片
+// 参数: modulePath - 当前编辑的模块路径, filename - 文件名, content - 图片内容
+// 返回: 相对路径(用于markdown引用)和错误
+func (s *EditorService) SaveImage(modulePath string, filename string, content []byte) (string, error) {
+	// 验证文件名
+	if err := s.ValidateFilename(filename); err != nil {
+		return "", err
+	}
+	
+	// 获取模块的绝对路径
+	absStartPath, err := s.ValidatePath(modulePath)
+	if err != nil {
+		// 如果模块路径无效，回退到默认的 src/images
+		log.Printf("[Editor] 模块路径无效，回退到默认目录: %v", err)
+		return s.saveToGlobalImages(filename, content)
+	}
+
+	// 获取模块所在目录
+	moduleDir := filepath.Dir(absStartPath)
+	
+	// 确保 images 目录存在
+	imagesDir := filepath.Join(moduleDir, "images")
+	if err := os.MkdirAll(imagesDir, 0755); err != nil {
+		return "", fmt.Errorf("%w: %v", ErrWriteError, err)
+	}
+
+	absPath := filepath.Join(imagesDir, filename)
+
+	// 如果文件已存在，添加时间戳避免覆盖
+	if _, err := os.Stat(absPath); err == nil {
+		ext := filepath.Ext(filename)
+		name := strings.TrimSuffix(filename, ext)
+		timestamp := time.Now().Format("20060102150405")
+		filename = fmt.Sprintf("%s_%s%s", name, timestamp, ext)
+		absPath = filepath.Join(imagesDir, filename)
+	}
+
+	// 写入文件
+	if err := os.WriteFile(absPath, content, 0644); err != nil {
+		return "", fmt.Errorf("%w: %v", ErrWriteError, err)
+	}
+
+	log.Printf("[Editor] 图片已保存: %s", absPath)
+	
+	// 返回相对于模块目录的路径，例如 "images/filename.png"
+	// 这样 markdown 文件就是便携的（不包含上层目录信息）
+	// absPath: .../src/sub/images/foo.png
+	// moduleDir: .../src/sub
+	// relPath: images/foo.png
+	relPath, err := filepath.Rel(moduleDir, absPath)
+	if err != nil {
+		return "", err
+	}
+
+	// 统一分隔符为 /
+	relPath = filepath.ToSlash(relPath)
+	
+	return relPath, nil
+}
+
+// saveToGlobalImages 保存到全局 images 目录 (备用)
+func (s *EditorService) saveToGlobalImages(filename string, content []byte) (string, error) {
+	imagesDir := filepath.Join(s.srcDir, "images")
+	if err := os.MkdirAll(imagesDir, 0755); err != nil {
+		return "", fmt.Errorf("%w: %v", ErrWriteError, err)
+	}
+
+	absPath := filepath.Join(imagesDir, filename)
+	
+	if _, err := os.Stat(absPath); err == nil {
+		ext := filepath.Ext(filename)
+		name := strings.TrimSuffix(filename, ext)
+		timestamp := time.Now().Format("20060102150405")
+		filename = fmt.Sprintf("%s_%s%s", name, timestamp, ext)
+		absPath = filepath.Join(imagesDir, filename)
+	}
+
+	if err := os.WriteFile(absPath, content, 0644); err != nil {
+		return "", fmt.Errorf("%w: %v", ErrWriteError, err)
+	}
+	
+	return "images/" + filename, nil
+}

@@ -1,49 +1,71 @@
-/* ==================== CSS 变量系统 ==================== */
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+
+/* ==================== CSS 变量系统 (Premium Theme) ==================== */
 :root {
-    /* 主色调 */
-    --color-primary: #3498db;
-    --color-primary-hover: #2980b9;
-    --color-primary-light: #e8f4fd;
-    --color-primary-dark: #1a5276;
-    
+    /* 主色调 - Indigo/Violet */
+    --color-primary: #6366f1;
+    /* Indigo 500 */
+    --color-primary-hover: #4f46e5;
+    /* Indigo 600 */
+    --color-primary-light: #e0e7ff;
+    /* Indigo 100 */
+    --color-primary-dark: #3730a3;
+    /* Indigo 800 */
+
     /* 功能色 */
-    --color-success: #27ae60;
-    --color-success-hover: #219a52;
-    --color-success-light: #d4edda;
-    --color-danger: #e74c3c;
-    --color-danger-hover: #c0392b;
-    --color-danger-light: #f8d7da;
-    --color-warning: #f39c12;
-    --color-warning-light: #fff3cd;
-    
-    /* 中性色 */
-    --color-bg: #f5f7fa;
+    --color-success: #10b981;
+    /* Emerald 500 */
+    --color-success-hover: #059669;
+    /* Emerald 600 */
+    --color-success-light: #d1fae5;
+    /* Emerald 100 */
+    --color-danger: #ef4444;
+    /* Red 500 */
+    --color-danger-hover: #dc2626;
+    /* Red 600 */
+    --color-danger-light: #fee2e2;
+    /* Red 100 */
+    --color-warning: #f59e0b;
+    /* Amber 500 */
+    --color-warning-light: #fef3c7;
+    /* Amber 100 */
+
+    /* 中性色 - Slate */
+    --color-bg: #f8fafc;
+    /* Slate 50 */
     --color-surface: #ffffff;
-    --color-surface-hover: #fafbfc;
-    --color-border: #e9ecef;
-    --color-border-light: #f0f0f0;
-    --color-text: #2c3e50;
-    --color-text-secondary: #6c757d;
-    --color-text-muted: #999;
-    
-    /* 阴影 */
-    --shadow-sm: 0 1px 3px rgba(0,0,0,0.08);
-    --shadow-md: 0 4px 12px rgba(0,0,0,0.1);
-    --shadow-lg: 0 8px 24px rgba(0,0,0,0.12);
-    --shadow-primary: 0 4px 14px rgba(52, 152, 219, 0.35);
-    --shadow-success: 0 4px 14px rgba(39, 174, 96, 0.35);
-    
+    --color-surface-hover: #f1f5f9;
+    /* Slate 100 */
+    --color-border: #e2e8f0;
+    /* Slate 200 */
+    --color-border-light: #f1f5f9;
+    /* Slate 100 */
+    --color-text: #0f172a;
+    /* Slate 900 */
+    --color-text-secondary: #475569;
+    /* Slate 600 */
+    --color-text-muted: #94a3b8;
+    /* Slate 400 */
+
+    /* 阴影 - Soft & Diffused */
+    --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.05);
+    --shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
+    --shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1);
+    --shadow-xl: 0 20px 25px -5px rgb(0 0 0 / 0.1), 0 8px 10px -6px rgb(0 0 0 / 0.1);
+    --shadow-primary: 0 4px 14px 0 rgba(99, 102, 241, 0.39);
+    --shadow-success: 0 4px 14px 0 rgba(16, 185, 129, 0.39);
+
     /* 圆角 */
-    --radius-sm: 6px;
-    --radius-md: 10px;
+    --radius-sm: 8px;
+    --radius-md: 12px;
     --radius-lg: 16px;
     --radius-full: 9999px;
-    
+
     /* 过渡 */
-    --transition-fast: 150ms ease;
-    --transition-normal: 250ms ease;
-    --transition-slow: 350ms ease;
-    
+    --transition-fast: 150ms cubic-bezier(0.4, 0, 0.2, 1);
+    --transition-normal: 250ms cubic-bezier(0.4, 0, 0.2, 1);
+    --transition-slow: 350ms cubic-bezier(0.4, 0, 0.2, 1);
+
     /* 间距 */
     --spacing-xs: 4px;
     --spacing-sm: 8px;
@@ -55,21 +77,33 @@
 /* 深色模式变量 */
 @media (prefers-color-scheme: dark) {
     :root {
-        --color-bg: #1a1a2e;
-        --color-surface: #16213e;
-        --color-surface-hover: #1a4a7a;
-        --color-border: #2d3748;
-        --color-border-light: #333;
-        --color-text: #e2e8f0;
-        --color-text-secondary: #a0aec0;
-        --color-text-muted: #718096;
-        --color-primary-light: #1a365d;
-        --color-success-light: #1e4620;
-        --color-danger-light: #4a1a1a;
-        --shadow-sm: 0 1px 3px rgba(0,0,0,0.3);
-        --shadow-md: 0 4px 12px rgba(0,0,0,0.4);
-        --shadow-lg: 0 8px 24px rgba(0,0,0,0.5);
-        --shadow-primary: 0 4px 14px rgba(52, 152, 219, 0.25);
+        --color-bg: #0f172a;
+        /* Slate 900 */
+        --color-surface: #1e293b;
+        /* Slate 800 */
+        --color-surface-hover: #334155;
+        /* Slate 700 */
+        --color-border: #334155;
+        /* Slate 700 */
+        --color-border-light: #1e293b;
+        --color-text: #f8fafc;
+        /* Slate 50 */
+        --color-text-secondary: #94a3b8;
+        /* Slate 400 */
+        --color-text-muted: #64748b;
+        /* Slate 500 */
+        --color-primary-light: #312e81;
+        /* Indigo 900 */
+        --color-success-light: #064e3b;
+        /* Emerald 900 */
+        --color-danger-light: #7f1d1d;
+        /* Red 900 */
+
+        --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.3);
+        --shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.4);
+        --shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.5);
+        --shadow-xl: 0 20px 25px -5px rgb(0 0 0 / 0.5);
+        --shadow-primary: 0 4px 14px 0 rgba(99, 102, 241, 0.2);
     }
 }
 
@@ -81,7 +115,7 @@
 }
 
 body {
-    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, "Noto Sans SC", sans-serif;
+    font-family: 'Inter', ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, "Noto Sans SC", sans-serif;
     background-color: var(--color-bg);
     color: var(--color-text);
     line-height: 1.6;
@@ -89,22 +123,30 @@ body {
 }
 
 .container {
-    max-width: 900px;
+    max-width: 1200px;
     margin: 0 auto;
     padding: var(--spacing-lg);
 }
 
 /* ==================== 头部 ==================== */
 header {
-    text-align: center;
-    padding: var(--spacing-xl) var(--spacing-lg);
+    display: flex;
+    /* Modern flex layout */
+    justify-content: space-between;
+    align-items: center;
+    padding: var(--spacing-lg) 0 var(--spacing-xl);
+    text-align: left;
+    /* Reset */
 }
 
 header h1 {
-    font-size: 1.8rem;
-    color: var(--color-text);
-    font-weight: 600;
-    letter-spacing: -0.5px;
+    font-size: 2rem;
+    background: linear-gradient(135deg, var(--color-text) 0%, var(--color-text-secondary) 100%);
+    -webkit-background-clip: text;
+    background-clip: text;
+    -webkit-text-fill-color: transparent;
+    font-weight: 800;
+    letter-spacing: -0.03em;
 }
 
 /* ==================== 按钮组件 ==================== */
@@ -113,39 +155,42 @@ header h1 {
     align-items: center;
     justify-content: center;
     gap: var(--spacing-sm);
-    padding: 10px 20px;
-    border: none;
-    border-radius: var(--radius-sm);
+    padding: 10px 24px;
+    border: 1px solid transparent;
+    border-radius: var(--radius-md);
     font-size: 0.95rem;
-    font-weight: 500;
+    font-weight: 600;
     cursor: pointer;
-    transition: all var(--transition-normal);
+    transition: all var(--transition-fast);
     white-space: nowrap;
     position: relative;
     overflow: hidden;
+    line-height: 1.5;
 }
 
 .btn:focus {
     outline: none;
-    box-shadow: 0 0 0 3px rgba(52, 152, 219, 0.3);
+    box-shadow: 0 0 0 4px var(--color-primary-light);
 }
 
 .btn:disabled {
-    opacity: 0.6;
+    opacity: 0.7;
     cursor: not-allowed;
     transform: none !important;
     box-shadow: none !important;
+    filter: grayscale(0.5);
 }
 
 .btn-primary {
-    background: linear-gradient(135deg, var(--color-primary) 0%, var(--color-primary-hover) 100%);
+    background: var(--color-primary);
     color: white;
     box-shadow: var(--shadow-primary);
 }
 
 .btn-primary:hover:not(:disabled) {
-    transform: translateY(-2px);
-    box-shadow: 0 6px 20px rgba(52, 152, 219, 0.4);
+    background: var(--color-primary-hover);
+    transform: translateY(-1px);
+    box-shadow: 0 8px 20px rgba(99, 102, 241, 0.3);
 }
 
 .btn-primary:active:not(:disabled) {
@@ -153,43 +198,51 @@ header h1 {
 }
 
 .btn-success {
-    background: linear-gradient(135deg, var(--color-success) 0%, var(--color-success-hover) 100%);
+    background: var(--color-success);
     color: white;
     box-shadow: var(--shadow-success);
 }
 
 .btn-success:hover:not(:disabled) {
-    transform: translateY(-2px);
-    box-shadow: 0 6px 20px rgba(39, 174, 96, 0.4);
+    background: var(--color-success-hover);
+    transform: translateY(-1px);
+    box-shadow: 0 8px 20px rgba(16, 185, 129, 0.3);
 }
 
 .btn-secondary {
-    background: linear-gradient(135deg, #6c757d 0%, #5a6268 100%);
-    color: white;
+    background: var(--color-surface);
+    color: var(--color-text);
+    border-color: var(--color-border);
+    box-shadow: var(--shadow-sm);
 }
 
 .btn-secondary:hover:not(:disabled) {
+    background: var(--color-surface-hover);
+    border-color: var(--color-text-muted);
     transform: translateY(-1px);
     box-shadow: var(--shadow-md);
 }
 
 .btn-danger {
-    background: linear-gradient(135deg, var(--color-danger) 0%, var(--color-danger-hover) 100%);
+    background: var(--color-danger);
     color: white;
+    box-shadow: 0 4px 14px rgba(239, 68, 68, 0.25);
 }
 
 .btn-danger:hover:not(:disabled) {
+    background: var(--color-danger-hover);
     transform: translateY(-1px);
-    box-shadow: 0 4px 14px rgba(231, 76, 60, 0.35);
+    box-shadow: 0 8px 20px rgba(239, 68, 68, 0.35);
 }
 
 .btn-sm {
-    padding: 6px 12px;
+    padding: 6px 16px;
     font-size: 0.85rem;
+    border-radius: var(--radius-sm);
 }
 
 .btn-outline {
-    background: var(--color-surface);
+    background: transparent;
     border: 1px solid var(--color-border);
     color: var(--color-text-secondary);
 }
@@ -198,38 +251,48 @@ header h1 {
     background: var(--color-primary-light);
     border-color: var(--color-primary);
     color: var(--color-primary);
-    transform: translateY(-1px);
 }
 
 .btn-danger-outline {
-    background: var(--color-surface);
-    border: 1px solid var(--color-danger);
+    background: transparent;
+    border: 1px solid var(--color-danger-light);
     color: var(--color-danger);
 }
 
 .btn-danger-outline:hover:not(:disabled) {
-    background: var(--color-danger);
-    color: white;
+    background: var(--color-danger-light);
+    border-color: var(--color-danger);
+    color: var(--color-danger-hover);
 }
 
 .btn-icon {
-    padding: 8px 10px;
+    padding: 8px;
+    width: 36px;
+    height: 36px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
     background: var(--color-surface);
     border: 1px solid var(--color-border);
-    border-radius: var(--radius-sm);
+    border-radius: var(--radius-md);
     cursor: pointer;
     font-size: 1.1rem;
     transition: all var(--transition-fast);
+    color: var(--color-text-secondary);
 }
 
 .btn-icon:hover {
     background: var(--color-surface-hover);
-    transform: scale(1.05);
+    color: var(--color-primary);
+    border-color: var(--color-primary-light);
+    transform: translateY(-1px);
+    box-shadow: var(--shadow-md);
 }
 
 .btn-icon.locked {
     background: var(--color-warning-light);
     border-color: var(--color-warning);
+    color: #b45309;
 }
 
 /* 加载状态 */
@@ -240,36 +303,40 @@ header h1 {
 
 .btn-loading::before {
     content: "";
-    width: 14px;
-    height: 14px;
-    border: 2px solid transparent;
+    width: 16px;
+    height: 16px;
+    border: 2px solid rgba(255, 255, 255, 0.3);
     border-top-color: currentColor;
     border-radius: 50%;
-    margin-right: 6px;
+    margin-right: 8px;
     animation: spin 0.8s linear infinite;
 }
 
 @keyframes spin {
-    to { transform: rotate(360deg); }
+    to {
+        transform: rotate(360deg);
+    }
 }
 
 
 /* ==================== 配置栏 ==================== */
 .config-bar {
     background: var(--color-surface);
-    border-radius: var(--radius-md);
+    border-radius: var(--radius-lg);
     padding: var(--spacing-lg);
-    margin-bottom: var(--spacing-lg);
+    margin-bottom: var(--spacing-xl);
     box-shadow: var(--shadow-md);
     display: flex;
     gap: var(--spacing-lg);
     align-items: flex-end;
     flex-wrap: wrap;
-    transition: box-shadow var(--transition-normal);
+    border: 1px solid var(--color-border);
+    transition: all var(--transition-normal);
 }
 
 .config-bar:hover {
     box-shadow: var(--shadow-lg);
+    border-color: var(--color-primary-light);
 }
 
 .config-item {
@@ -281,18 +348,18 @@ header h1 {
     display: block;
     font-size: 0.85rem;
     color: var(--color-text-secondary);
-    margin-bottom: 6px;
-    font-weight: 500;
+    margin-bottom: 8px;
+    font-weight: 600;
 }
 
 .config-item select,
 .config-item input {
     width: 100%;
-    padding: 10px 12px;
+    padding: 10px 16px;
     border: 1px solid var(--color-border);
-    border-radius: var(--radius-sm);
+    border-radius: var(--radius-md);
     font-size: 0.95rem;
-    background: var(--color-surface);
+    background: var(--color-bg);
     color: var(--color-text);
     transition: all var(--transition-fast);
 }
@@ -301,7 +368,8 @@ header h1 {
 .config-item input:focus {
     outline: none;
     border-color: var(--color-primary);
-    box-shadow: 0 0 0 3px rgba(52, 152, 219, 0.15);
+    box-shadow: 0 0 0 3px var(--color-primary-light);
+    background: var(--color-surface);
 }
 
 .client-select-row {
@@ -317,10 +385,11 @@ header h1 {
 /* ==================== 文档列表 ==================== */
 .doc-list {
     background: var(--color-surface);
-    border-radius: var(--radius-md);
+    border-radius: var(--radius-lg);
     box-shadow: var(--shadow-md);
     overflow: hidden;
     transition: box-shadow var(--transition-normal);
+    border: 1px solid var(--color-border);
 }
 
 .doc-list:hover {
@@ -330,12 +399,14 @@ header h1 {
 .list-header {
     display: flex;
     justify-content: space-between;
-    padding: 15px var(--spacing-lg);
-    background: var(--color-bg);
+    padding: 16px var(--spacing-lg);
+    background: var(--color-surface-hover);
     border-bottom: 1px solid var(--color-border);
-    font-weight: 500;
+    font-weight: 600;
     color: var(--color-text-secondary);
-    font-size: 0.9rem;
+    font-size: 0.85rem;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
 }
 
 .list-body {
@@ -346,41 +417,61 @@ header h1 {
     padding: var(--spacing-xl);
     text-align: center;
     color: var(--color-text-muted);
+    font-style: italic;
 }
 
 .list-empty::before {
     content: '📋';
     display: block;
-    font-size: 2.5rem;
-    margin-bottom: var(--spacing-sm);
-    opacity: 0.5;
+    font-size: 3rem;
+    margin-bottom: var(--spacing-md);
+    opacity: 0.2;
+    filter: grayscale(1);
 }
 
 .doc-item {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    padding: 15px var(--spacing-lg);
+    padding: 16px var(--spacing-lg);
     border-bottom: 1px solid var(--color-border-light);
-    transition: background var(--transition-fast);
+    transition: all var(--transition-fast);
     animation: slideIn var(--transition-normal) ease-out both;
 }
 
-.doc-item:nth-child(1) { animation-delay: 0ms; }
-.doc-item:nth-child(2) { animation-delay: 50ms; }
-.doc-item:nth-child(3) { animation-delay: 100ms; }
-.doc-item:nth-child(4) { animation-delay: 150ms; }
-.doc-item:nth-child(5) { animation-delay: 200ms; }
-.doc-item:nth-child(n+6) { animation-delay: 250ms; }
+.doc-item:nth-child(1) {
+    animation-delay: 0ms;
+}
+
+.doc-item:nth-child(2) {
+    animation-delay: 50ms;
+}
+
+.doc-item:nth-child(3) {
+    animation-delay: 100ms;
+}
+
+.doc-item:nth-child(4) {
+    animation-delay: 150ms;
+}
+
+.doc-item:nth-child(5) {
+    animation-delay: 200ms;
+}
+
+.doc-item:nth-child(n+6) {
+    animation-delay: 250ms;
+}
 
 @keyframes slideIn {
     from {
         opacity: 0;
-        transform: translateX(-10px);
+        transform: translateY(10px);
     }
+
     to {
         opacity: 1;
-        transform: translateX(0);
+        transform: translateY(0);
     }
 }
 
@@ -389,24 +480,33 @@ header h1 {
 }
 
 .doc-item:hover {
-    background: var(--color-primary-light);
+    background: var(--color-surface-hover);
+    padding-left: calc(var(--spacing-lg) + 4px);
 }
 
 .doc-name {
     font-size: 0.95rem;
-    font-weight: 500;
+    font-weight: 600;
+    color: var(--color-text);
+    display: flex;
+    align-items: center;
 }
 
 .doc-name .badge {
     font-size: 0.75rem;
     color: var(--color-primary);
+    background: var(--color-primary-light);
+    padding: 2px 8px;
+    border-radius: var(--radius-full);
     margin-left: var(--spacing-sm);
-    font-weight: 400;
+    font-weight: 600;
 }
 
 .doc-name .badge-locked {
     color: var(--color-danger);
-    cursor: help;
+    background: var(--color-danger-light);
+    padding: 2px 8px;
+    border-radius: var(--radius-full);
 }
 
 .doc-actions {
@@ -417,9 +517,9 @@ header h1 {
 /* ==================== 结果区域 ==================== */
 .result-section {
     background: var(--color-surface);
-    border-radius: var(--radius-md);
+    border-radius: var(--radius-lg);
     box-shadow: var(--shadow-md);
-    margin-top: var(--spacing-lg);
+    margin-top: var(--spacing-xl);
     overflow: hidden;
     animation: resultSlideUp var(--transition-slow) ease-out;
     border: 1px solid var(--color-success);
@@ -428,8 +528,9 @@ header h1 {
 @keyframes resultSlideUp {
     from {
         opacity: 0;
-        transform: translateY(30px);
+        transform: translateY(20px);
     }
+
     to {
         opacity: 1;
         transform: translateY(0);
@@ -440,11 +541,11 @@ header h1 {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    padding: 15px var(--spacing-lg);
-    background: linear-gradient(135deg, var(--color-success-light) 0%, #c3e6cb 100%);
-    border-bottom: 1px solid #c3e6cb;
-    color: #155724;
-    font-weight: 600;
+    padding: 16px var(--spacing-lg);
+    background: var(--color-success-light);
+    border-bottom: 1px solid var(--color-success);
+    color: var(--color-success-hover);
+    font-weight: 700;
 }
 
 .result-header span {
@@ -467,17 +568,32 @@ header h1 {
     animation: resultItemFadeIn var(--transition-normal) ease-out both;
 }
 
-.result-item:nth-child(1) { animation-delay: 0ms; }
-.result-item:nth-child(2) { animation-delay: 50ms; }
-.result-item:nth-child(3) { animation-delay: 100ms; }
-.result-item:nth-child(4) { animation-delay: 150ms; }
-.result-item:nth-child(5) { animation-delay: 200ms; }
+.result-item:nth-child(1) {
+    animation-delay: 0ms;
+}
+
+.result-item:nth-child(2) {
+    animation-delay: 50ms;
+}
+
+.result-item:nth-child(3) {
+    animation-delay: 100ms;
+}
+
+.result-item:nth-child(4) {
+    animation-delay: 150ms;
+}
+
+.result-item:nth-child(5) {
+    animation-delay: 200ms;
+}
 
 @keyframes resultItemFadeIn {
     from {
         opacity: 0;
         transform: translateX(-10px);
     }
+
     to {
         opacity: 1;
         transform: translateX(0);
@@ -527,8 +643,15 @@ header h1 {
 }
 
 @keyframes pulse {
-    0%, 100% { opacity: 1; }
-    50% { opacity: 0.5; }
+
+    0%,
+    100% {
+        opacity: 1;
+    }
+
+    50% {
+        opacity: 0.5;
+    }
 }
 
 /* ==================== 页脚 ==================== */
@@ -544,9 +667,11 @@ footer {
 .modal {
     position: fixed;
     inset: 0;
-    background: rgba(0, 0, 0, 0.5);
-    backdrop-filter: blur(4px);
-    -webkit-backdrop-filter: blur(4px);
+    background: rgba(0, 0, 0, 0.4);
+    /* Lighter overlay */
+    backdrop-filter: blur(8px);
+    /* Stronger blur */
+    -webkit-backdrop-filter: blur(8px);
     display: none;
     align-items: center;
     justify-content: center;
@@ -557,7 +682,7 @@ footer {
 }
 
 /* 无 backdrop-filter 支持时的降级方案 */
-@supports not (backdrop-filter: blur(4px)) {
+@supports not (backdrop-filter: blur(8px)) {
     .modal {
         background: rgba(0, 0, 0, 0.7);
     }
@@ -585,9 +710,11 @@ footer {
     overflow: hidden;
     display: flex;
     flex-direction: column;
-    box-shadow: var(--shadow-lg);
-    transform: scale(0.9) translateY(20px);
+    box-shadow: var(--shadow-xl);
+    /* Larger shadow */
+    transform: scale(0.95) translateY(10px);
     transition: transform var(--transition-normal), opacity var(--transition-normal);
+    border: 1px solid var(--color-border-light);
 }
 
 .modal.active .modal-content {
@@ -595,7 +722,7 @@ footer {
 }
 
 .modal.closing .modal-content {
-    transform: scale(0.9) translateY(20px);
+    transform: scale(0.95) translateY(10px);
 }
 
 /* 阻止背景滚动 */
@@ -617,6 +744,8 @@ body.modal-open {
     align-items: center;
     padding: var(--spacing-lg);
     border-bottom: 1px solid var(--color-border);
+    background: var(--color-surface-hover);
+    /* Subtle distinction */
 }
 
 .modal-header h2,
@@ -624,7 +753,8 @@ body.modal-open {
     font-size: 1.2rem;
     color: var(--color-text);
     margin: 0;
-    font-weight: 600;
+    font-weight: 700;
+    letter-spacing: -0.01em;
 }
 
 .modal-close {
@@ -798,13 +928,14 @@ body.modal-open {
 }
 
 @keyframes tabFadeIn {
-    from { 
-        opacity: 0; 
-        transform: translateY(-8px); 
+    from {
+        opacity: 0;
+        transform: translateY(-8px);
     }
-    to { 
-        opacity: 1; 
-        transform: translateY(0); 
+
+    to {
+        opacity: 1;
+        transform: translateY(0);
     }
 }
 
@@ -1202,7 +1333,7 @@ input[type="color"] {
     padding-left: 0;
 }
 
-.module-group-header.collapsed + .module-group-items {
+.module-group-header.collapsed+.module-group-items {
     display: none;
 }
 
@@ -1322,16 +1453,18 @@ input[type="color"] {
 }
 
 @keyframes popIn {
-    0% { 
-        opacity: 0; 
-        transform: scale(0.8) translateX(-10px); 
+    0% {
+        opacity: 0;
+        transform: scale(0.8) translateX(-10px);
     }
+
     50% {
         transform: scale(1.05) translateX(0);
     }
-    100% { 
-        opacity: 1; 
-        transform: scale(1) translateX(0); 
+
+    100% {
+        opacity: 1;
+        transform: scale(1) translateX(0);
     }
 }
 
@@ -1340,9 +1473,10 @@ input[type="color"] {
         opacity: 1;
         transform: scale(1) translateX(0);
     }
-    100% { 
-        opacity: 0; 
-        transform: scale(0.8) translateX(10px); 
+
+    100% {
+        opacity: 0;
+        transform: scale(0.8) translateX(10px);
     }
 }
 
@@ -1531,19 +1665,23 @@ input[type="color"] {
 
 /* ==================== 骨架屏加载 ==================== */
 .skeleton {
-    background: linear-gradient(90deg, 
-        var(--color-border) 25%, 
-        var(--color-bg) 50%, 
-        var(--color-border) 75%
-    );
+    background: linear-gradient(90deg,
+            var(--color-border) 25%,
+            var(--color-bg) 50%,
+            var(--color-border) 75%);
     background-size: 200% 100%;
     animation: shimmer 1.5s infinite linear;
     border-radius: var(--radius-sm);
 }
 
 @keyframes shimmer {
-    0% { background-position: 200% 0; }
-    100% { background-position: -200% 0; }
+    0% {
+        background-position: 200% 0;
+    }
+
+    100% {
+        background-position: -200% 0;
+    }
 }
 
 .skeleton-text {
@@ -1644,9 +1782,26 @@ input[type="color"] {
 }
 
 @keyframes errorShake {
-    0%, 100% { transform: translateX(0); }
-    10%, 30%, 50%, 70%, 90% { transform: translateX(-5px); }
-    20%, 40%, 60%, 80% { transform: translateX(5px); }
+
+    0%,
+    100% {
+        transform: translateX(0);
+    }
+
+    10%,
+    30%,
+    50%,
+    70%,
+    90% {
+        transform: translateX(-5px);
+    }
+
+    20%,
+    40%,
+    60%,
+    80% {
+        transform: translateX(5px);
+    }
 }
 
 #errorModal .modal-header {
@@ -1679,21 +1834,21 @@ input[type="color"] {
         flex-direction: column;
         min-height: auto;
     }
-    
+
     .transfer-panel {
         min-height: 200px;
     }
-    
+
     .transfer-buttons {
         flex-direction: row;
         justify-content: center;
         padding: 10px;
     }
-    
+
     .transfer-buttons .btn {
         transform: rotate(90deg);
     }
-    
+
     .module-search {
         width: 100px;
     }
@@ -1703,75 +1858,91 @@ input[type="color"] {
     .container {
         padding: var(--spacing-md);
     }
-    
+
     .config-bar {
         flex-direction: column;
         padding: var(--spacing-md);
     }
-    
+
     .config-item {
         width: 100%;
         min-width: auto;
     }
-    
+
     .btn {
         width: 100%;
     }
-    
+
     .doc-item {
         flex-direction: column;
         align-items: flex-start;
         gap: 10px;
     }
-    
+
     .doc-actions {
         width: 100%;
     }
-    
+
     .doc-actions .btn {
         flex: 1;
     }
-    
+
     .modal-content {
         width: 95%;
         max-height: 95vh;
         border-radius: var(--radius-md);
     }
-    
+
     .form-row {
         flex-direction: column;
         gap: 0;
     }
-    
+
     .checkbox-group {
         flex-direction: column;
         gap: 10px;
     }
-    
+
     .config-tabs {
         flex-wrap: nowrap;
         overflow-x: auto;
         -webkit-overflow-scrolling: touch;
-        padding-bottom: 2px;
+        padding: 0 var(--spacing-md);
+        gap: var(--spacing-sm);
+        border-bottom: 2px solid var(--color-border);
+        background: var(--color-surface);
+        border-radius: var(--radius-lg);
+        margin: 0 var(--spacing-md) var(--spacing-lg);
     }
-    
+
     .tab-btn {
         flex: 0 0 auto;
-        min-width: 80px;
-        padding: 10px 12px;
-        font-size: 0.85rem;
+        min-width: auto;
+        padding: 12px 16px;
+        font-size: 0.9rem;
         text-align: center;
+        border-bottom: 2px solid transparent;
+        border-radius: 0;
+        margin: 0;
+        top: 0;
     }
-    
+
+    .tab-btn.active {
+        background: transparent;
+        color: var(--color-primary);
+        border-bottom-color: var(--color-primary);
+        border-radius: 0;
+    }
+
     .pdf-settings-grid {
         grid-template-columns: 1fr;
     }
-    
+
     .toast-container {
         left: var(--spacing-md);
         right: var(--spacing-md);
     }
-    
+
     .toast {
         max-width: none;
     }
@@ -1779,249 +1950,256 @@ input[type="color"] {
 
 /* ==================== 深色模式额外调整 ==================== */
 @media (prefers-color-scheme: dark) {
+
     /* 结果区域深色模式 */
     .result-section {
         border-color: #2d6a30;
     }
-    
+
     .result-header {
         background: linear-gradient(135deg, #1e4620 0%, #2d6a30 100%);
         border-color: #2d6a30;
         color: #a3d9a5;
     }
-    
+
     .result-item:hover {
         background: rgba(39, 174, 96, 0.15);
     }
-    
+
     /* 错误提示深色模式 */
     #errorModal .modal-header {
         background: #4a1a1a;
         border-color: #6b2c2c;
     }
-    
+
     #errorModal .modal-header h3 {
         color: #f8a5a5;
     }
-    
+
     #errorModalMessage {
         background: #3a1515;
         color: #f8d7da;
         border-color: rgba(231, 76, 60, 0.3);
     }
-    
+
     /* 文件名预览深色模式 */
     .filename-preview {
         background: linear-gradient(135deg, var(--color-surface) 0%, var(--color-border) 100%);
         color: var(--color-text-secondary);
     }
-    
+
     /* 按钮深色模式增强 */
     .btn-outline {
         background: var(--color-surface);
         border-color: var(--color-border);
     }
-    
+
     .btn-outline:hover:not(:disabled) {
         background: var(--color-primary-light);
         border-color: var(--color-primary);
     }
-    
+
     .btn-icon {
         background: var(--color-surface);
         border-color: var(--color-border);
     }
-    
+
     .btn-icon:hover {
         background: var(--color-surface-hover);
     }
-    
+
     /* 配置栏深色模式 */
     .config-bar {
         box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
     }
-    
+
     .config-item select,
     .config-item input {
         background: var(--color-bg);
         border-color: var(--color-border);
     }
-    
+
     /* 文档列表深色模式 */
     .list-header {
         background: var(--color-bg);
         border-color: var(--color-border);
     }
-    
+
     .doc-item:hover {
         background: rgba(52, 152, 219, 0.15);
     }
-    
+
     /* 模态框深色模式 */
     .modal {
         background: rgba(0, 0, 0, 0.7);
     }
-    
+
     .modal-content {
         box-shadow: 0 8px 32px rgba(0, 0, 0, 0.6);
     }
-    
+
     .modal-footer {
         background: var(--color-bg);
         border-color: var(--color-border);
     }
-    
+
     /* Tab 深色模式 */
     .config-tabs {
+        background: var(--color-surface);
         border-color: var(--color-border);
     }
-    
+
     .tab-btn:hover {
-        background: rgba(52, 152, 219, 0.15);
+        background: rgba(255, 255, 255, 0.05);
+        color: var(--color-text);
     }
-    
+
+    .tab-btn.active {
+        background: var(--color-primary-light);
+        color: var(--color-primary);
+    }
+
     /* 表单深色模式 */
     .form-group input,
     .form-group select {
         background: var(--color-bg);
         border-color: var(--color-border);
     }
-    
+
     .form-group input:disabled {
         background: var(--color-surface);
         color: var(--color-text-muted);
     }
-    
+
     /* 复选框区域深色模式 */
     .checkbox-group {
         background: var(--color-surface);
         border-color: var(--color-border);
     }
-    
+
     .checkbox-label:hover {
         background: var(--color-bg);
     }
-    
+
     .args-category {
         background: var(--color-surface);
         border-color: var(--color-border);
     }
-    
+
     .args-row select,
     .args-row input {
         background: var(--color-bg);
         border-color: var(--color-border);
     }
-    
+
     /* 穿梭框深色模式 */
     .transfer-panel {
         background: var(--color-surface);
         border-color: var(--color-border);
     }
-    
+
     .transfer-header {
         background: var(--color-bg);
         border-color: var(--color-border);
     }
-    
+
     .transfer-module-item {
         background: var(--color-bg);
         border-color: var(--color-border);
     }
-    
+
     .transfer-module-item:hover {
         background: rgba(52, 152, 219, 0.15);
         border-color: var(--color-primary);
     }
-    
+
     .transfer-module-item.selected {
         background: rgba(39, 174, 96, 0.2);
         border-color: var(--color-success);
     }
-    
+
     .transfer-right .transfer-module-item.dragging {
         background: rgba(243, 156, 18, 0.2);
         border-color: var(--color-warning);
     }
-    
+
     .module-group-header {
         background: var(--color-border);
     }
-    
+
     .module-group-header:hover {
         background: rgba(52, 152, 219, 0.2);
     }
-    
+
     .module-group-count {
         background: var(--color-bg);
     }
-    
+
     .module-group-select {
         background: var(--color-bg);
         border-color: var(--color-border);
     }
-    
+
     .module-search {
         background: var(--color-bg);
         border-color: var(--color-border);
     }
-    
+
     /* 变量表单深色模式 */
     .variable-form-section {
         background: var(--color-surface);
         border-color: var(--color-border);
     }
-    
+
     .variable-form-section .form-control {
         background: var(--color-bg);
         border-color: var(--color-border);
     }
-    
+
     /* 骨架屏深色模式 */
     .skeleton {
-        background: linear-gradient(90deg, 
-            var(--color-border) 25%, 
-            var(--color-surface) 50%, 
-            var(--color-border) 75%
-        );
+        background: linear-gradient(90deg,
+                var(--color-border) 25%,
+                var(--color-surface) 50%,
+                var(--color-border) 75%);
         background-size: 200% 100%;
     }
-    
+
     .loading-overlay {
         background: rgba(22, 33, 62, 0.85);
     }
-    
+
     .loading-spinner {
         border-color: var(--color-border);
         border-top-color: var(--color-primary);
     }
-    
+
     /* Toast 深色模式 */
     .toast {
         box-shadow: 0 8px 24px rgba(0, 0, 0, 0.5);
     }
-    
+
     /* 颜色选择器深色模式 */
     input[type="color"] {
         background: var(--color-bg);
         border-color: var(--color-border);
     }
-    
+
     /* 滚动条深色模式 */
     ::-webkit-scrollbar {
         width: 8px;
         height: 8px;
     }
-    
+
     ::-webkit-scrollbar-track {
         background: var(--color-bg);
     }
-    
+
     ::-webkit-scrollbar-thumb {
         background: var(--color-border);
         border-radius: 4px;
     }
-    
+
     ::-webkit-scrollbar-thumb:hover {
         background: var(--color-text-muted);
     }
@@ -2029,6 +2207,7 @@ input[type="color"] {
 
 /* ==================== 打印样式 ==================== */
 @media print {
+
     .config-bar,
     .doc-actions,
     .modal,
@@ -2036,12 +2215,12 @@ input[type="color"] {
     footer {
         display: none !important;
     }
-    
+
     body {
         background: white;
         color: black;
     }
-    
+
     .doc-list,
     .result-section {
         box-shadow: none;
@@ -2051,6 +2230,7 @@ input[type="color"] {
 
 /* ==================== 无障碍优化 ==================== */
 @media (prefers-reduced-motion: reduce) {
+
     *,
     *::before,
     *::after {
@@ -2067,7 +2247,7 @@ input[type="color"] {
         --shadow-sm: 0 0 0 1px #666;
         --shadow-md: 0 0 0 2px #666;
     }
-    
+
     .btn {
         border: 2px solid currentColor;
     }
@@ -2433,6 +2613,17 @@ a:focus:not(:focus-visible) {
     overflow: visible !important;
 }
 
+/* 预览模式下允许滚动 */
+#editorModal .editor-body.preview-mode {
+    overflow: auto !important;
+}
+
+#editorModal .editor-body.preview-mode #vditor {
+    height: auto !important;
+    min-height: 100%;
+    overflow: visible !important;
+}
+
 .vditor {
     overflow: visible !important;
 }
@@ -2465,11 +2656,11 @@ a:focus:not(:focus-visible) {
         background: var(--color-surface) !important;
         border-color: var(--color-border) !important;
     }
-    
+
     .vditor-content {
         background: var(--color-surface) !important;
     }
-    
+
     .vditor--dark {
         --panel-background-color: var(--color-surface);
         --toolbar-background-color: var(--color-surface);
@@ -2780,12 +2971,12 @@ a:focus:not(:focus-visible) {
         background: rgba(243, 156, 18, 0.2);
         color: #f39c12;
     }
-    
+
     .git-badge-info {
         background: rgba(52, 152, 219, 0.2);
         color: #3498db;
     }
-    
+
     .conflict-file {
         background: rgba(231, 76, 60, 0.2);
     }
@@ -2810,30 +3001,24 @@ a:focus:not(:focus-visible) {
     display: flex;
     align-items: center;
     gap: var(--spacing-xs);
-    padding: 8px 12px;
+    padding: 8px 16px;
     background: var(--color-surface);
     border: 1px solid var(--color-border);
-    border-radius: var(--radius-sm);
+    border-radius: var(--radius-full);
     cursor: pointer;
     transition: all var(--transition-fast);
     text-decoration: none;
     color: var(--color-text);
     font-size: 0.9rem;
+    font-weight: 500;
 }
 
 .header-btn:hover {
-    background: var(--color-primary-light);
-    border-color: var(--color-primary);
+    background: var(--color-surface-hover);
+    border-color: var(--color-primary-light);
     color: var(--color-primary);
-    transform: scale(1.02);
-}
-
-.header-btn-icon {
-    font-size: 1.1rem;
-}
-
-.header-btn-text {
-    font-weight: 500;
+    transform: translateY(-1px);
+    box-shadow: var(--shadow-sm);
 }
 
 /* 右上角 Git 切换按钮 */
@@ -2842,57 +3027,58 @@ a:focus:not(:focus-visible) {
     display: flex;
     align-items: center;
     justify-content: center;
-    width: 40px;
-    height: 40px;
+    width: 44px;
+    height: 44px;
     background: var(--color-surface);
     border: 1px solid var(--color-border);
-    border-radius: var(--radius-sm);
+    border-radius: var(--radius-full);
     cursor: pointer;
     transition: all var(--transition-fast);
     font-size: 1.2rem;
+    color: var(--color-text-secondary);
 }
 
 .git-toggle-btn:hover {
-    background: var(--color-primary-light);
-    border-color: var(--color-primary);
-    transform: scale(1.05);
-}
-
-.git-toggle-icon {
-    font-size: 1.1rem;
+    background: var(--color-surface-hover);
+    color: var(--color-primary);
+    border-color: var(--color-primary-light);
+    transform: translateY(-1px);
+    box-shadow: var(--shadow-md);
 }
 
 .git-toggle-badge {
     position: absolute;
-    top: -5px;
-    right: -5px;
-    min-width: 18px;
-    height: 18px;
-    background: var(--color-warning);
+    top: -2px;
+    right: -2px;
+    min-width: 20px;
+    height: 20px;
+    background: var(--color-danger);
     color: white;
-    font-size: 0.7rem;
-    font-weight: 600;
+    font-size: 0.75rem;
+    font-weight: 700;
     border-radius: var(--radius-full);
     display: flex;
     align-items: center;
     justify-content: center;
-    padding: 0 4px;
+    padding: 0 6px;
+    border: 2px solid var(--color-surface);
 }
 
 /* 头部需要相对定位 */
 header {
     position: relative;
+    z-index: 900;
 }
 
 /* Git 侧边面板 */
 .git-side-panel {
     position: fixed;
     top: 0;
-    right: -360px;
-    width: 360px;
+    right: -400px;
+    width: 400px;
     height: 100vh;
     background: var(--color-surface);
-    box-shadow: -4px 0 20px rgba(0, 0, 0, 0.15);
+    box-shadow: -8px 0 24px rgba(0, 0, 0, 0.1);
     z-index: 1001;
     display: flex;
     flex-direction: column;
@@ -2907,10 +3093,11 @@ header {
     position: fixed;
     inset: 0;
     background: rgba(0, 0, 0, 0.3);
+    backdrop-filter: blur(4px);
     z-index: 1000;
     opacity: 0;
     visibility: hidden;
-    transition: opacity var(--transition-normal), visibility var(--transition-normal);
+    transition: all var(--transition-normal);
 }
 
 .git-panel-overlay.show {
@@ -2923,15 +3110,15 @@ header {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    padding: var(--spacing-md) var(--spacing-lg);
+    padding: var(--spacing-lg);
     border-bottom: 1px solid var(--color-border);
-    background: var(--color-bg);
+    background: var(--color-surface);
 }
 
 .git-side-header h3 {
     margin: 0;
-    font-size: 1rem;
-    font-weight: 600;
+    font-size: 1.1rem;
+    font-weight: 700;
     color: var(--color-text);
 }
 
@@ -2941,30 +3128,23 @@ header {
     display: flex;
     align-items: center;
     justify-content: center;
-    background: none;
+    background: transparent;
     border: none;
-    border-radius: var(--radius-sm);
-    font-size: 1.5rem;
-    color: var(--color-text-muted);
+    border-radius: var(--radius-full);
+    font-size: 1.25rem;
+    color: var(--color-text-secondary);
     cursor: pointer;
     transition: all var(--transition-fast);
 }
 
 .git-side-close:hover {
-    background: var(--color-danger-light);
+    background: var(--color-bg);
     color: var(--color-danger);
-}
-
-/* 侧边面板内容 */
-.git-side-body {
-    flex: 1;
-    overflow-y: auto;
-    padding: 0;
 }
 
 /* Git 工具栏 */
 .git-toolbar {
-    padding: var(--spacing-md);
+    padding: var(--spacing-lg);
     border-bottom: 1px solid var(--color-border);
     background: var(--color-bg);
 }
@@ -2972,64 +3152,69 @@ header {
 .git-commit-row {
     display: flex;
     gap: var(--spacing-sm);
-    margin-bottom: var(--spacing-sm);
+    margin-bottom: var(--spacing-md);
 }
 
 .git-commit-input {
     flex: 1;
-    padding: 8px 12px;
+    padding: 10px 14px;
     border: 1px solid var(--color-border);
-    border-radius: var(--radius-sm);
-    font-size: 0.9rem;
+    border-radius: var(--radius-md);
+    font-size: 0.95rem;
     background: var(--color-surface);
     color: var(--color-text);
+    transition: all var(--transition-fast);
 }
 
 .git-commit-input:focus {
     outline: none;
     border-color: var(--color-primary);
+    box-shadow: 0 0 0 3px var(--color-primary-light);
 }
 
 .git-commit-btn {
     background: var(--color-success) !important;
     color: white !important;
+    border-radius: var(--radius-md) !important;
+    padding: 0 20px !important;
+    font-weight: 600 !important;
 }
 
 .git-toolbar-actions {
     display: flex;
-    gap: var(--spacing-xs);
+    gap: var(--spacing-sm);
     flex-wrap: wrap;
 }
 
 .git-toolbar-btn {
     display: inline-flex;
     align-items: center;
-    gap: 4px;
-    padding: 6px 10px;
+    gap: 6px;
+    padding: 8px 12px;
     background: var(--color-surface);
     border: 1px solid var(--color-border);
-    border-radius: var(--radius-sm);
-    font-size: 0.8rem;
-    color: var(--color-text-secondary);
+    border-radius: var(--radius-md);
+    font-size: 0.85rem;
+    color: var(--color-text);
     cursor: pointer;
     transition: all var(--transition-fast);
 }
 
 .git-toolbar-btn:hover {
     background: var(--color-primary-light);
-    border-color: var(--color-primary);
-    color: var(--color-primary);
+    border-color: var(--color-primary-light);
+    color: var(--color-primary-dark);
+    transform: translateY(-1px);
 }
 
 /* 仓库信息 */
 .git-repo-info {
     display: flex;
     align-items: center;
-    gap: var(--spacing-sm);
-    padding: var(--spacing-sm) var(--spacing-md);
-    background: var(--color-bg);
+    gap: var(--spacing-md);
+    padding: var(--spacing-md) var(--spacing-lg);
+    background: var(--color-surface);
     border-bottom: 1px solid var(--color-border);
-    flex-wrap: wrap;
 }
 
 .git-branch-tag {
@@ -3078,7 +3263,7 @@ header {
     font-weight: 600;
 }
 
-/* 变更区域 */
+/* 变更区域 - VS Code 风格 */
 .git-changes-section {
     border-bottom: 1px solid var(--color-border);
 }
@@ -3095,11 +3280,15 @@ header {
     display: flex;
     align-items: center;
     gap: var(--spacing-sm);
-    padding: 10px var(--spacing-md);
+    padding: 8px var(--spacing-md);
     background: var(--color-surface);
     cursor: pointer;
     user-select: none;
     transition: background var(--transition-fast);
+    font-size: 0.8rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.02em;
 }
 
 .git-section-header:hover {
@@ -3107,125 +3296,78 @@ header {
 }
 
 .git-section-toggle {
-    font-size: 0.7rem;
-    color: var(--color-text-muted);
-    transition: transform var(--transition-fast);
-}
-
-.git-section-count {
-    margin-left: auto;
-    padding: 2px 8px;
-    background: var(--color-border);
-    color: var(--color-text-secondary);
-    border-radius: var(--radius-full);
-    font-size: 0.75rem;
-}
-
-.git-section-content {
-    padding: var(--spacing-sm);
-}
-
-/* 目录分组 */
-.git-dir-group {
-    margin-bottom: var(--spacing-sm);
-    background: var(--color-bg);
-    border-radius: var(--radius-sm);
-    overflow: hidden;
-}
-
-.git-dir-group.collapsed .git-dir-files {
-    display: none;
-}
-
-.git-dir-group.collapsed .git-dir-toggle {
-    transform: rotate(-90deg);
-}
-
-.git-dir-header {
-    display: flex;
-    align-items: center;
-    gap: var(--spacing-sm);
-    padding: 8px 10px;
-    cursor: pointer;
-    user-select: none;
-    transition: background var(--transition-fast);
-}
-
-.git-dir-header:hover {
-    background: var(--color-surface-hover);
-}
-
-.git-dir-toggle {
     font-size: 0.65rem;
     color: var(--color-text-muted);
     transition: transform var(--transition-fast);
 }
 
-.git-dir-name {
-    flex: 1;
-    font-size: 0.85rem;
-    font-weight: 500;
-    color: var(--color-text);
-}
-
-.git-dir-count {
-    padding: 2px 6px;
-    background: var(--color-surface);
-    color: var(--color-text-muted);
+.git-section-count {
+    padding: 2px 8px;
+    background: var(--color-border);
+    color: var(--color-text-secondary);
     border-radius: var(--radius-full);
     font-size: 0.7rem;
+    font-weight: 600;
 }
 
-.git-dir-stage-btn {
+.git-section-actions {
+    margin-left: auto;
+    display: flex;
+    gap: 4px;
+    opacity: 0;
+    transition: opacity var(--transition-fast);
+}
+
+.git-section-header:hover .git-section-actions {
+    opacity: 1;
+}
+
+.git-section-btn {
     width: 22px;
     height: 22px;
     display: flex;
     align-items: center;
     justify-content: center;
-    background: var(--color-surface);
+    background: transparent;
     border: 1px solid var(--color-border);
     border-radius: var(--radius-sm);
-    font-size: 0.9rem;
-    color: var(--color-success);
+    font-size: 1rem;
+    font-weight: 600;
+    color: var(--color-text-secondary);
     cursor: pointer;
-    opacity: 0;
     transition: all var(--transition-fast);
 }
 
-.git-dir-header:hover .git-dir-stage-btn {
-    opacity: 1;
-}
-
-.git-dir-stage-btn:hover {
-    background: var(--color-success);
+.git-section-btn:hover {
+    background: var(--color-primary);
     color: white;
-    border-color: var(--color-success);
+    border-color: var(--color-primary);
 }
 
-/* 文件项 */
-.git-dir-files {
-    padding: 0 var(--spacing-sm) var(--spacing-sm);
+.git-section-content {
+    padding: 0;
 }
 
+/* 文件项 - VS Code 风格 */
 .git-file-item {
     display: flex;
     align-items: center;
-    gap: var(--spacing-sm);
-    padding: 6px 8px;
-    border-radius: var(--radius-sm);
+    gap: 6px;
+    padding: 4px 12px 4px 24px;
     transition: background var(--transition-fast);
+    cursor: default;
 }
 
 .git-file-item:hover {
-    background: var(--color-surface);
+    background: var(--color-surface-hover);
 }
 
 .git-file-icon {
-    font-size: 0.9rem;
+    font-size: 0.85rem;
+    flex-shrink: 0;
 }
 
 .git-file-name {
-    flex: 1;
     font-size: 0.85rem;
     color: var(--color-text);
     overflow: hidden;
@@ -3233,62 +3375,80 @@ header {
     white-space: nowrap;
 }
 
+.git-file-dir {
+    font-size: 0.75rem;
+    color: var(--color-text-muted);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    flex: 1;
+    min-width: 0;
+}
+
 .git-file-actions {
+    display: flex;
+    gap: 2px;
     opacity: 0;
     transition: opacity var(--transition-fast);
+    flex-shrink: 0;
 }
 
 .git-file-item:hover .git-file-actions {
     opacity: 1;
 }
 
-.git-file-stage-btn {
+.git-file-btn {
     width: 20px;
     height: 20px;
     display: flex;
     align-items: center;
     justify-content: center;
     background: transparent;
-    border: 1px solid var(--color-border);
+    border: none;
     border-radius: var(--radius-sm);
-    font-size: 0.8rem;
-    color: var(--color-success);
+    font-size: 0.9rem;
+    font-weight: 600;
+    color: var(--color-text-secondary);
     cursor: pointer;
     transition: all var(--transition-fast);
 }
 
-.git-file-stage-btn:hover {
-    background: var(--color-success);
-    color: white;
-    border-color: var(--color-success);
+.git-file-btn:hover {
+    background: var(--color-surface);
+    color: var(--color-primary);
+}
+
+.git-file-btn.git-discard-btn:hover {
+    color: var(--color-danger);
 }
 
 .git-file-status {
     font-size: 0.75rem;
-    font-weight: 600;
-    padding: 2px 6px;
-    border-radius: var(--radius-sm);
+    font-weight: 700;
+    width: 18px;
+    text-align: center;
+    flex-shrink: 0;
 }
 
+/* 状态颜色 - VS Code 风格 */
 .git-file-status.status-modified {
-    background: rgba(243, 156, 18, 0.15);
-    color: #f39c12;
+    color: #cca700;
 }
 
-.git-file-status.status-added,
-.git-file-status.status-untracked {
-    background: rgba(39, 174, 96, 0.15);
-    color: #27ae60;
+.git-file-status.status-added {
+    color: #73c991;
 }
 
 .git-file-status.status-deleted {
-    background: rgba(231, 76, 60, 0.15);
-    color: #e74c3c;
+    color: #f14c4c;
+}
+
+.git-file-status.status-untracked {
+    color: #73c991;
 }
 
 .git-file-status.status-renamed {
-    background: rgba(52, 152, 219, 0.15);
-    color: #3498db;
+    color: #4fc1ff;
 }
 
 /* 空状态提示 */
@@ -3410,17 +3570,17 @@ header {
         background: rgba(39, 174, 96, 0.2);
         color: #27ae60;
     }
-    
+
     .git-remote-tag {
         background: rgba(52, 152, 219, 0.2);
         color: #3498db;
     }
-    
+
     .git-remote-tag.git-no-remote {
         background: rgba(243, 156, 18, 0.2);
         color: #f39c12;
     }
-    
+
     .git-clone-warning {
         background: rgba(243, 156, 18, 0.15);
         border-color: rgba(243, 156, 18, 0.4);

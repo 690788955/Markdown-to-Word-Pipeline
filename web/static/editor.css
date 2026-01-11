@@ -109,6 +109,7 @@
     display: flex;
     flex: 1;
     overflow: hidden;
+    min-height: 0; /* 关键：允许 flex 子元素正确计算高度 */
 }
 
 /* ==================== 文件树面板 ==================== */
@@ -288,7 +289,9 @@
     display: flex;
     flex-direction: column;
     min-width: 300px;
+    min-height: 0; /* 关键：允许 flex 子元素正确计算高度 */
     background: #fff;
+    overflow: hidden;
 }
 
 /* 标签栏 */
@@ -375,6 +378,9 @@
     flex: 1;
     overflow: hidden;
     position: relative;
+    display: flex;
+    flex-direction: column;
+    min-height: 0; /* 关键：允许 flex 子元素正确计算高度 */
 }
 
 .editor-placeholder {
@@ -398,12 +404,106 @@
 
 /* Vditor 编辑器容器 */
 .vditor-container {
-    height: 100%;
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    min-height: 0; /* 关键：允许 flex 子元素收缩 */
+    position: relative;
 }
 
 .vditor-container .vditor {
     border: none !important;
     border-radius: 0 !important;
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    min-height: 0; /* 关键：允许 flex 子元素收缩 */
+    height: 100% !important;
+}
+
+.vditor-container .vditor-content {
+    flex: 1;
+    overflow: auto !important;
+    min-height: 0; /* 关键：允许内容区域滚动 */
+    height: 100% !important;
+}
+
+/* IR 模式特殊处理 */
+.vditor-container .vditor-ir {
+    overflow: auto !important;
+    height: 100% !important;
+    min-height: 0;
+    flex: 1;
+}
+
+.vditor-container .vditor-ir .vditor-reset {
+    min-height: 100%;
+    height: auto;
+}
+
+/* WYSIWYG 和 SV 模式 */
+.vditor-container .vditor-wysiwyg,
+.vditor-container .vditor-sv {
+    overflow: auto !important;
+    height: 100% !important;
+    min-height: 0;
+    flex: 1;
+}
+
+/* 编辑器预览区域滚动 */
+.vditor-container .vditor-ir .vditor-ir__node,
+.vditor-container .vditor-wysiwyg .vditor-wysiwyg__node {
+    min-height: 100%;
+    padding-bottom: 50px; /* 底部留白，方便滚动 */
+}
+
+/* ==================== 全屏模式修复 ==================== */
+
+/* 全屏模式基础样式 */
+.vditor--fullscreen {
+    position: fixed !important;
+    top: 0 !important;
+    left: 0 !important;
+    right: 0 !important;
+    bottom: 0 !important;
+    width: 100vw !important;
+    height: 100vh !important;
+    z-index: 99999 !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    background: #fff !important;
+    border: none !important;
+    border-radius: 0 !important;
+}
+
+/* 全屏模式下的内容区域 */
+.vditor--fullscreen .vditor-content {
+    height: calc(100vh - 37px) !important; /* 减去工具栏高度 */
+    max-height: calc(100vh - 37px) !important;
+    overflow: auto !important;
+}
+
+/* 全屏模式下的编辑区域 */
+.vditor--fullscreen .vditor-ir,
+.vditor--fullscreen .vditor-wysiwyg,
+.vditor--fullscreen .vditor-sv {
+    height: 100% !important;
+    max-height: 100% !important;
+    overflow: auto !important;
+}
+
+/* 全屏模式下隐藏页面其他元素的滚动 */
+body.vditor-fullscreen-active {
+    overflow: hidden !important;
+}
+
+/* 全屏模式下的工具栏固定 */
+.vditor--fullscreen .vditor-toolbar {
+    position: sticky !important;
+    top: 0 !important;
+    z-index: 100 !important;
+    flex-shrink: 0 !important;
 }
 
 /* ==================== Git 面板 ==================== */
@@ -686,4 +786,187 @@
 .file-tree::-webkit-scrollbar-thumb:hover,
 .git-content::-webkit-scrollbar-thumb:hover {
     background: #aaa;
+}
+
+}
+
+/* ==================== VS Code 风格 Git 面板 ==================== */
+
+/* 变更区域 */
+.git-changes-section {
+    margin-bottom: 8px;
+}
+
+.git-changes-section.collapsed .git-section-content {
+    display: none;
+}
+
+.git-changes-section.collapsed .git-section-toggle {
+    transform: rotate(-90deg);
+}
+
+/* 区域头部 */
+.git-section-header {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 8px;
+    cursor: pointer;
+    font-size: 12px;
+    font-weight: 500;
+    color: #333;
+    background: #f5f5f5;
+    border-radius: 4px;
+    user-select: none;
+}
+
+.git-section-header:hover {
+    background: #eee;
+}
+
+.git-section-toggle {
+    font-size: 10px;
+    transition: transform 0.15s;
+    color: #666;
+}
+
+.git-section-count {
+    margin-left: auto;
+    background: #e0e0e0;
+    padding: 1px 6px;
+    border-radius: 8px;
+    font-size: 11px;
+    color: #666;
+}
+
+.git-section-actions {
+    display: flex;
+    gap: 4px;
+    margin-left: 8px;
+}
+
+.git-section-btn {
+    width: 20px;
+    height: 20px;
+    border: none;
+    background: transparent;
+    cursor: pointer;
+    border-radius: 3px;
+    font-size: 14px;
+    color: #666;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.git-section-btn:hover {
+    background: #ddd;
+    color: #333;
+}
+
+/* 区域内容 */
+.git-section-content {
+    padding: 4px 0;
+}
+
+.git-empty-hint {
+    padding: 8px 12px;
+    color: #999;
+    font-size: 12px;
+    font-style: italic;
+}
+
+/* 文件项 */
+.git-file-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 4px 8px;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 12px;
+}
+
+.git-file-item:hover {
+    background: #f0f0f0;
+}
+
+.git-file-item:hover .git-file-actions {
+    opacity: 1;
+}
+
+.git-file-name {
+    flex: 1;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    color: #333;
+}
+
+.git-file-actions {
+    display: flex;
+    gap: 2px;
+    opacity: 0;
+    transition: opacity 0.15s;
+}
+
+.git-file-btn {
+    width: 20px;
+    height: 20px;
+    border: none;
+    background: transparent;
+    cursor: pointer;
+    border-radius: 3px;
+    font-size: 12px;
+    color: #666;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.git-file-btn:hover {
+    background: #ddd;
+    color: #333;
+}
+
+.git-file-btn.git-discard-btn:hover {
+    background: #fee;
+    color: #e74c3c;
+}
+
+/* 状态颜色 */
+.git-file-status {
+    width: 16px;
+    text-align: center;
+    font-weight: 600;
+    font-size: 11px;
+}
+
+.git-file-status.status-modified {
+    color: #cca700;
+}
+
+.git-file-status.status-added,
+.git-file-status.status-untracked {
+    color: #73c991;
+}
+
+.git-file-status.status-deleted {
+    color: #f14c4c;
+}
+
+.git-file-status.status-renamed {
+    color: #4fc1ff;
+}
+
+/* 提交按钮禁用状态 */
+#gitCommitBtn:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+/* 小按钮样式 */
+.btn-sm {
+    padding: 4px 8px !important;
+    font-size: 12px !important;
 }
