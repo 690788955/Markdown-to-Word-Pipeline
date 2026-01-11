@@ -93,7 +93,9 @@ func NewGitService(workDir string) *GitService {
 
 // runGit 执行 git 命令
 func (s *GitService) runGit(args ...string) (string, error) {
-	cmd := exec.Command("git", args...)
+	// 注入配置：禁用路径引用（解决中文文件名乱码问题）
+	finalArgs := append([]string{"-c", "core.quotePath=false"}, args...)
+	cmd := exec.Command("git", finalArgs...)
 	cmd.Dir = s.workDir
 
 	// 设置环境变量
@@ -111,6 +113,30 @@ func (s *GitService) runGit(args ...string) (string, error) {
 
 	output, err := cmd.CombinedOutput()
 	return strings.TrimSpace(string(output)), err
+}
+
+// runGitUntrimmed 执行 git 命令，不去除首尾空白
+func (s *GitService) runGitUntrimmed(args ...string) (string, error) {
+	// 注入配置：禁用路径引用（解决中文文件名乱码问题）
+	finalArgs := append([]string{"-c", "core.quotePath=false"}, args...)
+	cmd := exec.Command("git", finalArgs...)
+	cmd.Dir = s.workDir
+
+	// 设置环境变量
+	env := os.Environ()
+	env = append(env, "GIT_TERMINAL_PROMPT=0")
+	
+	// 如果有凭据，设置凭据相关环境变量
+	if s.credentials != nil {
+		if s.credentials.Username != "" {
+			env = append(env, "GIT_AUTHOR_NAME="+s.credentials.Username)
+			env = append(env, "GIT_COMMITTER_NAME="+s.credentials.Username)
+		}
+	}
+	cmd.Env = env
+
+	output, err := cmd.CombinedOutput()
+	return string(output), err
 }
 
 // CheckGitAvailable 检测 git 命令是否可用
@@ -220,7 +246,8 @@ func (s *GitService) GetChangesResult() (*ChangesResult, error) {
 	}
 
 	// 使用 git status --porcelain 获取变更
-	output, err := s.runGit("status", "--porcelain")
+	// 使用 git status --porcelain 获取变更
+	output, err := s.runGitUntrimmed("status", "--porcelain")
 	if err != nil {
 		return nil, &GitError{
 			Operation:  "changes",
@@ -264,8 +291,8 @@ func (s *GitService) GetChangesResult() (*ChangesResult, error) {
 
 		fileName := filepath.Base(filePath)
 
-		// 暂存区有变更 (X 不是空格且不是 ?)
-		if x != ' ' && x != '?' {
+		// 暂存区有变更 (X 是 M, A, D, R, C)
+		if isStagedStatus(x) {
 			result.Staged = append(result.Staged, FileChange{
 				Path:       filePath,
 				FileName:   fileName,
@@ -276,8 +303,8 @@ func (s *GitService) GetChangesResult() (*ChangesResult, error) {
 			})
 		}
 
-		// 工作区有变更 (Y 不是空格)
-		if y != ' ' {
+		// 工作区有变更 (Y 是 M, D, ?)
+		if isUnstagedStatus(y) {
 			status := y
 			if y == '?' {
 				status = 'U' // 未跟踪显示为 U
@@ -933,4 +960,16 @@ func (s *GitService) ConfigureGitCredentialHelper() error {
 	}
 
 	return nil
+}
+
+// isStagedStatus 检查是否为暂存区状态
+func isStagedStatus(code byte) bool {
+	// M=Modified, A=Added, D=Deleted, R=Renamed, C=Copied
+	return code == 'M' || code == 'A' || code == 'D' || code == 'R' || code == 'C'
+}
+
+// isUnstagedStatus 检查是否为工作区状态
+func isUnstagedStatus(code byte) bool {
+	// M=Modified, D=Deleted, ?=Untracked
+	return code == 'M' || code == 'D' || code == '?'
 }

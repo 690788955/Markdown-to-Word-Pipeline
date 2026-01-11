@@ -271,10 +271,13 @@ function openFile(path) {
 
     // 创建新标签
     const id = 'tab-' + Date.now();
+    const isImage = /\.(png|jpg|jpeg|gif|svg|webp|bmp|ico)$/i.test(path);
+
     tab = {
         id: id,
         path: path,
         title: path.split('/').pop().replace('.md', ''),
+        type: isImage ? 'image' : 'markdown',
         isDirty: false,
         content: null,
         originalContent: null
@@ -285,7 +288,11 @@ function openFile(path) {
 
     renderTabs();
     switchTab(id);
-    loadFileContent(tab);
+
+    // 如果是图片，不加载文本内容
+    if (!isImage) {
+        loadFileContent(tab);
+    }
 }
 
 function switchTab(tabId) {
@@ -453,6 +460,16 @@ function showEditor(tab) {
     container.querySelectorAll('.vditor-container').forEach(el => {
         el.style.display = 'none';
     });
+    // 隐藏其他图片查看器
+    container.querySelectorAll('.image-viewer-container').forEach(el => {
+        el.style.display = 'none';
+    });
+
+    // 如果是图片标签
+    if (tab.type === 'image') {
+        showImageViewer(tab);
+        return;
+    }
 
     // 检查是否已有编辑器
     let editorContainer = container.querySelector(`[data-tab-id="${tab.id}"]`);
@@ -567,6 +584,69 @@ function createVditorEditor(container, tab, linkBase = '/api/src/') {
     });
 }
 
+function showImageViewer(tab) {
+    const container = document.getElementById('editorContainer');
+    let viewerContainer = container.querySelector(`[data-tab-id="${tab.id}"]`);
+
+    if (viewerContainer) {
+        viewerContainer.style.display = 'flex';
+        return;
+    }
+
+    viewerContainer = document.createElement('div');
+    viewerContainer.className = 'image-viewer-container';
+    viewerContainer.dataset.tabId = tab.id;
+
+    // 处理路径中的特殊字符
+    const encodedPath = (tab.path.startsWith('/') ? tab.path.substring(1) : tab.path).split('/').map(encodeURIComponent).join('/');
+    const imgUrl = '/api/src/' + encodedPath;
+
+    const img = document.createElement('img');
+    img.src = imgUrl;
+    img.alt = tab.title;
+
+    // 图片加载失败处理
+    img.onerror = () => {
+        viewerContainer.innerHTML = '<div class="error-message">图片加载失败</div>';
+    };
+
+    viewerContainer.appendChild(img);
+    container.appendChild(viewerContainer);
+
+    // 初始化 Viewer.js
+    if (typeof Viewer !== 'undefined') {
+        // 等待图片加载完成后初始化，确保尺寸计算正确
+        img.onload = () => {
+            new Viewer(img, {
+                toolbar: {
+                    zoomIn: 1,
+                    zoomOut: 1,
+                    oneToOne: 1,
+                    reset: 1,
+                    prev: 0,
+                    play: {
+                        show: 1,
+                        size: 'large',
+                    },
+                    next: 0,
+                    rotateLeft: 1,
+                    rotateRight: 1,
+                    flipHorizontal: 1,
+                    flipVertical: 1,
+                },
+                navbar: false,
+                title: false,
+                tooltip: true,
+                movable: true,
+                zoomable: true,
+                rotatable: true,
+                scalable: true,
+                transition: false, // 禁用过渡动画提升性能
+            });
+        };
+    }
+}
+
 function showPlaceholder() {
     const container = document.getElementById('editorContainer');
 
@@ -611,13 +691,13 @@ async function saveCurrentFile() {
 
         renderTabs();
         renderFileTree();
-        showToast('\u4FDD\u5B58\u6210\u529F', 'success');
-        
-        // 保存后自动刷新 Git 状态
-        loadGitStatus();
+        showToast('保存成功', 'success');
+
+        // 保存后异步刷新 Git 状态，不等待
+        loadGitStatus().catch(console.error);
     } catch (e) {
-        showToast('\u4FDD\u5B58\u5931\u8D25: ' + e.message, 'error');
-        console.error('\u4FDD\u5B58\u5931\u8D25:', e);
+        showToast('保存失败: ' + e.message, 'error');
+        console.error('保存失败:', e);
     }
 }
 
@@ -630,7 +710,15 @@ let gitUnstagedChanges = [];
 
 async function loadGitStatus() {
     const container = document.getElementById('gitContent');
-    container.innerHTML = '<div class="git-loading">\u52A0\u8F7D\u4E2D...</div>';
+    const refreshBtn = document.getElementById('gitRefreshBtn');
+
+    // 添加加载动画到刷新按钮，而不是清空面板
+    if (refreshBtn) refreshBtn.classList.add('rotating');
+
+    // 如果面板为空（首次加载），显示加载中
+    if (!state.gitStatus && container.children.length === 0) {
+        container.innerHTML = '<div class="git-loading">加载中...</div>';
+    }
 
     try {
         const [statusRes, changesRes] = await Promise.all([
@@ -660,8 +748,16 @@ async function loadGitStatus() {
         renderGitPanel();
         updateGitBadge();
     } catch (e) {
-        container.innerHTML = '<div class="git-loading">\u52A0\u8F7D\u5931\u8D25</div>';
-        console.error('\u52A0\u8F7D Git \u72B6\u6001\u5931\u8D25:', e);
+        // 只有在首次加载失败时才显示错误信息，否则保留旧内容并弹出 Toast
+        if (!state.gitStatus) {
+            container.innerHTML = '<div class="git-loading">加载失败</div>';
+        } else {
+            showToast('Git 状态刷新失败', 'error');
+        }
+        console.error('加载 Git 状态失败:', e);
+    } finally {
+        // 移除刷新按钮动画
+        if (refreshBtn) refreshBtn.classList.remove('rotating');
     }
 }
 

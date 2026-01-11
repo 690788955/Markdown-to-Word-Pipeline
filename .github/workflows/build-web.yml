@@ -31,6 +31,8 @@ jobs:
         run: |
           cd web/static
           npm install
+          # 仅保留 vendor，删除 node_modules 减小体积
+          rm -rf node_modules
       
       - name: Build and package for Linux (amd64)
         run: |

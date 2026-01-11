@@ -109,7 +109,8 @@
     display: flex;
     flex: 1;
     overflow: hidden;
-    min-height: 0; /* 关键：允许 flex 子元素正确计算高度 */
+    min-height: 0;
+    /* 关键：允许 flex 子元素正确计算高度 */
 }
 
 /* ==================== 文件树面板 ==================== */
@@ -289,7 +290,8 @@
     display: flex;
     flex-direction: column;
     min-width: 300px;
-    min-height: 0; /* 关键：允许 flex 子元素正确计算高度 */
+    min-height: 0;
+    /* 关键：允许 flex 子元素正确计算高度 */
     background: #fff;
     overflow: hidden;
 }
@@ -380,7 +382,8 @@
     position: relative;
     display: flex;
     flex-direction: column;
-    min-height: 0; /* 关键：允许 flex 子元素正确计算高度 */
+    min-height: 0;
+    /* 关键：允许 flex 子元素正确计算高度 */
 }
 
 .editor-placeholder {
@@ -408,7 +411,8 @@
     display: flex;
     flex-direction: column;
     overflow: hidden;
-    min-height: 0; /* 关键：允许 flex 子元素收缩 */
+    min-height: 0;
+    /* 关键：允许 flex 子元素收缩 */
     position: relative;
 }
 
@@ -418,28 +422,37 @@
     flex: 1;
     display: flex;
     flex-direction: column;
-    min-height: 0; /* 关键：允许 flex 子元素收缩 */
-    height: 100% !important;
-}
-
-.vditor-container .vditor-content {
-    flex: 1;
-    overflow: auto !important;
-    min-height: 0; /* 关键：允许内容区域滚动 */
+    min-height: 0;
+    /* 关键：允许 flex 子元素收缩 */
     height: 100% !important;
 }
 
 /* IR 模式特殊处理 */
 .vditor-container .vditor-ir {
     overflow: auto !important;
+    /* 恢复滚动 */
     height: 100% !important;
     min-height: 0;
     flex: 1;
 }
 
+/* 隐藏可能导致双滚动条的通用内容容器滚动，但保留布局属性 */
+.vditor-container .vditor-content {
+    flex: 1;
+    height: 100% !important;
+    min-height: 0;
+    overflow: hidden !important;
+}
+
 .vditor-container .vditor-ir .vditor-reset {
     min-height: 100%;
     height: auto;
+    max-width: 1200px !important;
+    margin: 0 auto !important;
+    padding: 20px 40px 50px 40px !important;
+    /* 调整内边距 */
+    box-sizing: border-box;
+    /* 确保 padding 不会撑破宽度 */
 }
 
 /* WYSIWYG 和 SV 模式 */
@@ -455,7 +468,32 @@
 .vditor-container .vditor-ir .vditor-ir__node,
 .vditor-container .vditor-wysiwyg .vditor-wysiwyg__node {
     min-height: 100%;
-    padding-bottom: 50px; /* 底部留白，方便滚动 */
+    padding-bottom: 50px;
+    /* 底部留白，方便滚动 */
+}
+
+/* ==================== 图片查看器 ==================== */
+.image-viewer-container {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    height: 100%;
+    /* 棋盘格背景，用于显示透明图片 */
+    background-image: linear-gradient(45deg, #eee 25%, transparent 25%, transparent 75%, #eee 75%, #eee),
+        linear-gradient(45deg, #eee 25%, transparent 25%, transparent 75%, #eee 75%, #eee);
+    background-size: 20px 20px;
+    background-position: 0 0, 10px 10px;
+    background-color: #fff;
+    overflow: hidden;
+}
+
+.image-viewer-container img {
+    max-width: 90%;
+    max-height: 90%;
+    object-fit: contain;
+    cursor: zoom-in;
+    box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+    transition: transform 0.2s;
 }
 
 /* ==================== 全屏模式修复 ==================== */
@@ -479,7 +517,8 @@
 
 /* 全屏模式下的内容区域 */
 .vditor--fullscreen .vditor-content {
-    height: calc(100vh - 37px) !important; /* 减去工具栏高度 */
+    height: calc(100vh - 37px) !important;
+    /* 减去工具栏高度 */
     max-height: calc(100vh - 37px) !important;
     overflow: auto !important;
 }
@@ -602,10 +641,21 @@ body.vditor-fullscreen-active {
     font-weight: 500;
 }
 
-.git-change-status.added { color: #27ae60; }
-.git-change-status.modified { color: #f39c12; }
-.git-change-status.deleted { color: #e74c3c; }
-.git-change-status.untracked { color: #95a5a6; }
+.git-change-status.added {
+    color: #27ae60;
+}
+
+.git-change-status.modified {
+    color: #f39c12;
+}
+
+.git-change-status.deleted {
+    color: #e74c3c;
+}
+
+.git-change-status.untracked {
+    color: #95a5a6;
+}
 
 .git-change-path {
     flex: 1;
@@ -786,8 +836,6 @@ body.vditor-fullscreen-active {
 .file-tree::-webkit-scrollbar-thumb:hover,
 .git-content::-webkit-scrollbar-thumb:hover {
     background: #aaa;
-}
-
 }
 
 /* ==================== VS Code 风格 Git 面板 ==================== */

@@ -8,11 +8,11 @@ const destDir = path.join(__dirname, '..', 'vendor', 'vditor', 'dist');
 function copyDir(src, dest) {
     fs.mkdirSync(dest, { recursive: true });
     const entries = fs.readdirSync(src, { withFileTypes: true });
-    
+
     for (const entry of entries) {
         const srcPath = path.join(src, entry.name);
         const destPath = path.join(dest, entry.name);
-        
+
         if (entry.isDirectory()) {
             copyDir(srcPath, destPath);
         } else {
@@ -23,4 +23,11 @@ function copyDir(src, dest) {
 
 console.log('复制 vditor 到 vendor 目录...');
 copyDir(srcDir, destDir);
+
+const viewerSrc = path.join(__dirname, '..', 'node_modules', 'viewerjs', 'dist');
+const viewerDest = path.join(__dirname, '..', 'vendor', 'viewerjs', 'dist');
+
+console.log('复制 viewerjs 到 vendor 目录...');
+copyDir(viewerSrc, viewerDest);
+
 console.log('完成！');

@@ -23,7 +23,9 @@
 FROM node:20-alpine AS frontend-builder
 
 WORKDIR /build/static
-COPY web/static/package.json web/static/scripts/ ./scripts/
+WORKDIR /build/static
+COPY web/static/package.json ./
+COPY web/static/scripts/ ./scripts/
 RUN npm install
 
 # 阶段1: 构建 Go 应用

@@ -4,7 +4,8 @@
   "description": "运维文档生成系统 - 前端依赖",
   "private": true,
   "dependencies": {
-    "vditor": "^3.11.2"
+    "vditor": "^3.11.2",
+    "viewerjs": "^1.11.7"
   },
   "scripts": {
     "postinstall": "node scripts/copy-vendor.js"
