@@ -26,6 +26,7 @@ function initVditor(content, mode = 'ir') {
     }
 
     vditorInstance = new Vditor('vditor', {
+        cdn: '/static/vendor/vditor',
         mode: mode,
         lang: 'zh_CN',
         height: '100%',

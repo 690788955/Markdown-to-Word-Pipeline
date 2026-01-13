@@ -18,6 +18,8 @@ type Config struct {
 	TemplatesDir string
 	// SrcDir 源文档目录路径
 	SrcDir string
+	// FontsDir 字体目录路径
+	FontsDir string
 	// WorkDir 工作目录（项目根目录）
 	WorkDir string
 	// AdminPassword 管理密码（用于锁定/解锁配置）
@@ -33,6 +35,7 @@ func DefaultConfig() *Config {
 		BuildDir:      filepath.Join(workDir, getEnv("BUILD_DIR", "build")),
 		TemplatesDir:  filepath.Join(workDir, getEnv("TEMPLATES_DIR", "templates")),
 		SrcDir:        filepath.Join(workDir, getEnv("SRC_DIR", "src")),
+		FontsDir:      filepath.Join(workDir, getEnv("FONTS_DIR", "fonts")),
 		WorkDir:       workDir,
 		AdminPassword: getEnv("ADMIN_PASSWORD", "admin123"),
 	}

@@ -7,9 +7,15 @@ import (
 	"log"
 	"os"
 	"path/filepath"
+	"regexp"
 	"strings"
 	"time"
 )
+
+// 支持的图片扩展名
+var imageExtensions = []string{
+	".png", ".jpg", ".jpeg", ".gif", ".svg", ".webp", ".bmp", ".ico",
+}
 
 // 编辑器错误代码
 var (
@@ -104,6 +110,88 @@ func (s *EditorService) ValidateFilename(filename string) error {
 	}
 	
 	return nil
+}
+
+// isImageFile 判断是否为图片文件
+func isImageFile(filename string) bool {
+	ext := strings.ToLower(filepath.Ext(filename))
+	for _, imgExt := range imageExtensions {
+		if ext == imgExt {
+			return true
+		}
+	}
+	return false
+}
+
+// sanitizeFilename 清理文件名，保留有效字符
+// 有效字符: 字母、数字、下划线、中划线、点、中文字符
+func sanitizeFilename(name string) string {
+	// 使用正则表达式保留有效字符
+	// 允许: 字母、数字、下划线、中划线、点、中文字符
+	reg := regexp.MustCompile(`[^\p{L}\p{N}_\-.]`)
+	sanitized := reg.ReplaceAllString(name, "_")
+	
+	// 合并连续的下划线
+	for strings.Contains(sanitized, "__") {
+		sanitized = strings.ReplaceAll(sanitized, "__", "_")
+	}
+	
+	// 去除首尾下划线
+	sanitized = strings.Trim(sanitized, "_")
+	
+	// 如果结果为空，返回默认名称
+	if sanitized == "" {
+		sanitized = "image"
+	}
+	
+	return sanitized
+}
+
+// generateImageFilename 生成规范化的图片文件名
+// 格式: YYYYMMDD_HHMMSS_sanitized_filename.ext
+func generateImageFilename(originalName string) string {
+	// 获取扩展名
+	ext := strings.ToLower(filepath.Ext(originalName))
+	if ext == "" {
+		ext = ".png" // 默认扩展名
+	}
+	
+	// 获取不含扩展名的文件名
+	nameWithoutExt := strings.TrimSuffix(originalName, filepath.Ext(originalName))
+	
+	// 清理文件名
+	sanitized := sanitizeFilename(nameWithoutExt)
+	
+	// 生成时间戳
+	timestamp := time.Now().Format("20060102_150405")
+	
+	// 组合最终文件名
+	return fmt.Sprintf("%s_%s%s", timestamp, sanitized, ext)
+}
+
+// generateUniqueFilename 生成唯一的文件名（处理冲突）
+func generateUniqueFilename(dir, filename string) string {
+	absPath := filepath.Join(dir, filename)
+	
+	// 如果文件不存在，直接返回
+	if _, err := os.Stat(absPath); os.IsNotExist(err) {
+		return filename
+	}
+	
+	// 文件存在，添加序号
+	ext := filepath.Ext(filename)
+	nameWithoutExt := strings.TrimSuffix(filename, ext)
+	
+	for i := 1; i <= 1000; i++ {
+		newFilename := fmt.Sprintf("%s_%d%s", nameWithoutExt, i, ext)
+		newPath := filepath.Join(dir, newFilename)
+		if _, err := os.Stat(newPath); os.IsNotExist(err) {
+			return newFilename
+		}
+	}
+	
+	// 极端情况：添加额外时间戳
+	return fmt.Sprintf("%s_%d%s", nameWithoutExt, time.Now().UnixNano(), ext)
 }
 
 
@@ -273,6 +361,11 @@ func (s *EditorService) buildFileTree(basePath, relativePath string, parent *Fil
 		} else if strings.HasSuffix(strings.ToLower(name), ".md") {
 			node.Type = "file"
 			parent.Children = append(parent.Children, node)
+		} else if isImageFile(name) {
+			// 支持图片文件显示在文件树中
+			node.Type = "image"
+			node.DisplayName = name // 图片文件显示完整文件名
+			parent.Children = append(parent.Children, node)
 		}
 	}
 
@@ -316,6 +409,57 @@ func (s *EditorService) DeleteModule(modulePath string) error {
 	}
 
 	log.Printf("[Editor] 文件已删除: %s", modulePath)
+	return nil
+}
+
+// DeleteImage 删除图片文件
+// 参数: imagePath - 相对于 src/ 的图片路径
+// 返回: 错误
+func (s *EditorService) DeleteImage(imagePath string) error {
+	// 检查路径是否包含 ..
+	if strings.Contains(imagePath, "..") {
+		log.Printf("[Editor] 检测到路径遍历尝试: %s", imagePath)
+		return ErrPathForbidden
+	}
+
+	// 检查是否是图片文件
+	if !isImageFile(imagePath) {
+		return ErrInvalidFileType
+	}
+
+	// 清理路径
+	cleanPath := filepath.Clean(imagePath)
+	cleanPath = strings.TrimPrefix(cleanPath, "src/")
+	cleanPath = strings.TrimPrefix(cleanPath, "src\\")
+
+	// 构建绝对路径
+	absPath := filepath.Join(s.srcDir, cleanPath)
+	absPath, err := filepath.Abs(absPath)
+	if err != nil {
+		return ErrPathForbidden
+	}
+
+	// 确保路径在 srcDir 内
+	absSrcDir, err := filepath.Abs(s.srcDir)
+	if err != nil {
+		return ErrPathForbidden
+	}
+	if !strings.HasPrefix(absPath, absSrcDir) {
+		log.Printf("[Editor] 路径超出 src 目录: %s", imagePath)
+		return ErrPathForbidden
+	}
+
+	// 检查文件是否存在
+	if _, err := os.Stat(absPath); os.IsNotExist(err) {
+		return ErrFileNotFound
+	}
+
+	// 删除文件
+	if err := os.Remove(absPath); err != nil {
+		return fmt.Errorf("%w: %v", ErrWriteError, err)
+	}
+
+	log.Printf("[Editor] 图片已删除: %s", imagePath)
 	return nil
 }
 
@@ -369,12 +513,15 @@ func (s *EditorService) SaveImage(modulePath string, filename string, content []
 		return "", err
 	}
 	
+	// 生成规范化的文件名
+	newFilename := generateImageFilename(filename)
+	
 	// 获取模块的绝对路径
 	absStartPath, err := s.ValidatePath(modulePath)
 	if err != nil {
 		// 如果模块路径无效，回退到默认的 src/images
 		log.Printf("[Editor] 模块路径无效，回退到默认目录: %v", err)
-		return s.saveToGlobalImages(filename, content)
+		return s.saveToGlobalImages(newFilename, content)
 	}
 
 	// 获取模块所在目录
@@ -386,16 +533,9 @@ func (s *EditorService) SaveImage(modulePath string, filename string, content []
 		return "", fmt.Errorf("%w: %v", ErrWriteError, err)
 	}
 
-	absPath := filepath.Join(imagesDir, filename)
-
-	// 如果文件已存在，添加时间戳避免覆盖
-	if _, err := os.Stat(absPath); err == nil {
-		ext := filepath.Ext(filename)
-		name := strings.TrimSuffix(filename, ext)
-		timestamp := time.Now().Format("20060102150405")
-		filename = fmt.Sprintf("%s_%s%s", name, timestamp, ext)
-		absPath = filepath.Join(imagesDir, filename)
-	}
+	// 生成唯一文件名（处理冲突）
+	finalFilename := generateUniqueFilename(imagesDir, newFilename)
+	absPath := filepath.Join(imagesDir, finalFilename)
 
 	// 写入文件
 	if err := os.WriteFile(absPath, content, 0644); err != nil {
@@ -405,17 +545,7 @@ func (s *EditorService) SaveImage(modulePath string, filename string, content []
 	log.Printf("[Editor] 图片已保存: %s", absPath)
 	
 	// 返回相对于模块目录的路径，例如 "images/filename.png"
-	// 这样 markdown 文件就是便携的（不包含上层目录信息）
-	// absPath: .../src/sub/images/foo.png
-	// moduleDir: .../src/sub
-	// relPath: images/foo.png
-	relPath, err := filepath.Rel(moduleDir, absPath)
-	if err != nil {
-		return "", err
-	}
-
-	// 统一分隔符为 /
-	relPath = filepath.ToSlash(relPath)
+	relPath := "images/" + finalFilename
 	
 	return relPath, nil
 }
@@ -427,19 +557,14 @@ func (s *EditorService) saveToGlobalImages(filename string, content []byte) (str
 		return "", fmt.Errorf("%w: %v", ErrWriteError, err)
 	}
 
-	absPath := filepath.Join(imagesDir, filename)
-	
-	if _, err := os.Stat(absPath); err == nil {
-		ext := filepath.Ext(filename)
-		name := strings.TrimSuffix(filename, ext)
-		timestamp := time.Now().Format("20060102150405")
-		filename = fmt.Sprintf("%s_%s%s", name, timestamp, ext)
-		absPath = filepath.Join(imagesDir, filename)
-	}
+	// 生成唯一文件名
+	finalFilename := generateUniqueFilename(imagesDir, filename)
+	absPath := filepath.Join(imagesDir, finalFilename)
 
 	if err := os.WriteFile(absPath, content, 0644); err != nil {
 		return "", fmt.Errorf("%w: %v", ErrWriteError, err)
 	}
 	
-	return "images/" + filename, nil
+	log.Printf("[Editor] 图片已保存到全局目录: %s", absPath)
+	return "images/" + finalFilename, nil
 }

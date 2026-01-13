@@ -65,12 +65,13 @@ type APIHandler struct {
 	variableSvc   *service.VariableService
 	editorSvc     *service.EditorService
 	gitSvc        *service.GitService
+	resourceSvc   *service.ResourceService
 	srcDir        string
 	adminPassword string
 }
 
 // NewAPIHandler 创建 API 处理器实例
-func NewAPIHandler(clientSvc *service.ClientService, docSvc *service.DocumentService, buildSvc *service.BuildService, moduleSvc *service.ModuleService, templateSvc *service.TemplateService, configMgr *service.ConfigManager, editorSvc *service.EditorService, srcDir string, adminPassword string) *APIHandler {
+func NewAPIHandler(clientSvc *service.ClientService, docSvc *service.DocumentService, buildSvc *service.BuildService, moduleSvc *service.ModuleService, templateSvc *service.TemplateService, configMgr *service.ConfigManager, editorSvc *service.EditorService, srcDir string, adminPassword string, fontsDir string, templatesDir string, clientsDir string) *APIHandler {
 	// 创建变量服务
 	variableSvc := service.NewVariableService(srcDir)
 	
@@ -78,6 +79,9 @@ func NewAPIHandler(clientSvc *service.ClientService, docSvc *service.DocumentSer
 	workDir := filepath.Dir(srcDir)
 	gitSvc := service.NewGitService(workDir)
 	gitSvc.LoadCredentialsFromEnv()
+	
+	// 创建资源服务
+	resourceSvc := service.NewResourceService(fontsDir, templatesDir, clientsDir)
 	
 	// 检测 Git 是否可用
 	if version, err := gitSvc.CheckGitAvailable(); err == nil {
@@ -96,6 +100,7 @@ func NewAPIHandler(clientSvc *service.ClientService, docSvc *service.DocumentSer
 		variableSvc:   variableSvc,
 		editorSvc:     editorSvc,
 		gitSvc:        gitSvc,
+		resourceSvc:   resourceSvc,
 		srcDir:        srcDir,
 		adminPassword: adminPassword,
 	}
@@ -121,7 +126,8 @@ func (h *APIHandler) RegisterRoutes(mux *http.ServeMux) {
 	mux.HandleFunc("/api/editor/module", h.handleEditorModule)
 	mux.HandleFunc("/api/editor/module/", h.handleEditorModuleWithPath)
 	mux.HandleFunc("/api/editor/tree", h.handleEditorTree)
-	mux.HandleFunc("/api/editor/upload", h.handleEditorUpload) // Added upload route
+	mux.HandleFunc("/api/editor/upload", h.handleEditorUpload)
+	mux.HandleFunc("/api/editor/image/", h.handleEditorImage) // 图片删除路由
 	mux.HandleFunc("/api/src/", h.handleSrcStatic)
 	// 新增：Git 相关路由
 	mux.HandleFunc("/api/git/check", h.handleGitCheck)
@@ -140,6 +146,11 @@ func (h *APIHandler) RegisterRoutes(mux *http.ServeMux) {
 	mux.HandleFunc("/api/git/stage-all", h.handleGitStageAll)
 	mux.HandleFunc("/api/git/unstage-all", h.handleGitUnstageAll)
 	mux.HandleFunc("/api/git/discard", h.handleGitDiscard)
+	// 新增：资源管理路由
+	mux.HandleFunc("/api/resources/fonts", h.handleResourceFonts)
+	mux.HandleFunc("/api/resources/fonts/", h.handleResourceFontDetail)
+	mux.HandleFunc("/api/resources/templates", h.handleResourceTemplates)
+	mux.HandleFunc("/api/resources/templates/", h.handleResourceTemplateDetail)
 }
 
 // handleClients 处理客户列表请求
@@ -1620,4 +1631,338 @@ func (h *APIHandler) handleEditorUpload(w http.ResponseWriter, r *http.Request) 
 
 	w.Header().Set("Content-Type", "application/json; charset=utf-8")
 	json.NewEncoder(w).Encode(response)
+}
+
+// handleEditorImage 处理编辑器图片操作（删除）
+func (h *APIHandler) handleEditorImage(w http.ResponseWriter, r *http.Request) {
+	// 解析路径: /api/editor/image/{path}
+	path := strings.TrimPrefix(r.URL.Path, "/api/editor/image/")
+	path, _ = url.PathUnescape(path)
+
+	if path == "" {
+		h.errorResponse(w, http.StatusBadRequest, "图片路径不能为空", ErrInvalidInput)
+		return
+	}
+
+	switch r.Method {
+	case http.MethodDelete:
+		h.deleteImage(w, path)
+	default:
+		h.methodNotAllowed(w)
+	}
+}
+
+// deleteImage 删除图片
+func (h *APIHandler) deleteImage(w http.ResponseWriter, path string) {
+	if err := h.editorSvc.DeleteImage(path); err != nil {
+		switch err {
+		case service.ErrFileNotFound:
+			h.errorResponse(w, http.StatusNotFound, "图片不存在", ErrFileNotFound)
+		case service.ErrPathForbidden:
+			h.errorResponse(w, http.StatusForbidden, "禁止访问该路径", "PATH_FORBIDDEN")
+		case service.ErrInvalidFileType:
+			h.errorResponse(w, http.StatusBadRequest, "不是有效的图片文件", "INVALID_FILE_TYPE")
+		default:
+			h.errorResponse(w, http.StatusInternalServerError, err.Error(), "")
+		}
+		return
+	}
+
+	h.successResponse(w, map[string]interface{}{
+		"message": "图片删除成功",
+	})
+}
+
+
+// ==================== 资源管理相关处理 ====================
+
+// 资源管理错误码
+const (
+	ErrInvalidFileType  = "INVALID_FILE_TYPE"
+	ErrFileTooLarge     = "FILE_TOO_LARGE"
+	ErrInvalidFilename  = "INVALID_FILENAME"
+	ErrFileExists       = "FILE_EXISTS"
+	ErrTemplateInUse    = "TEMPLATE_IN_USE"
+	ErrUploadFailed     = "UPLOAD_FAILED"
+	ErrDeleteFailed     = "DELETE_FAILED"
+)
+
+// handleResourceFonts 处理字体资源请求（列表和上传）
+func (h *APIHandler) handleResourceFonts(w http.ResponseWriter, r *http.Request) {
+	switch r.Method {
+	case http.MethodGet:
+		h.listFonts(w)
+	case http.MethodPost:
+		h.uploadFont(w, r)
+	default:
+		h.methodNotAllowed(w)
+	}
+}
+
+// listFonts 获取字体列表
+func (h *APIHandler) listFonts(w http.ResponseWriter) {
+	fonts, err := h.resourceSvc.ListFonts()
+	if err != nil {
+		h.errorResponse(w, http.StatusInternalServerError, err.Error(), "")
+		return
+	}
+
+	h.successResponse(w, map[string]interface{}{
+		"fonts": fonts,
+	})
+}
+
+// uploadFont 上传字体文件
+func (h *APIHandler) uploadFont(w http.ResponseWriter, r *http.Request) {
+	// 限制上传大小 (50MB)
+	if err := r.ParseMultipartForm(service.MaxFontFileSize); err != nil {
+		h.errorResponse(w, http.StatusBadRequest, "请求过大或格式错误", ErrFileTooLarge)
+		return
+	}
+
+	file, header, err := r.FormFile("file")
+	if err != nil {
+		h.errorResponse(w, http.StatusBadRequest, "未找到上传文件", ErrInvalidInput)
+		return
+	}
+	defer file.Close()
+
+	filename := header.Filename
+	overwrite := r.FormValue("overwrite") == "true"
+
+	// 检查文件是否已存在
+	if !overwrite && h.resourceSvc.FontExists(filename) {
+		h.errorResponse(w, http.StatusConflict, "文件已存在，请确认是否覆盖", ErrFileExists)
+		return
+	}
+
+	// 上传文件
+	if err := h.resourceSvc.UploadFont(filename, file, header.Size); err != nil {
+		errMsg := err.Error()
+		if strings.Contains(errMsg, "不支持") {
+			h.errorResponse(w, http.StatusBadRequest, errMsg, ErrInvalidFileType)
+		} else if strings.Contains(errMsg, "超过限制") {
+			h.errorResponse(w, http.StatusBadRequest, errMsg, ErrFileTooLarge)
+		} else if strings.Contains(errMsg, "非法字符") || strings.Contains(errMsg, "不能为空") {
+			h.errorResponse(w, http.StatusBadRequest, errMsg, ErrInvalidFilename)
+		} else {
+			h.errorResponse(w, http.StatusInternalServerError, errMsg, ErrUploadFailed)
+		}
+		return
+	}
+
+	h.successResponse(w, map[string]interface{}{
+		"message":  "上传成功",
+		"filename": filename,
+	})
+}
+
+// handleResourceFontDetail 处理单个字体文件请求（删除）
+func (h *APIHandler) handleResourceFontDetail(w http.ResponseWriter, r *http.Request) {
+	// 解析路径: /api/resources/fonts/{filename}
+	filename := strings.TrimPrefix(r.URL.Path, "/api/resources/fonts/")
+	filename, err := url.PathUnescape(filename)
+	if err != nil || filename == "" {
+		h.errorResponse(w, http.StatusBadRequest, "无效的文件名", ErrInvalidInput)
+		return
+	}
+
+	switch r.Method {
+	case http.MethodDelete:
+		h.deleteFont(w, filename)
+	default:
+		h.methodNotAllowed(w)
+	}
+}
+
+// deleteFont 删除字体文件
+func (h *APIHandler) deleteFont(w http.ResponseWriter, filename string) {
+	if err := h.resourceSvc.DeleteFont(filename); err != nil {
+		errMsg := err.Error()
+		if strings.Contains(errMsg, "不存在") {
+			h.errorResponse(w, http.StatusNotFound, errMsg, ErrFileNotFound)
+		} else {
+			h.errorResponse(w, http.StatusInternalServerError, errMsg, ErrDeleteFailed)
+		}
+		return
+	}
+
+	h.successResponse(w, map[string]interface{}{
+		"message": "删除成功",
+	})
+}
+
+// handleResourceTemplates 处理模板资源请求（列表和上传）
+func (h *APIHandler) handleResourceTemplates(w http.ResponseWriter, r *http.Request) {
+	switch r.Method {
+	case http.MethodGet:
+		h.listTemplatesResource(w)
+	case http.MethodPost:
+		h.uploadTemplate(w, r)
+	default:
+		h.methodNotAllowed(w)
+	}
+}
+
+// listTemplatesResource 获取模板列表（资源管理）
+func (h *APIHandler) listTemplatesResource(w http.ResponseWriter) {
+	templates, err := h.resourceSvc.ListTemplates()
+	if err != nil {
+		h.errorResponse(w, http.StatusInternalServerError, err.Error(), "")
+		return
+	}
+
+	h.successResponse(w, map[string]interface{}{
+		"templates": templates,
+	})
+}
+
+// uploadTemplate 上传模板文件
+func (h *APIHandler) uploadTemplate(w http.ResponseWriter, r *http.Request) {
+	// 限制上传大小 (20MB)
+	if err := r.ParseMultipartForm(service.MaxTemplateFileSize); err != nil {
+		h.errorResponse(w, http.StatusBadRequest, "请求过大或格式错误", ErrFileTooLarge)
+		return
+	}
+
+	file, header, err := r.FormFile("file")
+	if err != nil {
+		h.errorResponse(w, http.StatusBadRequest, "未找到上传文件", ErrInvalidInput)
+		return
+	}
+	defer file.Close()
+
+	filename := header.Filename
+	overwrite := r.FormValue("overwrite") == "true"
+
+	// 检查文件是否已存在
+	if !overwrite && h.resourceSvc.TemplateExists(filename) {
+		h.errorResponse(w, http.StatusConflict, "文件已存在，请确认是否覆盖", ErrFileExists)
+		return
+	}
+
+	// 上传文件
+	if err := h.resourceSvc.UploadTemplate(filename, file, header.Size); err != nil {
+		errMsg := err.Error()
+		if strings.Contains(errMsg, "不支持") {
+			h.errorResponse(w, http.StatusBadRequest, errMsg, ErrInvalidFileType)
+		} else if strings.Contains(errMsg, "超过限制") {
+			h.errorResponse(w, http.StatusBadRequest, errMsg, ErrFileTooLarge)
+		} else if strings.Contains(errMsg, "非法字符") || strings.Contains(errMsg, "不能为空") {
+			h.errorResponse(w, http.StatusBadRequest, errMsg, ErrInvalidFilename)
+		} else {
+			h.errorResponse(w, http.StatusInternalServerError, errMsg, ErrUploadFailed)
+		}
+		return
+	}
+
+	h.successResponse(w, map[string]interface{}{
+		"message":  "上传成功",
+		"filename": filename,
+	})
+}
+
+// handleResourceTemplateDetail 处理单个模板文件请求（删除、下载、使用检测）
+func (h *APIHandler) handleResourceTemplateDetail(w http.ResponseWriter, r *http.Request) {
+	// 解析路径: /api/resources/templates/{filename} 或 /api/resources/templates/{filename}/download 或 /api/resources/templates/{filename}/usage
+	path := strings.TrimPrefix(r.URL.Path, "/api/resources/templates/")
+	
+	// 检查是否是下载请求
+	if strings.HasSuffix(path, "/download") {
+		filename := strings.TrimSuffix(path, "/download")
+		filename, _ = url.PathUnescape(filename)
+		h.downloadTemplate(w, r, filename)
+		return
+	}
+
+	// 检查是否是使用检测请求
+	if strings.HasSuffix(path, "/usage") {
+		filename := strings.TrimSuffix(path, "/usage")
+		filename, _ = url.PathUnescape(filename)
+		h.getTemplateUsage(w, filename)
+		return
+	}
+
+	// 普通文件操作
+	filename, err := url.PathUnescape(path)
+	if err != nil || filename == "" {
+		h.errorResponse(w, http.StatusBadRequest, "无效的文件名", ErrInvalidInput)
+		return
+	}
+
+	switch r.Method {
+	case http.MethodDelete:
+		h.deleteTemplate(w, filename)
+	default:
+		h.methodNotAllowed(w)
+	}
+}
+
+// deleteTemplate 删除模板文件
+func (h *APIHandler) deleteTemplate(w http.ResponseWriter, filename string) {
+	// 先检查使用情况
+	usedBy, err := h.resourceSvc.GetTemplateUsage(filename)
+	if err != nil {
+		h.errorResponse(w, http.StatusInternalServerError, err.Error(), "")
+		return
+	}
+
+	if err := h.resourceSvc.DeleteTemplate(filename); err != nil {
+		errMsg := err.Error()
+		if strings.Contains(errMsg, "不存在") {
+			h.errorResponse(w, http.StatusNotFound, errMsg, ErrFileNotFound)
+		} else {
+			h.errorResponse(w, http.StatusInternalServerError, errMsg, ErrDeleteFailed)
+		}
+		return
+	}
+
+	response := map[string]interface{}{
+		"message": "删除成功",
+	}
+	if len(usedBy) > 0 {
+		response["warning"] = "该模板被以下配置使用"
+		response["usedBy"] = usedBy
+	}
+
+	h.successResponse(w, response)
+}
+
+// downloadTemplate 下载模板文件
+func (h *APIHandler) downloadTemplate(w http.ResponseWriter, r *http.Request, filename string) {
+	if r.Method != http.MethodGet {
+		h.methodNotAllowed(w)
+		return
+	}
+
+	filePath, err := h.resourceSvc.DownloadTemplate(filename)
+	if err != nil {
+		errMsg := err.Error()
+		if strings.Contains(errMsg, "不存在") {
+			h.errorResponse(w, http.StatusNotFound, errMsg, ErrFileNotFound)
+		} else {
+			h.errorResponse(w, http.StatusInternalServerError, errMsg, "")
+		}
+		return
+	}
+
+	// 设置响应头
+	w.Header().Set("Content-Type", "application/vnd.openxmlformats-officedocument.wordprocessingml.document")
+	w.Header().Set("Content-Disposition", "attachment; filename*=UTF-8''"+url.PathEscape(filename))
+	w.Header().Set("Cache-Control", "no-cache, no-store, must-revalidate")
+
+	http.ServeFile(w, r, filePath)
+}
+
+// getTemplateUsage 获取模板使用情况
+func (h *APIHandler) getTemplateUsage(w http.ResponseWriter, filename string) {
+	usedBy, err := h.resourceSvc.GetTemplateUsage(filename)
+	if err != nil {
+		h.errorResponse(w, http.StatusInternalServerError, err.Error(), "")
+		return
+	}
+
+	h.successResponse(w, map[string]interface{}{
+		"usedBy": usedBy,
+	})
 }

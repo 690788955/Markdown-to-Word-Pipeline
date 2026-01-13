@@ -183,6 +183,28 @@ function renderTreeNode(node, container, level) {
                 renderTreeNode(child, childContainer, level + 1);
                 container.appendChild(childContainer);
             }
+        } else if (child.type === 'image') {
+            // 图片文件图标
+            const icon = document.createElement('span');
+            icon.className = 'tree-item-icon';
+            icon.textContent = '🖼️';
+            item.appendChild(icon);
+
+            // 名称
+            const name = document.createElement('span');
+            name.className = 'tree-item-name tree-image';
+            name.textContent = child.displayName || child.name;
+            item.appendChild(name);
+
+            // 选中状态
+            if (state.selectedFile === child.path) {
+                item.classList.add('selected');
+            }
+
+            item.onclick = () => openFile(child.path);
+            item.oncontextmenu = (e) => showContextMenu(e, child);
+
+            container.appendChild(item);
         } else {
             // 文件图标
             const icon = document.createElement('span');
@@ -223,6 +245,11 @@ function matchSearch(node, query) {
 
     if (node.type === 'directory' && node.children) {
         return node.children.some(child => matchSearch(child, query));
+    }
+
+    // 图片文件也参与搜索
+    if (node.type === 'image') {
+        return name.includes(query);
     }
 
     return false;
@@ -435,8 +462,21 @@ async function loadFileContent(tab) {
 
         if (!data.success) throw new Error(data.error);
 
-        tab.content = data.data.content;
-        tab.originalContent = data.data.content;
+        let content = data.data.content;
+        
+        // 转换相对路径图片为绝对路径（用于编辑器显示）
+        const linkBase = calculateLinkBase(tab.path);
+        content = content.replace(
+            /!\[([^\]]*)\]\((?!https?:\/\/|\/api\/|\/)((?:\.\/)?images\/[^)]+|(?:\.\/)?[^)\/][^)]*\.(?:png|jpg|jpeg|gif|webp|svg))\)/gi,
+            (match, alt, src) => {
+                // 移除开头的 ./
+                const cleanSrc = src.replace(/^\.\//, '');
+                return `![${alt}](${linkBase}${cleanSrc})`;
+            }
+        );
+
+        tab.content = content;
+        tab.originalContent = data.data.content; // 保存原始内容用于保存时还原
 
         if (state.activeTabId === tab.id) {
             showEditor(tab);
@@ -478,7 +518,9 @@ function showEditor(tab) {
         // 如果内容已加载但编辑器还没创建（显示的是"加载中..."）
         if (tab.content !== null && !state.editors.has(tab.id)) {
             editorContainer.innerHTML = '';
-            createVditorEditor(editorContainer, tab);
+            // 计算 linkBase
+            const linkBase = calculateLinkBase(tab.path);
+            createVditorEditor(editorContainer, tab, linkBase);
         }
         editorContainer.style.display = 'block';
         return;
@@ -498,13 +540,22 @@ function showEditor(tab) {
 
     // 创建 Vditor 编辑器
     // 计算 linkBase
-    let linkBase = '/api/src/';
-    if (tab.path && tab.path.includes('/')) {
-        const dir = tab.path.substring(0, tab.path.lastIndexOf('/'));
-        linkBase = '/api/src/' + dir + '/';
-    }
+    const linkBase = calculateLinkBase(tab.path);
 
     createVditorEditor(editorContainer, tab, linkBase);
+}
+
+// 计算图片基础路径
+function calculateLinkBase(filePath) {
+    let linkBase = '/api/src/';
+    const normalizedPath = (filePath || '').replace(/\\/g, '/');
+    if (normalizedPath.includes('/')) {
+        const dir = normalizedPath.substring(0, normalizedPath.lastIndexOf('/'));
+        // 对每一层路径进行 URI 编码，以防中文路径问题
+        const encodedDir = dir.split('/').map(encodeURIComponent).join('/');
+        linkBase = '/api/src/' + encodedDir + '/';
+    }
+    return linkBase;
 }
 
 function createVditorEditor(container, tab, linkBase = '/api/src/') {
@@ -512,8 +563,10 @@ function createVditorEditor(container, tab, linkBase = '/api/src/') {
     // 使用 requestAnimationFrame 等待布局完成
     requestAnimationFrame(() => {
         const editor = new Vditor(container, {
+            cdn: '/static/vendor/vditor',
             height: '100%',
             mode: 'ir',
+            lang: 'zh_CN',
             value: tab.content || '',
             cache: { enable: false },
             toolbar: [
@@ -543,6 +596,35 @@ function createVditorEditor(container, tab, linkBase = '/api/src/') {
                 },
                 extraData: {
                     modulePath: tab.path || ''
+                },
+                format(files, responseText) {
+                    // 解析服务器响应
+                    const response = JSON.parse(responseText);
+                    if (response.code !== 0) {
+                        return JSON.stringify({
+                            msg: response.msg || '上传失败',
+                            code: 1,
+                            data: { errFiles: [], succMap: {} }
+                        });
+                    }
+                    
+                    // 将相对路径转换为编辑器可显示的绝对路径
+                    const succMap = response.data.succMap || {};
+                    const convertedSuccMap = {};
+                    for (const [originalName, relPath] of Object.entries(succMap)) {
+                        // relPath 格式为 "images/xxx.png"
+                        // 转换为 "/api/src/{dir}/images/xxx.png" 格式
+                        convertedSuccMap[originalName] = linkBase + relPath;
+                    }
+                    
+                    return JSON.stringify({
+                        msg: '',
+                        code: 0,
+                        data: {
+                            errFiles: response.data.errFiles || [],
+                            succMap: convertedSuccMap
+                        }
+                    });
                 }
             },
             customWysiwygToolbar: function () { },
@@ -674,12 +756,22 @@ async function saveCurrentFile() {
     if (!tab || !tab.isDirty) return;
 
     try {
+        // 保存前将绝对路径转换回相对路径
+        let contentToSave = tab.content;
+        const linkBase = calculateLinkBase(tab.path);
+        
+        // 将绝对路径转换回相对路径
+        // 匹配 ![alt](/api/src/xxx/images/yyy.png) 格式
+        const escapeRegex = linkBase.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+        const regex = new RegExp('!\\[([^\\]]*)\\]\\(' + escapeRegex + '([^)]+)\\)', 'gi');
+        contentToSave = contentToSave.replace(regex, '![$1]($2)');
+
         const response = await fetch('/api/editor/module', {
             method: 'PUT',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
                 path: tab.path,
-                content: tab.content
+                content: contentToSave
             })
         });
 
@@ -1247,9 +1339,15 @@ async function confirmDelete() {
     if (!state.contextMenuTarget) return;
 
     const path = state.contextMenuTarget.path;
+    const isImage = state.contextMenuTarget.type === 'image';
 
     try {
-        const response = await fetch('/api/editor/module/' + encodeURIComponent(path), {
+        // 根据文件类型选择不同的 API
+        const apiUrl = isImage 
+            ? '/api/editor/image/' + encodeURIComponent(path)
+            : '/api/editor/module/' + encodeURIComponent(path);
+        
+        const response = await fetch(apiUrl, {
             method: 'DELETE'
         });
 
@@ -1280,6 +1378,34 @@ function showContextMenu(e, item) {
     state.contextMenuTarget = item;
 
     const menu = document.getElementById('contextMenu');
+    
+    // 根据文件类型显示/隐藏菜单项
+    const isImage = item.type === 'image';
+    const isDirectory = item.type === 'directory';
+    
+    // 获取菜单项
+    const newItem = menu.querySelector('[data-action="new"]');
+    const newFolderItem = menu.querySelector('[data-action="newFolder"]');
+    const renameItem = menu.querySelector('[data-action="rename"]');
+    const deleteItem = menu.querySelector('[data-action="delete"]');
+    const divider = menu.querySelector('.context-divider');
+    
+    // 图片文件：只显示删除
+    if (isImage) {
+        if (newItem) newItem.style.display = 'none';
+        if (newFolderItem) newFolderItem.style.display = 'none';
+        if (renameItem) renameItem.style.display = 'none';
+        if (divider) divider.style.display = 'none';
+        if (deleteItem) deleteItem.style.display = 'block';
+    } else {
+        // 其他文件类型：显示所有菜单项
+        if (newItem) newItem.style.display = 'block';
+        if (newFolderItem) newFolderItem.style.display = 'block';
+        if (renameItem) renameItem.style.display = isDirectory ? 'none' : 'block';
+        if (divider) divider.style.display = 'block';
+        if (deleteItem) deleteItem.style.display = 'block';
+    }
+    
     menu.style.display = 'block';
     menu.style.left = e.pageX + 'px';
     menu.style.top = e.pageY + 'px';

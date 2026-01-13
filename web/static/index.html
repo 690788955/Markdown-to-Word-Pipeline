@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>运维文档生成系统</title>
-    <link rel="stylesheet" href="/static/style.css">
+    <link rel="stylesheet" href="/static/style.css?v=11">
     <!-- Vditor Markdown 编辑器（本地文件，支持离线使用） -->
     <link rel="stylesheet" href="/static/vendor/vditor/dist/index.css" />
     <script src="/static/vendor/vditor/dist/index.min.js"></script>
@@ -14,6 +14,11 @@
         <header>
             <h1>运维文档生成系统</h1>
             <div class="header-actions">
+                <!-- 资源管理按钮 -->
+                <button id="resourceToggleBtn" class="header-btn" title="资源管理">
+                    <span class="header-btn-icon">📦</span>
+                    <span class="header-btn-text">资源</span>
+                </button>
                 <!-- 知识库入口按钮 -->
                 <a href="/editor" class="header-btn" title="知识库编辑器">
                     <span class="header-btn-icon">📚</span>
@@ -594,8 +599,62 @@
         </div>
     </div>
 
-    <script src="/static/editor.js?v=2"></script>
-    <script src="/static/git.js?v=2"></script>
-    <script src="/static/app.js?v=2"></script>
+    <script src="/static/editor.js?v=11"></script>
+    <script src="/static/git.js?v=11"></script>
+    <script src="/static/resource.js?v=11"></script>
+    <script src="/static/app.js?v=11"></script>
+
+    <!-- 资源管理侧边面板 -->
+    <div id="resourcePanelOverlay" class="resource-panel-overlay"></div>
+    <aside id="resourceSidePanel" class="resource-side-panel">
+        <div class="resource-side-header">
+            <h3>📦 资源管理</h3>
+            <button id="resourceSideCloseBtn" class="resource-side-close">&times;</button>
+        </div>
+        
+        <!-- Tab 导航 -->
+        <div class="resource-tabs">
+            <button class="resource-tab-btn active" data-tab="fonts">🔤 字体</button>
+            <button class="resource-tab-btn" data-tab="templates">📄 模板</button>
+        </div>
+        
+        <!-- 字体 Tab -->
+        <div id="fontsTab" class="resource-tab-content active">
+            <div class="resource-toolbar">
+                <button class="btn btn-primary btn-sm" onclick="uploadFont()">
+                    <span>⬆️</span> 上传字体
+                </button>
+                <button class="btn btn-outline btn-sm" onclick="loadFonts()">
+                    <span>↻</span> 刷新
+                </button>
+            </div>
+            <div id="fontsList" class="resource-list">
+                <div class="resource-loading">加载中...</div>
+            </div>
+            <div class="resource-hint">
+                <p>支持格式：.ttf, .otf, .woff, .woff2</p>
+                <p>最大文件大小：50MB</p>
+            </div>
+        </div>
+        
+        <!-- 模板 Tab -->
+        <div id="templatesTab" class="resource-tab-content">
+            <div class="resource-toolbar">
+                <button class="btn btn-primary btn-sm" onclick="uploadTemplate()">
+                    <span>⬆️</span> 上传模板
+                </button>
+                <button class="btn btn-outline btn-sm" onclick="loadResourceTemplates()">
+                    <span>↻</span> 刷新
+                </button>
+            </div>
+            <div id="templatesList" class="resource-list">
+                <div class="resource-loading">加载中...</div>
+            </div>
+            <div class="resource-hint">
+                <p>支持格式：.docx (Word 模板)</p>
+                <p>最大文件大小：20MB</p>
+            </div>
+        </div>
+    </aside>
 </body>
 </html>

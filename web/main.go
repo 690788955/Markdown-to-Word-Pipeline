@@ -63,6 +63,7 @@ func main() {
 	cfg.BuildDir = filepath.Join(cfg.WorkDir, "build")
 	cfg.TemplatesDir = filepath.Join(cfg.WorkDir, "templates")
 	cfg.SrcDir = filepath.Join(cfg.WorkDir, "src")
+	cfg.FontsDir = filepath.Join(cfg.WorkDir, "fonts")
 
 	// 确定端口优先级: 命令行参数 > 环境变量 > 默认值
 	if *port != "" {
@@ -101,7 +102,7 @@ func main() {
 	editorSvc := service.NewEditorService(cfg.SrcDir)
 
 	// 创建 API 处理器
-	apiHandler := handler.NewAPIHandler(clientSvc, docSvc, buildSvc, moduleSvc, templateSvc, configMgr, editorSvc, cfg.SrcDir, cfg.AdminPassword)
+	apiHandler := handler.NewAPIHandler(clientSvc, docSvc, buildSvc, moduleSvc, templateSvc, configMgr, editorSvc, cfg.SrcDir, cfg.AdminPassword, cfg.FontsDir, cfg.TemplatesDir, cfg.ClientsDir)
 
 	// 创建路由
 	mux := http.NewServeMux()
