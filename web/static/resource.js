@@ -6,11 +6,18 @@ let currentResourceTab = 'fonts';
 let cachedFontsList = [];
 let cachedTemplatesList = [];
 
+const RESOURCE_DEBUG = false;
+function logResource(...args) {
+    if (RESOURCE_DEBUG) {
+        console.log('[资源]', ...args);
+    }
+}
+
 // ==================== 面板控制 ====================
 
 // 初始化资源管理面板
 function initResourcePanel() {
-    console.log('[资源] 初始化资源管理面板');
+    logResource('初始化资源管理面板');
 
     // 绑定事件
     const toggleBtn = document.getElementById('resourceToggleBtn');
@@ -23,11 +30,9 @@ function initResourcePanel() {
 
     // Tab 切换事件
     const tabButtons = document.querySelectorAll('.resource-tab-btn');
-    console.log('[资源] 找到', tabButtons.length, '个 Tab 按钮');
+    logResource('找到', tabButtons.length, '个 Tab 按钮');
     tabButtons.forEach(btn => {
-        console.log('[资源] 绑定事件到按钮:', btn.dataset.tab);
         btn.addEventListener('click', function () {
-            console.log('[资源] Tab 按钮被点击:', this.dataset.tab);
             switchResourceTab(this.dataset.tab);
         });
     });
@@ -68,47 +73,38 @@ function closeResourcePanel() {
 
 // 切换 Tab
 function switchResourceTab(tab) {
-    console.log('[资源] switchResourceTab 被调用, 切换到:', tab);
+    logResource('切换标签到:', tab);
     currentResourceTab = tab;
 
     // 更新 Tab 按钮状态
     document.querySelectorAll('.resource-tab-btn').forEach(btn => {
         const isActive = btn.dataset.tab === tab;
-        console.log('[资源] 按钮:', btn.dataset.tab, '是否激活:', isActive);
         btn.classList.toggle('active', isActive);
     });
 
     // 更新 Tab 内容
     const expectedId = `${tab}Tab`;
-    console.log('[资源] 查找内容容器 ID:', expectedId);
     document.querySelectorAll('.resource-tab-content').forEach(content => {
         const isActive = content.id === expectedId;
-        console.log('[资源] 内容容器:', content.id, '是否激活:', isActive);
         content.classList.toggle('active', isActive);
     });
 
     // 加载数据
-    console.log('[资源] 即将调用 loadCurrentTabData');
     loadCurrentTabData();
 }
 
 // 加载当前 Tab 数据
 function loadCurrentTabData() {
-    console.log('[资源] loadCurrentTabData 被调用, 当前标签:', currentResourceTab);
     if (currentResourceTab === 'fonts') {
-        console.log('[资源] 准备加载字体');
         loadFonts();
     } else if (currentResourceTab === 'templates') {
-        console.log('[资源] 准备加载模板');
-        console.log('[资源] loadResourceTemplates 函数类型:', typeof loadResourceTemplates);
         if (typeof loadResourceTemplates === 'function') {
-            console.log('[资源] 调用 loadResourceTemplates()');
             loadResourceTemplates();
         } else {
             console.error('[资源] loadResourceTemplates 不是函数!');
         }
     } else {
-        console.log('[资源] 未知标签:', currentResourceTab);
+        logResource('未知标签:', currentResourceTab);
     }
 }
 
@@ -138,37 +134,46 @@ async function fetchJsonWithTimeout(url, options = {}, timeoutMs = 15000) {
     }
 }
 
+async function loadResourceList({
+    endpoint,
+    containerId,
+    assignCache,
+    renderList,
+    errorLabel
+}) {
+    showResourceLoading(containerId);
+    try {
+        const { response, data } = await fetchJsonWithTimeout(endpoint);
+        logResource('API 响应状态:', response.status);
+        if (data.success) {
+            assignCache(data.data || {});
+            renderList();
+        } else {
+            showResourceError(containerId, `加载${errorLabel}列表失败: ${data.error}`);
+        }
+    } catch (e) {
+        showResourceError(containerId, `加载失败: ${e.message}`);
+    }
+}
+
 // ==================== 字体管理 ====================
 
 // 加载字体列表
 async function loadFonts() {
-    console.log('[资源] loadFonts 开始');
-    showResourceLoading('fontsList');
-
-    try {
-        const { response, data } = await fetchJsonWithTimeout('/api/resources/fonts');
-        console.log('[资源] 字体 API 响应状态:', response.status);
-        console.log('[资源] 字体 API 响应数据:', JSON.stringify(data));
-
-        if (data.success) {
-            cachedFontsList = data.data.fonts || [];
-            console.log('[资源] 字体列表:', cachedFontsList.length, '个');
-            renderFontList();
-        } else {
-            console.error('[资源] 字体 API 返回错误:', data.error);
-            showResourceError('fontsList', '加载字体列表失败: ' + data.error);
-        }
-    } catch (e) {
-        console.error('[资源] 加载字体失败:', e);
-        showResourceError('fontsList', '加载失败: ' + e.message);
-    }
+    await loadResourceList({
+        endpoint: '/api/resources/fonts',
+        containerId: 'fontsList',
+        assignCache: (data) => {
+            cachedFontsList = data.fonts || [];
+        },
+        renderList: renderFontList,
+        errorLabel: '字体'
+    });
 }
 
 // 渲染字体列表
 function renderFontList() {
-    console.log('[资源] renderFontList 开始, 字体数量:', cachedFontsList.length);
     const container = document.getElementById('fontsList');
-    console.log('[资源] fontsList 容器:', container);
     if (!container) {
         console.error('[资源] 找不到 fontsList 容器!');
         return;
@@ -303,62 +308,21 @@ async function deleteFont(name) {
 
 // 加载模板列表
 async function loadResourceTemplates() {
-    console.log('[资源] loadResourceTemplates 开始执行');
-    
-    try {
-        // 先显示加载状态
-        console.log('[资源] 准备显示加载状态');
-        showResourceLoading('templatesList');
-        console.log('[资源] 加载状态已显示');
-        
-        console.log('[资源] 准备发送API请求');
-        const { response, data } = await fetchJsonWithTimeout('/api/resources/templates');
-        console.log('[资源] API 响应状态:', response.status);
-        console.log('[资源] API 响应数据:', JSON.stringify(data));
-
-        if (data.success) {
-            cachedTemplatesList = data.data.templates || [];
-            console.log('[资源] 模板列表:', cachedTemplatesList.length, '个');
-            console.log('[资源] 即将调用 renderTemplateList()');
-            renderTemplateList();
-            console.log('[资源] renderTemplateList() 调用完成');
-        } else {
-            console.error('[资源] API 返回错误:', data.error);
-            showResourceError('templatesList', '加载模板列表失败: ' + data.error);
-        }
-    } catch (e) {
-        console.error('[资源] 加载模板失败:', e);
-        const msg = e && e.name === 'AbortError' ? '请求超时' : (e && e.message ? e.message : String(e));
-        showResourceError('templatesList', '加载失败: ' + msg);
-    }
-    
-    console.log('[资源] loadResourceTemplates 函数执行完成');
-}
-
-// 测试函数
-async function testLoadTemplates() {
-    console.log('=== 测试开始 ===');
-    try {
-        const response = await fetch('/api/resources/templates');
-        const data = await response.json();
-        console.log('测试API响应:', data);
-        
-        if (data.success && data.data.templates) {
-            console.log('找到', data.data.templates.length, '个模板');
-            data.data.templates.forEach(t => console.log('- 模板:', t.name));
-        }
-    } catch (e) {
-        console.error('测试失败:', e);
-    }
-    console.log('=== 测试结束 ===');
+    await loadResourceList({
+        endpoint: '/api/resources/templates',
+        containerId: 'templatesList',
+        assignCache: (data) => {
+            cachedTemplatesList = data.templates || [];
+        },
+        renderList: renderTemplateList,
+        errorLabel: '模板'
+    });
 }
 
 // 渲染模板列表
 // 渲染模板列表
 function renderTemplateList() {
-    console.log('[资源] renderTemplateList 开始, 模板数量:', cachedTemplatesList.length);
     const container = document.getElementById('templatesList');
-    console.log('[资源] templatesList 容器:', container);
     if (!container) {
         console.error('[资源] 找不到 templatesList 容器!');
         return;
@@ -405,8 +369,6 @@ function renderTemplateList() {
     });
 
     container.innerHTML = html;
-    console.log('[资源] 模板列表渲染完成, HTML长度:', html.length);
-    console.log('[资源] 容器内容已更新:', container.innerHTML.substring(0, 200));
 }
 
 // 上传模板

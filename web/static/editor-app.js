@@ -44,6 +44,9 @@ document.addEventListener('DOMContentLoaded', function () {
     // 初始化 Git 面板
     loadGitStatus();
 
+    // 初始化默认编辑模式选择
+    initDefaultEditorMode();
+
     // 绑定事件
     bindEvents();
 
@@ -65,6 +68,19 @@ function bindEvents() {
 
     // Git 操作
     document.getElementById('gitRefreshBtn').addEventListener('click', loadGitStatus);
+
+    // 默认编辑模式
+    const modeSelect = document.getElementById('defaultEditorMode');
+    if (modeSelect) {
+        modeSelect.addEventListener('change', onDefaultEditorModeChange);
+    }
+
+    // Git 远程标签点击事件（事件委托）
+    document.addEventListener('click', (e) => {
+        if (e.target.closest('.git-remote-tag')) {
+            showRemoteConfig();
+        }
+    });
 
     // 拖拽调整宽度
     initResizers();
@@ -565,7 +581,7 @@ function createVditorEditor(container, tab, linkBase = '/api/src/') {
         const editor = new Vditor(container, {
             cdn: '/static/vendor/vditor',
             height: '100%',
-            mode: 'ir',
+            mode: getDefaultEditorMode(),
             lang: 'zh_CN',
             value: tab.content || '',
             cache: { enable: false },
@@ -875,12 +891,16 @@ function renderGitPanel() {
     let html = '';
 
     // 分支状态
+    const remoteTag = state.gitStatus.hasRemote
+        ? '<span class="git-remote-tag" title="点击配置远程仓库">🔗 origin</span>'
+        : '<span class="git-remote-tag git-no-remote" title="点击配置远程仓库">⚠️ 未配置远程</span>';
     html += `
         <div class="git-status">
             <div class="git-branch">
                 <span class="git-branch-icon">\u2387</span>
                 <span>${state.gitStatus.branch || 'main'}</span>
             </div>
+            ${remoteTag}
         </div>
     `;
 
@@ -1213,6 +1233,163 @@ async function pullChanges() {
         loadFileTree();
     } catch (e) {
         showToast('\u62C9\u53D6\u5931\u8D25: ' + e.message, 'error');
+    }
+}
+
+function initDefaultEditorMode() {
+    const mode = getDefaultEditorMode();
+    const select = document.getElementById('defaultEditorMode');
+    if (select) {
+        select.value = mode;
+    }
+}
+
+function getDefaultEditorMode() {
+    const mode = localStorage.getItem('editorDefaultMode') || 'wysiwyg';
+    const validModes = ['ir', 'wysiwyg', 'sv'];
+    return validModes.includes(mode) ? mode : 'wysiwyg';
+}
+
+function onDefaultEditorModeChange(e) {
+    const mode = e.target.value;
+    localStorage.setItem('editorDefaultMode', mode);
+    showToast('默认编辑模式已更新', 'success');
+}
+
+// ==================== 远程仓库配置 ====================
+
+// HTML 转义函数
+function escapeHtmlAttr(str) {
+    if (!str) return '';
+    return str.replace(/"/g, '&quot;')
+              .replace(/'/g, '&#39;')
+              .replace(/</g, '&lt;')
+              .replace(/>/g, '&gt;');
+}
+
+async function showRemoteConfig() {
+    let currentUrl = '';
+    try {
+        const response = await fetch('/api/git/remote');
+        const data = await response.json();
+        if (data.success && data.data) {
+            currentUrl = data.data.url || '';
+        }
+    } catch (e) {
+        console.error('[Git] 获取远程配置失败:', e);
+    }
+
+    let modal = document.getElementById('gitRemoteModal');
+    if (!modal) {
+        modal = document.createElement('div');
+        modal.id = 'gitRemoteModal';
+        modal.className = 'modal';
+        modal.innerHTML = createRemoteConfigModalHTML();
+        document.body.appendChild(modal);
+    }
+
+    // 更新输入框的值
+    const urlInput = modal.querySelector('#gitRemoteUrl');
+    if (urlInput) urlInput.value = currentUrl;
+
+    openModal(modal);
+}
+
+function createRemoteConfigModalHTML() {
+    return `
+        <div class="modal-content" style="max-width: 550px;">
+            <div class="modal-header">
+                <h3>🔗 远程仓库配置</h3>
+                <button type="button" class="modal-close" onclick="closeRemoteConfigModal()">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div class="form-group">
+                    <label>远程仓库 URL</label>
+                    <input type="text" id="gitRemoteUrl" class="form-control"
+                           placeholder="https://github.com/user/repo.git 或 git@github.com:user/repo.git">
+                    <small class="form-hint">支持 HTTPS 和 SSH 格式</small>
+                </div>
+
+                <div class="git-credentials-section">
+                    <h4 style="margin: 16px 0 12px; font-size: 0.95rem;">凭据配置（可选）</h4>
+                    <div class="form-group">
+                        <label>用户名</label>
+                        <input type="text" id="gitUsername" class="form-control" placeholder="Git 用户名">
+                    </div>
+                    <div class="form-group">
+                        <label>密码 / Token</label>
+                        <input type="password" id="gitPassword" class="form-control" placeholder="密码或 Personal Access Token">
+                        <small class="form-hint">推荐使用 Personal Access Token 代替密码</small>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-outline" onclick="closeRemoteConfigModal()">取消</button>
+                <button type="button" class="btn btn-primary" onclick="saveRemoteConfig()">保存</button>
+            </div>
+        </div>
+    `;
+}
+
+function closeRemoteConfigModal() {
+    const modal = document.getElementById('gitRemoteModal');
+    if (modal) closeModal(modal);
+}
+
+async function saveRemoteConfig() {
+    const urlInput = document.getElementById('gitRemoteUrl');
+    const usernameInput = document.getElementById('gitUsername');
+    const passwordInput = document.getElementById('gitPassword');
+
+    const url = urlInput ? urlInput.value.trim() : '';
+    const username = usernameInput ? usernameInput.value.trim() : '';
+    const password = passwordInput ? passwordInput.value : '';
+
+    let hasError = false;
+
+    try {
+        // 保存远程仓库 URL
+        if (url) {
+            const response = await fetch('/api/git/remote', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ url })
+            });
+
+            const data = await response.json();
+            if (!data.success) {
+                showToast('设置远程仓库失败: ' + data.error, 'error');
+                hasError = true;
+            }
+        }
+
+        // 保存凭据（仅在远程仓库设置成功时）
+        if ((username || password) && !hasError) {
+            const credResponse = await fetch('/api/git/credentials', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    username,
+                    password: password,
+                    token: password
+                })
+            });
+
+            const credData = await credResponse.json();
+            if (!credData.success) {
+                showToast('保存凭据失败: ' + credData.error, 'error');
+                hasError = true;
+            }
+        }
+
+        // 全部成功后关闭模态框并刷新状态
+        if (!hasError) {
+            showToast('配置保存成功', 'success');
+            closeRemoteConfigModal();
+            await loadGitStatus();
+        }
+    } catch (e) {
+        showToast('保存配置失败: ' + e.message, 'error');
     }
 }
 
