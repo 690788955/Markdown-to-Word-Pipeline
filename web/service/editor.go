@@ -2,12 +2,15 @@
 package service
 
 import (
+	"encoding/json"
 	"errors"
 	"fmt"
 	"log"
 	"os"
+	"path"
 	"path/filepath"
 	"regexp"
+	"sort"
 	"strings"
 	"time"
 )
@@ -16,6 +19,8 @@ import (
 var imageExtensions = []string{
 	".png", ".jpg", ".jpeg", ".gif", ".svg", ".webp", ".bmp", ".ico",
 }
+
+const editorOrderFileName = ".editor-order.json"
 
 // 编辑器错误代码
 var (
@@ -304,6 +309,12 @@ type FileTreeNode struct {
 // GetFileTree 获取文件树
 // 返回: 文件树根节点和错误
 func (s *EditorService) GetFileTree() (*FileTreeNode, error) {
+	orderMap, err := s.loadTreeOrder()
+	if err != nil {
+		log.Printf("[Editor] 读取排序配置失败: %v", err)
+		orderMap = map[string][]string{}
+	}
+
 	root := &FileTreeNode{
 		Name:     "src",
 		Path:     "",
@@ -311,7 +322,7 @@ func (s *EditorService) GetFileTree() (*FileTreeNode, error) {
 		Children: []*FileTreeNode{},
 	}
 
-	err := s.buildFileTree(s.srcDir, "", root)
+	err = s.buildFileTree(s.srcDir, "", root, orderMap)
 	if err != nil {
 		return nil, err
 	}
@@ -320,7 +331,7 @@ func (s *EditorService) GetFileTree() (*FileTreeNode, error) {
 }
 
 // buildFileTree 递归构建文件树
-func (s *EditorService) buildFileTree(basePath, relativePath string, parent *FileTreeNode) error {
+func (s *EditorService) buildFileTree(basePath, relativePath string, parent *FileTreeNode, orderMap map[string][]string) error {
 	fullPath := basePath
 	if relativePath != "" {
 		fullPath = filepath.Join(basePath, relativePath)
@@ -331,6 +342,7 @@ func (s *EditorService) buildFileTree(basePath, relativePath string, parent *Fil
 		return err
 	}
 
+	children := []*FileTreeNode{}
 	for _, entry := range entries {
 		name := entry.Name()
 		
@@ -353,22 +365,55 @@ func (s *EditorService) buildFileTree(basePath, relativePath string, parent *Fil
 		if entry.IsDir() {
 			node.Type = "directory"
 			node.Children = []*FileTreeNode{}
-			if err := s.buildFileTree(basePath, childPath, node); err != nil {
+			if err := s.buildFileTree(basePath, childPath, node, orderMap); err != nil {
 				log.Printf("[Editor] 读取目录失败 %s: %v", childPath, err)
 				continue
 			}
-			parent.Children = append(parent.Children, node)
+			children = append(children, node)
 		} else if strings.HasSuffix(strings.ToLower(name), ".md") {
 			node.Type = "file"
-			parent.Children = append(parent.Children, node)
+			children = append(children, node)
 		} else if isImageFile(name) {
 			// 支持图片文件显示在文件树中
 			node.Type = "image"
 			node.DisplayName = name // 图片文件显示完整文件名
-			parent.Children = append(parent.Children, node)
+			children = append(children, node)
 		}
 	}
 
+	if len(children) > 0 {
+		order := orderMap[relativePath]
+		if len(order) > 0 {
+			indexMap := make(map[string]int, len(order))
+			for i, item := range order {
+				indexMap[item] = i
+			}
+			sort.SliceStable(children, func(i, j int) bool {
+				left, right := children[i], children[j]
+				leftIndex, leftOk := indexMap[left.Name]
+				rightIndex, rightOk := indexMap[right.Name]
+				if leftOk && rightOk {
+					return leftIndex < rightIndex
+				}
+				if leftOk != rightOk {
+					return leftOk
+				}
+				if left.Type != right.Type {
+					return left.Type == "directory"
+				}
+				return strings.Compare(left.Name, right.Name) < 0
+			})
+		} else {
+			sort.SliceStable(children, func(i, j int) bool {
+				if children[i].Type != children[j].Type {
+					return children[i].Type == "directory"
+				}
+				return strings.Compare(children[i].Name, children[j].Name) < 0
+			})
+		}
+	}
+
+	parent.Children = children
 	return nil
 }
 
@@ -386,6 +431,59 @@ func extractDisplayName(name string) string {
 	}
 	
 	return displayName
+}
+
+// SaveTreeOrder 保存文件树排序
+func (s *EditorService) SaveTreeOrder(parentPath string, order []string) error {
+	cleanPath := path.Clean(strings.ReplaceAll(parentPath, "\\", "/"))
+	if cleanPath == "." {
+		cleanPath = ""
+	}
+	if strings.Contains(cleanPath, "..") || strings.HasPrefix(cleanPath, "/") {
+		return ErrPathForbidden
+	}
+
+	orderMap, err := s.loadTreeOrder()
+	if err != nil {
+		return err
+	}
+
+	orderMap[cleanPath] = order
+	return s.saveTreeOrder(orderMap)
+}
+
+func (s *EditorService) loadTreeOrder() (map[string][]string, error) {
+	orderPath := filepath.Join(s.srcDir, editorOrderFileName)
+	data, err := os.ReadFile(orderPath)
+	if err != nil {
+		if os.IsNotExist(err) {
+			return map[string][]string{}, nil
+		}
+		return nil, fmt.Errorf("%w: %v", ErrReadError, err)
+	}
+
+	if len(data) == 0 {
+		return map[string][]string{}, nil
+	}
+
+	var orderMap map[string][]string
+	if err := json.Unmarshal(data, &orderMap); err != nil {
+		return nil, fmt.Errorf("%w: %v", ErrReadError, err)
+	}
+	return orderMap, nil
+}
+
+func (s *EditorService) saveTreeOrder(orderMap map[string][]string) error {
+	orderPath := filepath.Join(s.srcDir, editorOrderFileName)
+	data, err := json.MarshalIndent(orderMap, "", "  ")
+	if err != nil {
+		return fmt.Errorf("%w: %v", ErrWriteError, err)
+	}
+
+	if err := os.WriteFile(orderPath, data, 0644); err != nil {
+		return fmt.Errorf("%w: %v", ErrWriteError, err)
+	}
+	return nil
 }
 
 // DeleteModule 删除模块

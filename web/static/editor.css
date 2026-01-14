@@ -1,5 +1,32 @@
 /* 知识库编辑器样式 */
 
+
+
+/* Compact toolbar to reduce vertical space */
+.editor-page .vditor {
+    --toolbar-height: 30px;
+    --toolbar-divider-margin-top: 6px;
+}
+
+.editor-page .vditor-toolbar {
+    display: flex;
+    flex-wrap: nowrap;
+    align-items: center;
+    gap: 2px;
+    overflow-x: auto;
+    overflow-y: hidden;
+    padding: 4px 8px;
+}
+
+.editor-page .vditor-toolbar__item,
+.editor-page .vditor-toolbar__divider {
+    float: none;
+    flex: 0 0 auto;
+}
+
+.editor-page .vditor-toolbar__item .vditor-tooltipped {
+    padding: 6px 5px;
+}
 /* ==================== 基础布局 ==================== */
 
 .editor-page {
@@ -7,7 +34,24 @@
     padding: 0;
     height: 100vh;
     overflow: hidden;
-    background: #f5f5f5;
+    background: var(--color-bg);
+    color: var(--color-text);
+    font-family: "Source Han Sans SC", "Noto Sans CJK SC", "Microsoft YaHei", "PingFang SC", sans-serif;
+    --content-font-size: 15px;
+    --content-line-height: 1.75;
+    --content-padding: 28px 48px 60px 48px;
+}
+
+.editor-page[data-content-style="comfortable"] {
+    --content-font-size: 16px;
+    --content-line-height: 1.85;
+    --content-padding: 30px 52px 64px 52px;
+}
+
+.editor-page[data-content-style="compact"] {
+    --content-font-size: 14px;
+    --content-line-height: 1.6;
+    --content-padding: 22px 40px 48px 40px;
 }
 
 .editor-container {
@@ -25,9 +69,10 @@
     justify-content: space-between;
     align-items: center;
     padding: 0 16px;
-    height: 48px;
-    background: #2c3e50;
-    color: white;
+    height: 52px;
+    background: var(--color-header);
+    color: #f0f4f7;
+    border-bottom: 1px solid var(--color-header-border);
     flex-shrink: 0;
 }
 
@@ -41,15 +86,17 @@
     display: flex;
     align-items: center;
     gap: 4px;
-    color: white;
+    color: #f0f4f7;
     text-decoration: none;
     padding: 6px 12px;
-    border-radius: 4px;
-    transition: background 0.2s;
+    border-radius: 6px;
+    border: 1px solid rgba(255, 255, 255, 0.16);
+    transition: background 0.2s, border-color 0.2s;
 }
 
 .back-btn:hover {
-    background: rgba(255, 255, 255, 0.1);
+    background: rgba(255, 255, 255, 0.12);
+    border-color: rgba(255, 255, 255, 0.3);
 }
 
 .back-icon {
@@ -58,22 +105,25 @@
 
 .editor-title {
     font-size: 16px;
-    font-weight: 500;
+    font-weight: 600;
     margin: 0;
+    letter-spacing: 0.4px;
+    font-family: "Source Han Serif SC", "Noto Serif CJK SC", "SimSun", serif;
 }
 
 .header-right {
     display: flex;
     align-items: center;
-    gap: 8px;
+    gap: 10px;
+    position: relative;
 }
 
 .header-select {
-    height: 28px;
+    height: 30px;
     padding: 0 8px;
-    border-radius: 4px;
-    border: 1px solid rgba(255, 255, 255, 0.25);
-    background: rgba(255, 255, 255, 0.1);
+    border-radius: 6px;
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    background: rgba(255, 255, 255, 0.08);
     color: white;
     font-size: 12px;
 }
@@ -94,17 +144,44 @@
     justify-content: center;
     width: 36px;
     height: 36px;
-    background: transparent;
-    border: none;
-    border-radius: 4px;
+    background: rgba(255, 255, 255, 0.06);
+    border: 1px solid rgba(255, 255, 255, 0.14);
+    border-radius: 6px;
     color: white;
     cursor: pointer;
     position: relative;
-    transition: background 0.2s;
+    transition: background 0.2s, border-color 0.2s, color 0.2s;
 }
 
 .header-btn:hover {
-    background: rgba(255, 255, 255, 0.1);
+    background: rgba(255, 255, 255, 0.16);
+    border-color: rgba(255, 255, 255, 0.3);
+}
+
+.header-group {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 4px;
+    border-radius: 999px;
+    background: rgba(255, 255, 255, 0.06);
+    border: 1px solid rgba(255, 255, 255, 0.12);
+}
+
+.header-group-theme {
+    position: relative;
+}
+
+.focus-icon {
+    font-weight: 700;
+    font-size: 12px;
+    letter-spacing: 0.5px;
+}
+
+.header-btn.is-active {
+    background: rgba(227, 168, 87, 0.2);
+    border-color: rgba(227, 168, 87, 0.6);
+    color: #f7e3b7;
 }
 
 .git-badge {
@@ -114,7 +191,7 @@
     min-width: 16px;
     height: 16px;
     padding: 0 4px;
-    background: #e74c3c;
+    background: var(--color-accent);
     color: white;
     font-size: 10px;
     border-radius: 8px;
@@ -136,18 +213,18 @@
 /* ==================== 文件树面板 ==================== */
 
 .file-tree-panel {
-    width: 260px;
+    width: 240px;
     min-width: 180px;
     max-width: 400px;
-    background: #fff;
-    border-right: 1px solid #e0e0e0;
+    background: var(--color-panel);
+    border-right: 1px solid var(--color-border);
     display: flex;
     flex-direction: column;
     transition: width 0.2s, margin-left 0.2s;
 }
 
 .file-tree-panel.collapsed {
-    margin-left: -260px;
+    margin-left: -240px;
 }
 
 .panel-header {
@@ -155,14 +232,14 @@
     justify-content: space-between;
     align-items: center;
     padding: 12px 16px;
-    border-bottom: 1px solid #e0e0e0;
-    background: #fafafa;
+    border-bottom: 1px solid var(--color-border);
+    background: rgba(15, 31, 43, 0.03);
 }
 
 .panel-title {
     font-weight: 500;
     font-size: 14px;
-    color: #333;
+    color: var(--color-text);
 }
 
 .panel-actions {
@@ -173,9 +250,9 @@
 .panel-btn {
     width: 28px;
     height: 28px;
-    background: transparent;
-    border: 1px solid #ddd;
-    border-radius: 4px;
+    background: rgba(255, 255, 255, 0.8);
+    border: 1px solid var(--color-border);
+    border-radius: 6px;
     cursor: pointer;
     font-size: 14px;
     display: flex;
@@ -185,27 +262,30 @@
 }
 
 .panel-btn:hover {
-    background: #f0f0f0;
-    border-color: #ccc;
+    background: #ffffff;
+    border-color: rgba(31, 110, 140, 0.5);
+    color: var(--color-primary);
 }
 
 .search-box {
     padding: 8px 12px;
-    border-bottom: 1px solid #e0e0e0;
+    border-bottom: 1px solid var(--color-border);
 }
 
 .search-box input {
     width: 100%;
     padding: 8px 12px;
-    border: 1px solid #ddd;
-    border-radius: 4px;
+    border: 1px solid var(--color-border);
+    border-radius: 8px;
     font-size: 13px;
     outline: none;
     transition: border-color 0.2s;
+    background: #ffffff;
 }
 
 .search-box input:focus {
-    border-color: #3498db;
+    border-color: var(--color-primary);
+    box-shadow: 0 0 0 3px rgba(31, 110, 140, 0.15);
 }
 
 .file-tree {
@@ -224,18 +304,32 @@
 .tree-item {
     display: flex;
     align-items: center;
-    padding: 6px 12px 6px 16px;
+    padding: 8px 12px 8px 16px;
     cursor: pointer;
     user-select: none;
     transition: background 0.15s;
+    margin: 2px 8px;
+    border-radius: 8px;
+    position: relative;
 }
 
 .tree-item:hover {
-    background: #f5f5f5;
+    background: rgba(31, 110, 140, 0.08);
 }
 
 .tree-item.selected {
-    background: #e3f2fd;
+    background: rgba(31, 110, 140, 0.14);
+}
+
+.tree-item.selected::before {
+    content: '';
+    position: absolute;
+    left: 0;
+    top: 6px;
+    bottom: 6px;
+    width: 3px;
+    background: var(--color-primary);
+    border-radius: 2px;
 }
 
 .tree-item.modified .tree-item-name::after {
@@ -251,10 +345,22 @@
     text-align: center;
 }
 
+.tree-item-badge {
+    margin-left: 8px;
+    font-size: 10px;
+    letter-spacing: 0.4px;
+    color: var(--color-muted);
+    opacity: 0.65;
+    text-transform: uppercase;
+}
+
+.tree-item:hover .tree-item-badge {
+    opacity: 0.85;
+}
 .tree-item-name {
     flex: 1;
     font-size: 13px;
-    color: #333;
+    color: var(--color-text);
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
@@ -272,7 +378,7 @@
     justify-content: center;
     margin-right: 4px;
     font-size: 10px;
-    color: #666;
+    color: var(--color-muted);
     transition: transform 0.2s;
 }
 
@@ -300,7 +406,7 @@
 
 .resizer:hover,
 .resizer.dragging {
-    background: #3498db;
+    background: var(--color-primary);
 }
 
 /* ==================== 编辑区域 ==================== */
@@ -312,7 +418,7 @@
     min-width: 300px;
     min-height: 0;
     /* 关键：允许 flex 子元素正确计算高度 */
-    background: #fff;
+    background: var(--color-bg);
     overflow: hidden;
 }
 
@@ -321,8 +427,8 @@
     display: flex;
     align-items: center;
     height: 40px;
-    background: #f5f5f5;
-    border-bottom: 1px solid #e0e0e0;
+    background: var(--color-panel);
+    border-bottom: 1px solid var(--color-border);
     overflow: hidden;
 }
 
@@ -339,7 +445,7 @@
 
 .tab-empty {
     padding: 0 16px;
-    color: #999;
+    color: var(--color-muted);
     font-size: 13px;
     line-height: 40px;
 }
@@ -352,22 +458,22 @@
     height: 40px;
     background: transparent;
     border: none;
-    border-right: 1px solid #e0e0e0;
+    border-right: 1px solid var(--color-border);
     cursor: pointer;
     font-size: 13px;
-    color: #666;
+    color: var(--color-muted);
     white-space: nowrap;
     transition: all 0.15s;
 }
 
 .tab-item:hover {
-    background: #fff;
+    background: var(--color-surface);
 }
 
 .tab-item.active {
-    background: #fff;
-    color: #333;
-    border-bottom: 2px solid #3498db;
+    background: var(--color-surface);
+    color: var(--color-text);
+    border-bottom: 2px solid var(--color-primary);
     margin-bottom: -1px;
 }
 
@@ -391,8 +497,8 @@
 }
 
 .tab-close:hover {
-    background: #e0e0e0;
-    color: #333;
+    background: rgba(31, 110, 140, 0.12);
+    color: var(--color-text);
 }
 
 /* 编辑器内容 */
@@ -412,7 +518,7 @@
     align-items: center;
     justify-content: center;
     height: 100%;
-    color: #999;
+    color: var(--color-muted);
 }
 
 .placeholder-icon {
@@ -450,10 +556,18 @@
 /* IR 模式特殊处理 */
 .vditor-container .vditor-ir {
     overflow: auto !important;
-    /* 恢复滚动 */
     height: 100% !important;
     min-height: 0;
     flex: 1;
+}
+
+/* IR 模式下的 pre.vditor-reset 需要正确显示 */
+.vditor-container .vditor-ir pre.vditor-reset {
+    min-height: auto !important;
+    height: auto !important;
+    overflow: visible !important;
+    background: var(--color-surface) !important;
+    color: var(--color-text) !important;
 }
 
 /* 隐藏可能导致双滚动条的通用内容容器滚动，但保留布局属性 */
@@ -464,13 +578,88 @@
     overflow: hidden !important;
 }
 
-.vditor-container .vditor-ir .vditor-reset {
+.vditor-container .vditor-reset {
     min-height: 100%;
     height: auto;
-    max-width: 1200px !important;
+    max-width: 820px !important;
     margin: 0 auto !important;
-    padding: 20px 40px 50px 40px !important;
+    padding: var(--content-padding) !important;
     box-sizing: border-box;
+    background: var(--color-surface);
+    border: 1px solid var(--color-border);
+    border-radius: 14px;
+    box-shadow: var(--shadow-card);
+    color: var(--color-text);
+    font-size: var(--content-font-size);
+    line-height: var(--content-line-height);
+}
+
+.vditor-container .vditor-reset h1,
+.vditor-container .vditor-reset h2,
+.vditor-container .vditor-reset h3,
+.vditor-container .vditor-reset h4 {
+    font-family: "Source Han Serif SC", "Noto Serif CJK SC", "SimSun", serif;
+    color: var(--color-text);
+    margin-top: 1.4em;
+}
+
+.vditor-container .vditor-reset h1 {
+    font-size: 1.8em;
+    border-bottom: 1px solid var(--color-border);
+    padding-bottom: 0.4em;
+}
+
+.vditor-container .vditor-reset h2 {
+    font-size: 1.4em;
+}
+
+.vditor-container .vditor-reset h3 {
+    font-size: 1.2em;
+}
+
+.vditor-container .vditor-reset p {
+    margin: 0.8em 0;
+    color: var(--color-text);
+}
+
+.vditor-container .vditor-reset code {
+    font-family: "JetBrains Mono", "Fira Code", "Consolas", monospace;
+    background: rgba(31, 110, 140, 0.08);
+    padding: 0 4px;
+    border-radius: 4px;
+}
+
+.vditor-container .vditor-reset pre code {
+    display: block;
+    padding: 12px 14px;
+    border-radius: 10px;
+    overflow-x: auto;
+    /* 背景色和文字颜色由 highlight.js 主题控制 */
+}
+
+.vditor-container .vditor-reset blockquote {
+    margin: 1em 0;
+    padding: 10px 16px;
+    background: rgba(31, 110, 140, 0.08);
+    border-left: 3px solid var(--color-primary);
+    color: var(--color-muted);
+}
+
+.vditor-container .vditor-reset table {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 1em 0;
+}
+
+.vditor-container .vditor-reset th,
+.vditor-container .vditor-reset td {
+    border: 1px solid var(--color-border);
+    padding: 8px 10px;
+}
+
+.vditor-container .vditor-reset th {
+    background: rgba(15, 31, 43, 0.04);
+    text-align: left;
 }
 
 /* WYSIWYG 和 SV 模式 */
@@ -480,6 +669,13 @@
     height: 100% !important;
     min-height: 0;
     flex: 1;
+}
+
+/* WYSIWYG 模式内容区域宽度控制 */
+.vditor-container .vditor-wysiwyg .vditor-reset {
+    max-width: 820px !important;
+    margin: 0 auto !important;
+    padding: var(--content-padding) !important;
 }
 
 /* 编辑器预览区域滚动 */
@@ -501,7 +697,7 @@
         linear-gradient(45deg, #eee 25%, transparent 25%, transparent 75%, #eee 75%, #eee);
     background-size: 20px 20px;
     background-position: 0 0, 10px 10px;
-    background-color: #fff;
+    background-color: var(--color-surface);
     overflow: hidden;
 }
 
@@ -528,7 +724,8 @@
     z-index: 99999 !important;
     margin: 0 !important;
     padding: 0 !important;
-    background: #fff !important;
+    background: var(--color-bg) !important;
+    color: var(--color-text) !important;
     border: none !important;
     border-radius: 0 !important;
 }
@@ -566,18 +763,18 @@ body.vditor-fullscreen-active {
 /* ==================== Git 面板 ==================== */
 
 .git-panel {
-    width: 280px;
+    width: 320px;
     min-width: 200px;
     max-width: 400px;
-    background: #fff;
-    border-left: 1px solid #e0e0e0;
+    background: var(--color-panel);
+    border-left: 1px solid var(--color-border);
     display: flex;
     flex-direction: column;
     transition: width 0.2s, margin-right 0.2s;
 }
 
 .git-panel.collapsed {
-    margin-right: -280px;
+    margin-right: -320px;
 }
 
 .git-content {
@@ -588,7 +785,7 @@ body.vditor-fullscreen-active {
 
 .git-loading {
     text-align: center;
-    color: #999;
+    color: var(--color-muted);
     padding: 20px;
 }
 
@@ -596,8 +793,10 @@ body.vditor-fullscreen-active {
 .git-status {
     margin-bottom: 16px;
     padding: 12px;
-    background: #f8f9fa;
-    border-radius: 6px;
+    background: var(--color-surface);
+    border-radius: 10px;
+    border: 1px solid var(--color-border);
+    box-shadow: var(--shadow-card);
 }
 
 .git-branch {
@@ -605,7 +804,7 @@ body.vditor-fullscreen-active {
     align-items: center;
     gap: 8px;
     font-size: 13px;
-    color: #333;
+    color: var(--color-text);
 }
 
 .git-branch-icon {
@@ -619,24 +818,24 @@ body.vditor-fullscreen-active {
     padding: 2px 8px;
     margin-left: 8px;
     font-size: 11px;
-    background: #e8f5e9;
-    color: #27ae60;
+    background: rgba(31, 110, 140, 0.12);
+    color: var(--color-primary);
     border-radius: 4px;
     cursor: pointer;
     transition: all 0.2s;
 }
 
 .git-remote-tag:hover {
-    background: #c8e6c9;
+    background: rgba(31, 110, 140, 0.22);
 }
 
 .git-remote-tag.git-no-remote {
-    background: #fff3e0;
-    color: #f57c00;
+    background: rgba(227, 168, 87, 0.2);
+    color: #b56d1f;
 }
 
 .git-remote-tag.git-no-remote:hover {
-    background: #ffe0b2;
+    background: rgba(227, 168, 87, 0.32);
 }
 
 /* 变更列表 */
@@ -650,13 +849,13 @@ body.vditor-fullscreen-active {
 .git-changes-title {
     font-size: 13px;
     font-weight: 500;
-    color: #333;
+    color: var(--color-text);
 }
 
 .git-changes-count {
     font-size: 12px;
-    color: #666;
-    background: #e0e0e0;
+    color: var(--color-muted);
+    background: rgba(15, 31, 43, 0.08);
     padding: 2px 8px;
     border-radius: 10px;
 }
@@ -672,7 +871,7 @@ body.vditor-fullscreen-active {
 }
 
 .git-change-item:hover {
-    background: #f5f5f5;
+    background: rgba(31, 110, 140, 0.08);
 }
 
 .git-change-item input[type="checkbox"] {
@@ -705,7 +904,7 @@ body.vditor-fullscreen-active {
 .git-change-path {
     flex: 1;
     font-size: 12px;
-    color: #333;
+    color: var(--color-text);
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
@@ -715,14 +914,14 @@ body.vditor-fullscreen-active {
 .git-commit-section {
     margin-top: 16px;
     padding-top: 16px;
-    border-top: 1px solid #e0e0e0;
+    border-top: 1px solid var(--color-border);
 }
 
 .git-commit-input {
     width: 100%;
     padding: 10px;
-    border: 1px solid #ddd;
-    border-radius: 4px;
+    border: 1px solid var(--color-border);
+    border-radius: 8px;
     font-size: 13px;
     resize: vertical;
     min-height: 60px;
@@ -731,7 +930,8 @@ body.vditor-fullscreen-active {
 
 .git-commit-input:focus {
     outline: none;
-    border-color: #3498db;
+    border-color: var(--color-primary);
+    box-shadow: 0 0 0 3px rgba(31, 110, 140, 0.12);
 }
 
 .git-actions {
@@ -749,10 +949,10 @@ body.vditor-fullscreen-active {
 
 .context-menu {
     position: fixed;
-    background: #fff;
-    border: 1px solid #ddd;
-    border-radius: 6px;
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+    background: var(--color-surface);
+    border: 1px solid var(--color-border);
+    border-radius: 10px;
+    box-shadow: var(--shadow-panel);
     min-width: 160px;
     z-index: 1000;
     padding: 4px 0;
@@ -766,12 +966,12 @@ body.vditor-fullscreen-active {
 }
 
 .context-item:hover {
-    background: #f5f5f5;
+    background: rgba(31, 110, 140, 0.08);
 }
 
 .context-divider {
     height: 1px;
-    background: #e0e0e0;
+    background: var(--color-border);
     margin: 4px 0;
 }
 
@@ -787,7 +987,7 @@ body.vditor-fullscreen-active {
     .file-tree-panel {
         position: absolute;
         left: 0;
-        top: 48px;
+        top: 52px;
         bottom: 0;
         z-index: 100;
         box-shadow: 2px 0 8px rgba(0, 0, 0, 0.1);
@@ -800,7 +1000,7 @@ body.vditor-fullscreen-active {
     .git-panel {
         position: absolute;
         right: 0;
-        top: 48px;
+        top: 52px;
         bottom: 0;
         z-index: 100;
         box-shadow: -2px 0 8px rgba(0, 0, 0, 0.1);
@@ -833,7 +1033,7 @@ body.vditor-fullscreen-active {
 
 .toast {
     padding: 12px 20px;
-    background: #333;
+    background: #1f2a33;
     color: #fff;
     border-radius: 6px;
     font-size: 14px;
@@ -849,15 +1049,15 @@ body.vditor-fullscreen-active {
 }
 
 .toast-success {
-    background: #27ae60;
+    background: #1f6e8c;
 }
 
 .toast-error {
-    background: #e74c3c;
+    background: #c2514a;
 }
 
 .toast-warning {
-    background: #f39c12;
+    background: #d08a2f;
 }
 
 /* ==================== 滚动条样式 ==================== */
@@ -874,13 +1074,13 @@ body.vditor-fullscreen-active {
 
 .file-tree::-webkit-scrollbar-thumb,
 .git-content::-webkit-scrollbar-thumb {
-    background: #ccc;
+    background: rgba(15, 31, 43, 0.2);
     border-radius: 3px;
 }
 
 .file-tree::-webkit-scrollbar-thumb:hover,
 .git-content::-webkit-scrollbar-thumb:hover {
-    background: #aaa;
+    background: rgba(15, 31, 43, 0.35);
 }
 
 /* ==================== VS Code 风格 Git 面板 ==================== */
@@ -907,29 +1107,29 @@ body.vditor-fullscreen-active {
     cursor: pointer;
     font-size: 12px;
     font-weight: 500;
-    color: #333;
-    background: #f5f5f5;
-    border-radius: 4px;
+    color: var(--color-text);
+    background: rgba(15, 31, 43, 0.04);
+    border-radius: 8px;
     user-select: none;
 }
 
 .git-section-header:hover {
-    background: #eee;
+    background: rgba(31, 110, 140, 0.08);
 }
 
 .git-section-toggle {
     font-size: 10px;
     transition: transform 0.15s;
-    color: #666;
+    color: var(--color-muted);
 }
 
 .git-section-count {
     margin-left: auto;
-    background: #e0e0e0;
+    background: rgba(15, 31, 43, 0.08);
     padding: 1px 6px;
     border-radius: 8px;
     font-size: 11px;
-    color: #666;
+    color: var(--color-muted);
 }
 
 .git-section-actions {
@@ -953,8 +1153,8 @@ body.vditor-fullscreen-active {
 }
 
 .git-section-btn:hover {
-    background: #ddd;
-    color: #333;
+    background: rgba(31, 110, 140, 0.12);
+    color: var(--color-text);
 }
 
 /* 区域内容 */
@@ -964,7 +1164,7 @@ body.vditor-fullscreen-active {
 
 .git-empty-hint {
     padding: 8px 12px;
-    color: #999;
+    color: var(--color-muted);
     font-size: 12px;
     font-style: italic;
 }
@@ -981,7 +1181,7 @@ body.vditor-fullscreen-active {
 }
 
 .git-file-item:hover {
-    background: #f0f0f0;
+    background: rgba(31, 110, 140, 0.08);
 }
 
 .git-file-item:hover .git-file-actions {
@@ -993,7 +1193,7 @@ body.vditor-fullscreen-active {
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
-    color: #333;
+    color: var(--color-text);
 }
 
 .git-file-actions {
@@ -1018,13 +1218,13 @@ body.vditor-fullscreen-active {
 }
 
 .git-file-btn:hover {
-    background: #ddd;
-    color: #333;
+    background: rgba(31, 110, 140, 0.12);
+    color: var(--color-text);
 }
 
 .git-file-btn.git-discard-btn:hover {
-    background: #fee;
-    color: #e74c3c;
+    background: rgba(194, 81, 74, 0.15);
+    color: #c2514a;
 }
 
 /* 状态颜色 */
@@ -1062,4 +1262,243 @@ body.vditor-fullscreen-active {
 .btn-sm {
     padding: 4px 8px !important;
     font-size: 12px !important;
+}
+
+.focus-mode .file-tree-panel,
+.focus-mode .git-panel,
+.focus-mode .resizer {
+    display: none;
+}
+
+.focus-mode .editor-section {
+    border-left: none;
+    border-right: none;
+}
+
+/* ==================== Theme Refresh Overrides ==================== */
+.editor-header {
+    background: linear-gradient(180deg, var(--color-header) 0%, var(--color-header-alt) 100%);
+    box-shadow: var(--shadow-sm);
+}
+
+.header-right {
+    position: relative;
+}
+
+.header-btn {
+    border-radius: 10px;
+    border: 1px solid rgba(255, 255, 255, 0.18);
+    background: rgba(255, 255, 255, 0.08);
+    backdrop-filter: blur(6px);
+}
+
+.header-btn:hover {
+    background: rgba(255, 255, 255, 0.18);
+}
+
+.header-btn-theme {
+    width: auto;
+    padding: 0 10px;
+    gap: 6px;
+}
+
+.header-btn-theme .theme-text {
+    font-size: 12px;
+    letter-spacing: 0.2px;
+}
+
+.header-btn-theme .theme-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 999px;
+    background: var(--color-primary);
+    box-shadow: 0 0 0 3px var(--color-primary-soft);
+}
+
+.panel-header {
+    background: var(--color-panel-strong);
+}
+
+.panel-btn {
+    border-radius: 10px;
+    background: var(--color-surface);
+    box-shadow: var(--shadow-sm);
+}
+
+.panel-btn:hover {
+    box-shadow: var(--shadow-md);
+}
+
+.search-box input:focus {
+    box-shadow: 0 0 0 3px var(--color-ring);
+}
+
+.file-tree-panel,
+.git-panel {
+    background: var(--color-panel);
+}
+
+.tree-item {
+    border: 1px solid transparent;
+    transition: background 0.18s ease, transform 0.18s ease, border-color 0.18s ease;
+}
+
+.tree-item[draggable="true"] {
+    cursor: grab;
+}
+
+.tree-item.dragging {
+    cursor: grabbing;
+}
+
+.tree-item:hover {
+    transform: translateX(2px);
+}
+
+.tree-item.selected {
+    background: var(--color-primary-soft);
+    border: 1px solid var(--color-primary-soft);
+}
+
+.tree-item.selected::before {
+    border-radius: 999px;
+}
+
+.tree-folder-toggle {
+    transition: transform 0.2s ease, opacity 0.2s ease;
+}
+
+.tree-children {
+    display: grid;
+    grid-template-rows: 1fr;
+    transition: grid-template-rows 0.2s ease, opacity 0.2s ease;
+    overflow: hidden;
+}
+
+.tree-children > * {
+    min-height: 0;
+}
+
+.tree-children.collapsed {
+    grid-template-rows: 0fr;
+    opacity: 0;
+}
+
+.tree-item-icon {
+    width: 30px;
+    height: 22px;
+    border-radius: 8px;
+    background: var(--color-panel-strong);
+    color: var(--color-text-secondary);
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 0.4px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border: 1px solid var(--color-border);
+    text-transform: uppercase;
+}
+
+.tree-item-icon.icon-folder {
+    background: var(--color-primary-soft);
+    color: var(--color-primary);
+    border-color: var(--color-primary-light);
+}
+
+.tree-item-icon.icon-markdown {
+    background: rgba(20, 184, 166, 0.16);
+    color: #0f766e;
+    border-color: rgba(20, 184, 166, 0.25);
+}
+
+.tree-item-icon.icon-image {
+    background: rgba(14, 165, 233, 0.16);
+    color: #0369a1;
+    border-color: rgba(14, 165, 233, 0.25);
+}
+
+.tree-item-icon.icon-config {
+    background: rgba(45, 212, 191, 0.16);
+    color: #0f766e;
+    border-color: rgba(45, 212, 191, 0.25);
+}
+
+.tree-item-icon.icon-script {
+    background: rgba(59, 130, 246, 0.18);
+    color: #1d4ed8;
+    border-color: rgba(59, 130, 246, 0.25);
+}
+
+.tree-item-icon.icon-style {
+    background: rgba(14, 116, 144, 0.16);
+    color: #0e7490;
+    border-color: rgba(14, 116, 144, 0.25);
+}
+
+.tree-item-icon.icon-markup {
+    background: rgba(56, 189, 248, 0.18);
+    color: #0369a1;
+    border-color: rgba(56, 189, 248, 0.25);
+}
+
+.tree-item-icon.icon-text,
+.tree-item-icon.icon-file {
+    background: rgba(148, 163, 184, 0.2);
+    color: var(--color-text-secondary);
+    border-color: rgba(148, 163, 184, 0.25);
+}
+
+.tree-item.dragging {
+    opacity: 0.5;
+}
+
+.tree-item.drop-before::before,
+.tree-item.drop-after::after {
+    content: '';
+    position: absolute;
+    left: 12px;
+    right: 12px;
+    height: 2px;
+    background: var(--color-primary);
+    box-shadow: 0 0 0 2px var(--color-primary-soft);
+}
+
+.tree-item.drop-before::before {
+    top: 4px;
+}
+
+.tree-item.drop-after::after {
+    bottom: 4px;
+}
+
+.resizer {
+    width: 6px;
+}
+
+.resizer:hover,
+.resizer.dragging {
+    background: var(--color-primary);
+    box-shadow: 0 0 0 3px var(--color-primary-soft);
+}
+
+.vditor-container .vditor-reset {
+    border-radius: 16px;
+    border: 1px solid var(--color-border);
+    box-shadow: var(--shadow-card);
+    background: var(--color-surface);
+}
+
+/* 代码块样式由 highlight.js 主题控制，这里只添加边框 */
+.vditor-container .vditor-reset pre code {
+    border: 1px solid rgba(128, 128, 128, 0.15);
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .tree-item,
+    .tree-children,
+    .resizer,
+    .header-btn {
+        transition: none;
+    }
 }

@@ -126,6 +126,7 @@ func (h *APIHandler) RegisterRoutes(mux *http.ServeMux) {
 	mux.HandleFunc("/api/editor/module", h.handleEditorModule)
 	mux.HandleFunc("/api/editor/module/", h.handleEditorModuleWithPath)
 	mux.HandleFunc("/api/editor/tree", h.handleEditorTree)
+	mux.HandleFunc("/api/editor/tree/order", h.handleEditorTreeOrder)
 	mux.HandleFunc("/api/editor/upload", h.handleEditorUpload)
 	mux.HandleFunc("/api/editor/image/", h.handleEditorImage) // 图片删除路由
 	mux.HandleFunc("/api/src/", h.handleSrcStatic)
@@ -1033,6 +1034,40 @@ func (h *APIHandler) handleEditorTree(w http.ResponseWriter, r *http.Request) {
 
 	h.successResponse(w, map[string]interface{}{
 		"tree": tree,
+	})
+}
+
+// EditorTreeOrderRequest 文件树排序请求
+type EditorTreeOrderRequest struct {
+	ParentPath string   `json:"parentPath"`
+	Order      []string `json:"order"`
+}
+
+// handleEditorTreeOrder 保存文件树排序
+func (h *APIHandler) handleEditorTreeOrder(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		h.methodNotAllowed(w)
+		return
+	}
+
+	var req EditorTreeOrderRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		h.errorResponse(w, http.StatusBadRequest, "请求格式错误", ErrInvalidInput)
+		return
+	}
+
+	if err := h.editorSvc.SaveTreeOrder(req.ParentPath, req.Order); err != nil {
+		switch err {
+		case service.ErrPathForbidden:
+			h.errorResponse(w, http.StatusForbidden, err.Error(), "PATH_FORBIDDEN")
+		default:
+			h.errorResponse(w, http.StatusInternalServerError, err.Error(), "")
+		}
+		return
+	}
+
+	h.successResponse(w, map[string]interface{}{
+		"message": "排序已保存",
 	})
 }
 

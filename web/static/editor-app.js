@@ -21,20 +21,68 @@ const state = {
     selectedChanges: new Set(),
 
     // 布局状态
-    fileTreeWidth: 260,
-    gitPanelWidth: 280,
+    fileTreeWidth: 240,
+    gitPanelWidth: 320,
     fileTreeCollapsed: false,
-    gitPanelCollapsed: false,
+    gitPanelCollapsed: true,
+    focusMode: false,
 
     // 操作状态
     contextMenuTarget: null,
     pendingCloseTabId: null,
-    renameTarget: null
+    renameTarget: null,
+
+    // 拖拽排序
+    draggingPath: null,
+    draggingParent: null
+};
+
+// ==================== 代码块主题配置 ====================
+
+const CODE_THEMES = {
+    'github': {
+        name: 'GitHub',
+        description: '经典 GitHub 风格',
+        style: 'github',
+        darkStyle: 'github-dark',
+        previewColors: ['#24292e', '#d73a49', '#6f42c1', '#22863a']
+    },
+    'atom-one': {
+        name: 'One Dark',
+        description: 'Atom One Dark 配色',
+        style: 'atom-one-light',
+        darkStyle: 'atom-one-dark',
+        previewColors: ['#282c34', '#e06c75', '#c678dd', '#98c379']
+    },
+    'vs': {
+        name: 'VS Code',
+        description: 'Visual Studio Code 风格',
+        style: 'vs',
+        darkStyle: 'vs2015',
+        previewColors: ['#1e1e1e', '#569cd6', '#ce9178', '#4ec9b0']
+    },
+    'monokai': {
+        name: 'Monokai',
+        description: '经典 Monokai 配色',
+        style: 'monokai',
+        darkStyle: 'monokai-sublime',
+        previewColors: ['#272822', '#f92672', '#ae81ff', '#a6e22e']
+    }
+};
+
+const themeState = {
+    theme: 'light',
+    accent: '#1a8fbf',
+    contentStyle: 'comfortable',
+    codeTheme: 'github',      // 代码块主题 ID
+    codeThemeManual: false    // 是否手动选择
 };
 
 // ==================== 初始化 ====================
 
 document.addEventListener('DOMContentLoaded', function () {
+    initTheme();
+
     // 加载布局偏好
     loadLayoutPreferences();
 
@@ -52,6 +100,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
     // 应用布局
     applyLayout();
+    applyFocusMode();
 });
 
 // ==================== 事件绑定 ====================
@@ -60,6 +109,10 @@ function bindEvents() {
     // 面板切换按钮
     document.getElementById('toggleFileTree').addEventListener('click', toggleFileTree);
     document.getElementById('toggleGitPanel').addEventListener('click', toggleGitPanel);
+    const focusToggle = document.getElementById('toggleFocusMode');
+    if (focusToggle) {
+        focusToggle.addEventListener('click', toggleFocusMode);
+    }
 
     // 文件树操作
     document.getElementById('newFileBtn').addEventListener('click', showNewFileModal);
@@ -92,6 +145,8 @@ function bindEvents() {
         item.addEventListener('click', onContextAction);
     });
 
+    initThemeControls();
+
     // 键盘快捷键
     document.addEventListener('keydown', onKeyDown);
 
@@ -100,6 +155,288 @@ function bindEvents() {
 
     // 返回按钮
     document.querySelector('.back-btn').addEventListener('click', onBackClick);
+}
+
+// ==================== 主题控制 ====================
+
+function initTheme() {
+    const savedTheme = localStorage.getItem('uiTheme');
+    const savedAccent = localStorage.getItem('uiAccent');
+    const savedContentStyle = localStorage.getItem('uiContentStyle');
+    const savedCodeTheme = localStorage.getItem('codeTheme');
+    const savedCodeThemeManual = localStorage.getItem('codeThemeManual');
+    
+    if (savedTheme) {
+        themeState.theme = savedTheme;
+    } else if (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) {
+        themeState.theme = 'dark';
+    }
+    if (savedAccent) {
+        themeState.accent = savedAccent;
+    }
+    if (savedContentStyle) {
+        themeState.contentStyle = savedContentStyle;
+    }
+    // 加载代码块主题设置
+    if (savedCodeTheme && CODE_THEMES[savedCodeTheme]) {
+        themeState.codeTheme = savedCodeTheme;
+    }
+    themeState.codeThemeManual = savedCodeThemeManual === '1';
+    
+    applyTheme();
+}
+
+function initThemeControls() {
+    const toggleBtn = document.getElementById('themeToggleBtn');
+    const panel = document.getElementById('themePanel');
+    const accentInput = document.getElementById('themeAccentInput');
+
+    if (toggleBtn && panel) {
+        toggleBtn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            panel.classList.toggle('is-open');
+        });
+
+        panel.addEventListener('click', (e) => {
+            e.stopPropagation();
+        });
+
+        document.addEventListener('click', () => {
+            panel.classList.remove('is-open');
+        });
+    }
+
+    document.querySelectorAll('[data-theme-option]').forEach(btn => {
+        btn.addEventListener('click', () => {
+            const nextTheme = btn.getAttribute('data-theme-option');
+            if (!nextTheme) return;
+            themeState.theme = nextTheme;
+            localStorage.setItem('uiTheme', themeState.theme);
+            applyTheme();
+        });
+    });
+
+    document.querySelectorAll('[data-accent]').forEach(btn => {
+        btn.addEventListener('click', () => {
+            const accent = btn.getAttribute('data-accent');
+            if (!accent) return;
+            setAccent(accent);
+        });
+    });
+
+    document.querySelectorAll('[data-content-style]').forEach(btn => {
+        btn.addEventListener('click', () => {
+            const style = btn.getAttribute('data-content-style');
+            if (!style) return;
+            setContentStyle(style);
+        });
+    });
+
+    if (accentInput) {
+        accentInput.value = themeState.accent;
+        accentInput.addEventListener('input', (e) => {
+            setAccent(e.target.value);
+        });
+    }
+
+    // 代码块主题选择器事件绑定
+    document.querySelectorAll('[data-code-theme]').forEach(btn => {
+        btn.addEventListener('click', () => {
+            const themeId = btn.getAttribute('data-code-theme');
+            if (!themeId) return;
+            setCodeTheme(themeId, true);
+        });
+    });
+}
+
+function applyTheme() {
+    document.documentElement.setAttribute('data-theme', themeState.theme);
+    setAccent(themeState.accent, true);
+    applyContentStyle();
+    updateThemeControls();
+    // 应用代码块主题（会根据当前整体主题选择 light/dark 变体）
+    applyCodeTheme();
+    updateCodeThemeControls();
+}
+
+function updateThemeControls() {
+    document.querySelectorAll('[data-theme-option]').forEach(btn => {
+        const option = btn.getAttribute('data-theme-option');
+        btn.classList.toggle('active', option === themeState.theme);
+    });
+    document.querySelectorAll('[data-content-style]').forEach(btn => {
+        const style = btn.getAttribute('data-content-style');
+        btn.classList.toggle('active', style === themeState.contentStyle);
+    });
+    const accentInput = document.getElementById('themeAccentInput');
+    if (accentInput) accentInput.value = themeState.accent;
+}
+
+function updateHljsTheme() {
+    applyCodeTheme();
+}
+
+// 设置代码块主题
+function setCodeTheme(themeId, isManual = true) {
+    if (!CODE_THEMES[themeId]) return;
+    
+    themeState.codeTheme = themeId;
+    themeState.codeThemeManual = isManual;
+    
+    localStorage.setItem('codeTheme', themeId);
+    localStorage.setItem('codeThemeManual', isManual ? '1' : '0');
+    
+    applyCodeTheme();
+    updateCodeThemeControls();
+}
+
+// 应用代码块主题
+function applyCodeTheme() {
+    const theme = CODE_THEMES[themeState.codeTheme];
+    if (!theme) return;
+    
+    const styleName = themeState.theme === 'dark' ? theme.darkStyle : theme.style;
+    const hljsLink = document.getElementById('hljsTheme');
+    if (hljsLink) {
+        hljsLink.href = `/static/vendor/vditor/dist/js/highlight.js/styles/${styleName}.min.css`;
+    }
+}
+
+// 更新代码块主题 UI 控件状态
+function updateCodeThemeControls() {
+    document.querySelectorAll('[data-code-theme]').forEach(btn => {
+        const themeId = btn.getAttribute('data-code-theme');
+        btn.classList.toggle('active', themeId === themeState.codeTheme);
+    });
+}
+
+function getHljsStyle() {
+    const theme = CODE_THEMES[themeState.codeTheme];
+    if (!theme) return 'github';
+    return themeState.theme === 'dark' ? theme.darkStyle : theme.style;
+}
+
+function setAccent(color, skipPersist) {
+    if (!color) return;
+    themeState.accent = color;
+    if (!skipPersist) {
+        localStorage.setItem('uiAccent', color);
+    }
+    const root = document.documentElement;
+    const hover = adjustLightness(color, themeState.theme === 'dark' ? 0.08 : -0.08);
+    const soft = rgba(color, themeState.theme === 'dark' ? 0.22 : 0.12);
+    const light = rgba(color, themeState.theme === 'dark' ? 0.28 : 0.16);
+    const dark = adjustLightness(color, themeState.theme === 'dark' ? 0.18 : -0.18);
+    const ring = rgba(color, themeState.theme === 'dark' ? 0.45 : 0.28);
+    root.style.setProperty('--color-primary', color);
+    root.style.setProperty('--color-primary-hover', hover);
+    root.style.setProperty('--color-primary-soft', soft);
+    root.style.setProperty('--color-primary-light', light);
+    root.style.setProperty('--color-primary-dark', dark);
+    root.style.setProperty('--color-ring', ring);
+    updateThemeControls();
+}
+
+function setContentStyle(style) {
+    themeState.contentStyle = style;
+    localStorage.setItem('uiContentStyle', style);
+    applyContentStyle();
+    updateThemeControls();
+}
+
+function applyContentStyle() {
+    document.body.dataset.contentStyle = themeState.contentStyle;
+}
+
+function rgba(hex, alpha) {
+    const rgb = hexToRgb(hex);
+    if (!rgb) return hex;
+    return `rgba(${rgb.r}, ${rgb.g}, ${rgb.b}, ${alpha})`;
+}
+
+function adjustLightness(hex, delta) {
+    const rgb = hexToRgb(hex);
+    if (!rgb) return hex;
+    const hsl = rgbToHsl(rgb.r, rgb.g, rgb.b);
+    hsl.l = clamp(hsl.l + delta, 0, 1);
+    return hslToHex(hsl.h, hsl.s, hsl.l);
+}
+
+function clamp(val, min, max) {
+    return Math.min(max, Math.max(min, val));
+}
+
+function hexToRgb(hex) {
+    const normalized = hex.replace('#', '').trim();
+    if (normalized.length !== 6) return null;
+    const num = parseInt(normalized, 16);
+    if (Number.isNaN(num)) return null;
+    return {
+        r: (num >> 16) & 255,
+        g: (num >> 8) & 255,
+        b: num & 255
+    };
+}
+
+function rgbToHsl(r, g, b) {
+    const rn = r / 255;
+    const gn = g / 255;
+    const bn = b / 255;
+    const max = Math.max(rn, gn, bn);
+    const min = Math.min(rn, gn, bn);
+    let h = 0;
+    let s = 0;
+    const l = (max + min) / 2;
+
+    if (max !== min) {
+        const d = max - min;
+        s = l > 0.5 ? d / (2 - max - min) : d / (max + min);
+        switch (max) {
+            case rn:
+                h = (gn - bn) / d + (gn < bn ? 6 : 0);
+                break;
+            case gn:
+                h = (bn - rn) / d + 2;
+                break;
+            default:
+                h = (rn - gn) / d + 4;
+        }
+        h /= 6;
+    }
+    return { h, s, l };
+}
+
+function hslToHex(h, s, l) {
+    const hue2rgb = (p, q, t) => {
+        let tVal = t;
+        if (tVal < 0) tVal += 1;
+        if (tVal > 1) tVal -= 1;
+        if (tVal < 1 / 6) return p + (q - p) * 6 * tVal;
+        if (tVal < 1 / 2) return q;
+        if (tVal < 2 / 3) return p + (q - p) * (2 / 3 - tVal) * 6;
+        return p;
+    };
+
+    let r;
+    let g;
+    let b;
+
+    if (s === 0) {
+        r = g = b = l;
+    } else {
+        const q = l < 0.5 ? l * (1 + s) : l + s - l * s;
+        const p = 2 * l - q;
+        r = hue2rgb(p, q, h + 1 / 3);
+        g = hue2rgb(p, q, h);
+        b = hue2rgb(p, q, h - 1 / 3);
+    }
+
+    return `#${toHex(r)}${toHex(g)}${toHex(b)}`;
+}
+
+function toHex(val) {
+    const hex = Math.round(val * 255).toString(16);
+    return hex.length === 1 ? '0' + hex : hex;
 }
 
 // ==================== 文件树功能 ====================
@@ -135,10 +472,10 @@ function renderFileTree() {
     }
 
     container.innerHTML = '';
-    renderTreeNode(state.fileTree, container, 0);
+    renderTreeNode(state.fileTree, container, 0, '');
 }
 
-function renderTreeNode(node, container, level) {
+function renderTreeNode(node, container, level, parentPath) {
     if (!node.children) return;
 
     // 过滤和排序
@@ -148,18 +485,19 @@ function renderTreeNode(node, container, level) {
     });
 
     // 目录在前，文件在后
-    children.sort((a, b) => {
-        if (a.type === 'directory' && b.type !== 'directory') return -1;
-        if (a.type !== 'directory' && b.type === 'directory') return 1;
-        return a.name.localeCompare(b.name);
-    });
-
     children.forEach(child => {
         const item = document.createElement('div');
         item.className = 'tree-item';
         item.style.paddingLeft = (16 + level * 16) + 'px';
         item.dataset.path = child.path;
         item.dataset.type = child.type;
+        item.dataset.parent = parentPath;
+        item.draggable = !state.searchQuery;
+        item.addEventListener('dragstart', onTreeDragStart);
+        item.addEventListener('dragover', onTreeDragOver);
+        item.addEventListener('dragleave', onTreeDragLeave);
+        item.addEventListener('drop', onTreeDrop);
+        item.addEventListener('dragend', onTreeDragEnd);
 
         if (child.type === 'directory') {
             const isExpanded = state.expandedDirs.has(child.path);
@@ -179,6 +517,9 @@ function renderTreeNode(node, container, level) {
             icon.className = 'tree-item-icon';
             icon.textContent = isExpanded ? '📂' : '📁';
             item.appendChild(icon);
+            const folderIcon = getFileIconInfo(child, isExpanded);
+            icon.className = folderIcon.className;
+            icon.textContent = folderIcon.label;
 
             // 名称
             const name = document.createElement('span');
@@ -196,23 +537,25 @@ function renderTreeNode(node, container, level) {
                 const childContainer = document.createElement('div');
                 childContainer.className = 'tree-children' + (isExpanded ? '' : ' collapsed');
                 childContainer.dataset.path = child.path;
-                renderTreeNode(child, childContainer, level + 1);
+                renderTreeNode(child, childContainer, level + 1, child.path);
                 container.appendChild(childContainer);
             }
         } else if (child.type === 'image') {
-            // 图片文件图标
-            const icon = document.createElement('span');
-            icon.className = 'tree-item-icon';
-            icon.textContent = '🖼️';
-            item.appendChild(icon);
-
-            // 名称
+            // ??
             const name = document.createElement('span');
             name.className = 'tree-item-name tree-image';
             name.textContent = child.displayName || child.name;
             item.appendChild(name);
 
-            // 选中状态
+            // ?????????????????
+            const icon = document.createElement('span');
+            icon.className = 'tree-item-icon tree-item-badge';
+            item.appendChild(icon);
+            const imageIcon = getFileIconInfo(child);
+            icon.className = imageIcon.className + ' tree-item-badge';
+            icon.textContent = imageIcon.label;
+
+            // ????
             if (state.selectedFile === child.path) {
                 item.classList.add('selected');
             }
@@ -222,19 +565,20 @@ function renderTreeNode(node, container, level) {
 
             container.appendChild(item);
         } else {
-            // 文件图标
-            const icon = document.createElement('span');
-            icon.className = 'tree-item-icon';
-            icon.textContent = '📄';
-            item.appendChild(icon);
-
-            // 名称
+            // ??
             const name = document.createElement('span');
             name.className = 'tree-item-name';
             name.textContent = child.displayName || child.name;
             item.appendChild(name);
 
-            // 检查是否有未保存更改
+            // ???????????????
+            const icon = document.createElement('span');
+            icon.className = 'tree-item-icon tree-item-badge';
+            item.appendChild(icon);
+            const fileIcon = getFileIconInfo(child);
+            icon.className = fileIcon.className + ' tree-item-badge';
+            icon.textContent = fileIcon.label;
+
             const tab = state.tabs.find(t => t.path === child.path);
             if (tab && tab.isDirty) {
                 item.classList.add('modified');
@@ -251,6 +595,136 @@ function renderTreeNode(node, container, level) {
             container.appendChild(item);
         }
     });
+}
+
+function getFileIconInfo(node, isExpanded) {
+    if (node.type === 'directory') {
+        return {
+            label: isExpanded ? 'OPEN' : 'DIR',
+            className: 'tree-item-icon icon-folder'
+        };
+    }
+    if (node.type === 'image') {
+        return {
+            label: 'IMG',
+            className: 'tree-item-icon icon-image'
+        };
+    }
+    const ext = (node.name.split('.').pop() || '').toLowerCase();
+    const mapping = {
+        md: { label: 'MD', className: 'tree-item-icon icon-markdown' },
+        markdown: { label: 'MD', className: 'tree-item-icon icon-markdown' },
+        yml: { label: 'YML', className: 'tree-item-icon icon-config' },
+        yaml: { label: 'YML', className: 'tree-item-icon icon-config' },
+        json: { label: 'JSON', className: 'tree-item-icon icon-config' },
+        txt: { label: 'TXT', className: 'tree-item-icon icon-text' },
+        js: { label: 'JS', className: 'tree-item-icon icon-script' },
+        ts: { label: 'TS', className: 'tree-item-icon icon-script' },
+        css: { label: 'CSS', className: 'tree-item-icon icon-style' },
+        html: { label: 'HTML', className: 'tree-item-icon icon-markup' }
+    };
+    if (mapping[ext]) return mapping[ext];
+    return { label: 'FILE', className: 'tree-item-icon icon-file' };
+}
+
+function onTreeDragStart(e) {
+    if (state.searchQuery) {
+        e.preventDefault();
+        return;
+    }
+    const item = e.currentTarget;
+    state.draggingPath = item.dataset.path;
+    state.draggingParent = item.dataset.parent || '';
+    item.classList.add('dragging');
+    e.dataTransfer.effectAllowed = 'move';
+    e.dataTransfer.setData('text/plain', state.draggingPath || '');
+}
+
+function onTreeDragOver(e) {
+    const target = e.currentTarget;
+    const targetParent = target.dataset.parent || '';
+    if (!state.draggingPath || targetParent !== state.draggingParent) return;
+    if (state.draggingPath === target.dataset.path) return;
+
+    e.preventDefault();
+    const rect = target.getBoundingClientRect();
+    const placeAfter = e.clientY > rect.top + rect.height / 2;
+    clearDropIndicators();
+    target.classList.add(placeAfter ? 'drop-after' : 'drop-before');
+}
+
+function onTreeDragLeave(e) {
+    e.currentTarget.classList.remove('drop-before', 'drop-after');
+}
+
+function onTreeDrop(e) {
+    e.preventDefault();
+    const target = e.currentTarget;
+    const targetParent = target.dataset.parent || '';
+    if (!state.draggingPath || targetParent !== state.draggingParent) return;
+    if (state.draggingPath === target.dataset.path) return;
+
+    const rect = target.getBoundingClientRect();
+    const placeAfter = e.clientY > rect.top + rect.height / 2;
+    const parentNode = getParentNode(state.draggingParent);
+    if (!parentNode || !parentNode.children) return;
+
+    const draggedIndex = parentNode.children.findIndex(item => item.path === state.draggingPath);
+    if (draggedIndex === -1) return;
+    const [dragged] = parentNode.children.splice(draggedIndex, 1);
+
+    const targetIndex = parentNode.children.findIndex(item => item.path === target.dataset.path);
+    if (targetIndex === -1) return;
+    const insertIndex = placeAfter ? targetIndex + 1 : targetIndex;
+    parentNode.children.splice(insertIndex, 0, dragged);
+
+    clearDropIndicators();
+    renderFileTree();
+    saveTreeOrder(state.draggingParent || '', parentNode.children.map(item => item.name));
+}
+
+function onTreeDragEnd(e) {
+    e.currentTarget.classList.remove('dragging');
+    clearDropIndicators();
+    state.draggingPath = null;
+    state.draggingParent = null;
+}
+
+function clearDropIndicators() {
+    document.querySelectorAll('.tree-item.drop-before, .tree-item.drop-after').forEach(item => {
+        item.classList.remove('drop-before', 'drop-after');
+    });
+}
+
+function getParentNode(parentPath) {
+    if (!parentPath) return state.fileTree;
+    return findNodeByPath(state.fileTree, parentPath);
+}
+
+function findNodeByPath(node, path) {
+    if (!node) return null;
+    if (node.path === path) return node;
+    if (!node.children) return null;
+    for (const child of node.children) {
+        const found = findNodeByPath(child, path);
+        if (found) return found;
+    }
+    return null;
+}
+
+async function saveTreeOrder(parentPath, order) {
+    try {
+        const response = await fetch('/api/editor/tree/order', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ parentPath, order })
+        });
+        if (!response.ok) {
+            throw new Error('保存排序失败');
+        }
+    } catch (e) {
+        console.error('[FileTree] 保存排序失败:', e);
+    }
 }
 
 function matchSearch(node, query) {
@@ -599,7 +1073,7 @@ function createVditorEditor(container, tab, linkBase = '/api/src/') {
                 },
                 hljs: {
                     enable: true,
-                    style: 'github',
+                    style: getHljsStyle(),
                     lineNumber: true
                 }
             },
@@ -647,6 +1121,8 @@ function createVditorEditor(container, tab, linkBase = '/api/src/') {
             after: () => {
                 state.editors.set(tab.id, editor);
 
+                ensureIrPadding(container);
+
                 // 强制触发编辑器布局刷新，解决 ir 模式初始化布局问题
                 setTimeout(() => {
                     // 触发窗口 resize 事件让 Vditor 重新计算布局
@@ -666,7 +1142,12 @@ function createVditorEditor(container, tab, linkBase = '/api/src/') {
                         });
                         observer.observe(vditorElement, { attributes: true });
                     }
+
+                    observeIrPadding(container);
                 }, 50);
+                setTimeout(() => {
+                    ensureIrPadding(container);
+                }, 200);
             },
             input: (value) => {
                 tab.content = value;
@@ -679,6 +1160,32 @@ function createVditorEditor(container, tab, linkBase = '/api/src/') {
                 }
             }
         });
+    });
+}
+
+function ensureIrPadding(container) {
+    const preList = container.querySelectorAll('.vditor-ir pre.vditor-reset');
+    if (!preList.length) {
+        return;
+    }
+    preList.forEach((pre) => {
+        pre.style.setProperty('padding', '28px 48px 60px 48px', 'important');
+    });
+}
+
+function observeIrPadding(container) {
+    const target = container.querySelector('.vditor');
+    if (!target) {
+        return;
+    }
+    const observer = new MutationObserver(() => {
+        ensureIrPadding(container);
+    });
+    observer.observe(target, {
+        subtree: true,
+        childList: true,
+        attributes: true,
+        attributeFilter: ['style', 'class']
     });
 }
 
@@ -1644,6 +2151,12 @@ function toggleGitPanel() {
     saveLayoutPreferences();
 }
 
+function toggleFocusMode() {
+    state.focusMode = !state.focusMode;
+    applyFocusMode();
+    saveLayoutPreferences();
+}
+
 function applyLayout() {
     const fileTreePanel = document.getElementById('fileTreePanel');
     const gitPanel = document.getElementById('gitPanel');
@@ -1661,6 +2174,15 @@ function applyLayout() {
     }
     if (!state.gitPanelCollapsed) {
         gitPanel.style.width = state.gitPanelWidth + 'px';
+    }
+}
+
+function applyFocusMode() {
+    const body = document.body;
+    const focusBtn = document.getElementById('toggleFocusMode');
+    body.classList.toggle('focus-mode', state.focusMode);
+    if (focusBtn) {
+        focusBtn.classList.toggle('is-active', state.focusMode);
     }
 }
 
@@ -1716,6 +2238,7 @@ function loadLayoutPreferences() {
         if (prefs.gitPanelWidth) state.gitPanelWidth = prefs.gitPanelWidth;
         if (prefs.fileTreeCollapsed !== undefined) state.fileTreeCollapsed = prefs.fileTreeCollapsed;
         if (prefs.gitPanelCollapsed !== undefined) state.gitPanelCollapsed = prefs.gitPanelCollapsed;
+        if (prefs.focusMode !== undefined) state.focusMode = prefs.focusMode;
     } catch (e) {
         console.error('加载布局偏好失败:', e);
     }
@@ -1727,7 +2250,8 @@ function saveLayoutPreferences() {
             fileTreeWidth: state.fileTreeWidth,
             gitPanelWidth: state.gitPanelWidth,
             fileTreeCollapsed: state.fileTreeCollapsed,
-            gitPanelCollapsed: state.gitPanelCollapsed
+            gitPanelCollapsed: state.gitPanelCollapsed,
+            focusMode: state.focusMode
         }));
     } catch (e) {
         console.error('保存布局偏好失败:', e);

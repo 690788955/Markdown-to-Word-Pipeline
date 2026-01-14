@@ -13,7 +13,15 @@ let expandedDirs = new Set(); // 展开的目录
 let searchQuery = ''; // 搜索关键词
 
 // 初始化
+const themeState = {
+    theme: 'light',
+    accent: '#1a8fbf'
+};
+
 document.addEventListener('DOMContentLoaded', function() {
+    initTheme();
+    initThemeControls();
+
     loadClients();
     
     const clientSelect = document.getElementById('clientSelect');
@@ -50,6 +58,195 @@ document.addEventListener('DOMContentLoaded', function() {
         initGitPanel();
     }
 });
+
+// ==================== 主题控制 ====================
+
+function initTheme() {
+    const savedTheme = localStorage.getItem('uiTheme');
+    const savedAccent = localStorage.getItem('uiAccent');
+    if (savedTheme) {
+        themeState.theme = savedTheme;
+    } else if (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) {
+        themeState.theme = 'dark';
+    }
+    if (savedAccent) {
+        themeState.accent = savedAccent;
+    }
+    applyTheme();
+}
+
+function initThemeControls() {
+    const toggleBtn = document.getElementById('themeToggleBtn');
+    const panel = document.getElementById('themePanel');
+    const accentInput = document.getElementById('themeAccentInput');
+
+    if (toggleBtn && panel) {
+        toggleBtn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            panel.classList.toggle('is-open');
+        });
+
+        panel.addEventListener('click', (e) => {
+            e.stopPropagation();
+        });
+
+        document.addEventListener('click', () => {
+            panel.classList.remove('is-open');
+        });
+    }
+
+    document.querySelectorAll('[data-theme-option]').forEach(btn => {
+        btn.addEventListener('click', () => {
+            const nextTheme = btn.getAttribute('data-theme-option');
+            if (!nextTheme) return;
+            themeState.theme = nextTheme;
+            localStorage.setItem('uiTheme', themeState.theme);
+            applyTheme();
+        });
+    });
+
+    document.querySelectorAll('[data-accent]').forEach(btn => {
+        btn.addEventListener('click', () => {
+            const accent = btn.getAttribute('data-accent');
+            if (!accent) return;
+            setAccent(accent);
+        });
+    });
+
+    if (accentInput) {
+        accentInput.value = themeState.accent;
+        accentInput.addEventListener('input', (e) => {
+            setAccent(e.target.value);
+        });
+    }
+}
+
+function applyTheme() {
+    document.documentElement.setAttribute('data-theme', themeState.theme);
+    setAccent(themeState.accent, true);
+    updateThemeControls();
+}
+
+function updateThemeControls() {
+    document.querySelectorAll('[data-theme-option]').forEach(btn => {
+        const option = btn.getAttribute('data-theme-option');
+        btn.classList.toggle('active', option === themeState.theme);
+    });
+    const accentInput = document.getElementById('themeAccentInput');
+    if (accentInput) accentInput.value = themeState.accent;
+}
+
+function setAccent(color, skipPersist) {
+    if (!color) return;
+    themeState.accent = color;
+    if (!skipPersist) {
+        localStorage.setItem('uiAccent', color);
+    }
+    const root = document.documentElement;
+    const hover = adjustLightness(color, themeState.theme === 'dark' ? 0.08 : -0.08);
+    const soft = rgba(color, themeState.theme === 'dark' ? 0.22 : 0.12);
+    const light = rgba(color, themeState.theme === 'dark' ? 0.28 : 0.16);
+    const dark = adjustLightness(color, themeState.theme === 'dark' ? 0.18 : -0.18);
+    const ring = rgba(color, themeState.theme === 'dark' ? 0.45 : 0.28);
+    root.style.setProperty('--color-primary', color);
+    root.style.setProperty('--color-primary-hover', hover);
+    root.style.setProperty('--color-primary-soft', soft);
+    root.style.setProperty('--color-primary-light', light);
+    root.style.setProperty('--color-primary-dark', dark);
+    root.style.setProperty('--color-ring', ring);
+    updateThemeControls();
+}
+
+function rgba(hex, alpha) {
+    const rgb = hexToRgb(hex);
+    if (!rgb) return hex;
+    return `rgba(${rgb.r}, ${rgb.g}, ${rgb.b}, ${alpha})`;
+}
+
+function adjustLightness(hex, delta) {
+    const rgb = hexToRgb(hex);
+    if (!rgb) return hex;
+    const hsl = rgbToHsl(rgb.r, rgb.g, rgb.b);
+    hsl.l = clamp(hsl.l + delta, 0, 1);
+    return hslToHex(hsl.h, hsl.s, hsl.l);
+}
+
+function clamp(val, min, max) {
+    return Math.min(max, Math.max(min, val));
+}
+
+function hexToRgb(hex) {
+    const normalized = hex.replace('#', '').trim();
+    if (normalized.length !== 6) return null;
+    const num = parseInt(normalized, 16);
+    if (Number.isNaN(num)) return null;
+    return {
+        r: (num >> 16) & 255,
+        g: (num >> 8) & 255,
+        b: num & 255
+    };
+}
+
+function rgbToHsl(r, g, b) {
+    const rn = r / 255;
+    const gn = g / 255;
+    const bn = b / 255;
+    const max = Math.max(rn, gn, bn);
+    const min = Math.min(rn, gn, bn);
+    let h = 0;
+    let s = 0;
+    const l = (max + min) / 2;
+
+    if (max !== min) {
+        const d = max - min;
+        s = l > 0.5 ? d / (2 - max - min) : d / (max + min);
+        switch (max) {
+            case rn:
+                h = (gn - bn) / d + (gn < bn ? 6 : 0);
+                break;
+            case gn:
+                h = (bn - rn) / d + 2;
+                break;
+            default:
+                h = (rn - gn) / d + 4;
+        }
+        h /= 6;
+    }
+    return { h, s, l };
+}
+
+function hslToHex(h, s, l) {
+    const hue2rgb = (p, q, t) => {
+        let tVal = t;
+        if (tVal < 0) tVal += 1;
+        if (tVal > 1) tVal -= 1;
+        if (tVal < 1 / 6) return p + (q - p) * 6 * tVal;
+        if (tVal < 1 / 2) return q;
+        if (tVal < 2 / 3) return p + (q - p) * (2 / 3 - tVal) * 6;
+        return p;
+    };
+
+    let r;
+    let g;
+    let b;
+
+    if (s === 0) {
+        r = g = b = l;
+    } else {
+        const q = l < 0.5 ? l * (1 + s) : l + s - l * s;
+        const p = 2 * l - q;
+        r = hue2rgb(p, q, h + 1 / 3);
+        g = hue2rgb(p, q, h);
+        b = hue2rgb(p, q, h - 1 / 3);
+    }
+
+    return `#${toHex(r)}${toHex(g)}${toHex(b)}`;
+}
+
+function toHex(val) {
+    const hex = Math.round(val * 255).toString(16);
+    return hex.length === 1 ? '0' + hex : hex;
+}
 
 // ==================== 模态框通用功能 ====================
 

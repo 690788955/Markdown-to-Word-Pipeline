@@ -13,17 +13,42 @@
     <div class="container">
         <header>
             <h1>运维文档生成系统</h1>
+            
             <div class="header-actions">
-                <!-- 资源管理按钮 -->
-                <button id="resourceToggleBtn" class="header-btn" title="资源管理">
-                    <span class="header-btn-icon">📦</span>
-                    <span class="header-btn-text">资源</span>
-                </button>
-                <!-- 知识库入口按钮 -->
-                <a href="/editor" class="header-btn" title="知识库编辑器">
-                    <span class="header-btn-icon">📚</span>
-                    <span class="header-btn-text">知识库</span>
-                </a>
+                <div class="header-group header-group-actions">
+                    <a href="/editor" class="header-btn" title="打开知识库">
+                        <span class="header-btn-icon">🗂️</span>
+                        <span class="header-btn-text">知识库</span>
+                    </a>
+                    <button id="resourceToggleBtn" class="header-btn" title="资源管理">
+                        <span class="header-btn-icon">📦</span>
+                        <span class="header-btn-text">资源</span>
+                    </button>
+                </div>
+                <div class="header-group header-group-tools">
+                    <button id="themeToggleBtn" class="header-btn theme-toggle" title="主题设置">
+                        <span class="theme-dot"></span>
+                        <span class="header-btn-text">主题</span>
+                    </button>
+                    <div id="themePanel" class="theme-panel" aria-hidden="true">
+                        <div class="theme-panel-title">主题设置</div>
+                        <div class="theme-row">
+                            <button class="theme-chip" data-theme-option="light">浅色</button>
+                            <button class="theme-chip" data-theme-option="dark">深色</button>
+                        </div>
+                        <div class="theme-row">
+                            <label class="theme-label" for="themeAccentInput">强调色</label>
+                            <input id="themeAccentInput" type="color" value="#1a8fbf">
+                        </div>
+                        <div class="theme-row theme-swatches">
+                            <button class="theme-swatch" data-accent="#1a8fbf" style="--swatch: #1a8fbf;"></button>
+                            <button class="theme-swatch" data-accent="#1f7ae0" style="--swatch: #1f7ae0;"></button>
+                            <button class="theme-swatch" data-accent="#14b8a6" style="--swatch: #14b8a6;"></button>
+                            <button class="theme-swatch" data-accent="#2f855a" style="--swatch: #2f855a;"></button>
+                            <button class="theme-swatch" data-accent="#0ea5e9" style="--swatch: #0ea5e9;"></button>
+                        </div>
+                    </div>
+                </div>
             </div>
         </header>
 

@@ -13,6 +13,8 @@
     <!-- Viewer.js 图片查看器 -->
     <link rel="stylesheet" href="/static/vendor/viewerjs/dist/viewer.min.css">
     <script src="/static/vendor/viewerjs/dist/viewer.min.js"></script>
+    <!-- highlight.js 代码高亮主题 -->
+    <link id="hljsTheme" rel="stylesheet" href="/static/vendor/vditor/dist/js/highlight.js/styles/github.min.css">
 </head>
 
 <body class="editor-page">
@@ -26,19 +28,97 @@
                 </a>
                 <h1 class="editor-title">知识库编辑器</h1>
             </div>
+            
             <div class="header-right">
-                <select id="defaultEditorMode" class="header-select" title="默认编辑模式">
-                    <option value="ir">IR</option>
-                    <option value="wysiwyg">WYSIWYG</option>
-                    <option value="sv">SV</option>
-                </select>
-                <button id="toggleFileTree" class="header-btn" title="切换文件树">
-                    <span>📁</span>
-                </button>
-                <button id="toggleGitPanel" class="header-btn" title="切换 Git 面板">
-                    <span class="git-icon">🔀</span>
-                    <span id="gitBadge" class="git-badge" style="display:none;">0</span>
-                </button>
+                <div class="header-group header-group-primary">
+                    <select id="defaultEditorMode" class="header-select" title="默认编辑模式">
+                        <option value="ir">IR</option>
+                        <option value="wysiwyg">WYSIWYG</option>
+                        <option value="sv">SV</option>
+                    </select>
+                </div>
+                <div class="header-group header-group-secondary">
+                    <button id="toggleFileTree" class="header-btn" title="切换文件树">
+                        <span>📁</span>
+                    </button>
+                    <button id="toggleGitPanel" class="header-btn" title="切换 Git 面板">
+                        <span class="git-icon">🔀</span>
+                        <span id="gitBadge" class="git-badge" style="display:none;">0</span>
+                    </button>
+                    <button id="toggleFocusMode" class="header-btn" title="专注模式">
+                        <span class="focus-icon">F</span>
+                    </button>
+                </div>
+                <div class="header-group header-group-theme">
+                    <button id="themeToggleBtn" class="header-btn header-btn-theme" title="主题设置">
+                        <span class="theme-dot"></span>
+                        <span class="theme-text">主题</span>
+                    </button>
+                    <div id="themePanel" class="theme-panel">
+                        <div class="theme-panel-title">主题设置</div>
+                        <div class="theme-row">
+                            <button class="theme-chip" data-theme-option="light">浅色</button>
+                            <button class="theme-chip" data-theme-option="dark">深色</button>
+                        </div>
+                        <div class="theme-row">
+                            <label class="theme-label" for="themeAccentInput">强调色</label>
+                            <input id="themeAccentInput" type="color" value="#1a8fbf">
+                        </div>
+                        <div class="theme-row theme-swatches">
+                            <button class="theme-swatch" data-accent="#1a8fbf" style="--swatch: #1a8fbf;"></button>
+                            <button class="theme-swatch" data-accent="#1f7ae0" style="--swatch: #1f7ae0;"></button>
+                            <button class="theme-swatch" data-accent="#14b8a6" style="--swatch: #14b8a6;"></button>
+                            <button class="theme-swatch" data-accent="#2f855a" style="--swatch: #2f855a;"></button>
+                            <button class="theme-swatch" data-accent="#0ea5e9" style="--swatch: #0ea5e9;"></button>
+                        </div>
+                        <div class="theme-row">
+                            <span class="theme-label">内容密度</span>
+                            <button class="theme-chip" data-content-style="comfortable">舒适</button>
+                            <button class="theme-chip" data-content-style="compact">紧凑</button>
+                        </div>
+                        <div class="theme-row">
+                            <span class="theme-label">代码配色</span>
+                        </div>
+                        <div class="theme-row theme-code-themes">
+                            <button class="theme-code-chip" data-code-theme="github" title="经典 GitHub 风格">
+                                <span class="theme-code-preview">
+                                    <span style="background:#24292e"></span>
+                                    <span style="background:#d73a49"></span>
+                                    <span style="background:#6f42c1"></span>
+                                    <span style="background:#22863a"></span>
+                                </span>
+                                <span class="theme-code-name">GitHub</span>
+                            </button>
+                            <button class="theme-code-chip" data-code-theme="atom-one" title="Atom One Dark 配色">
+                                <span class="theme-code-preview">
+                                    <span style="background:#282c34"></span>
+                                    <span style="background:#e06c75"></span>
+                                    <span style="background:#c678dd"></span>
+                                    <span style="background:#98c379"></span>
+                                </span>
+                                <span class="theme-code-name">One Dark</span>
+                            </button>
+                            <button class="theme-code-chip" data-code-theme="vs" title="Visual Studio Code 风格">
+                                <span class="theme-code-preview">
+                                    <span style="background:#1e1e1e"></span>
+                                    <span style="background:#569cd6"></span>
+                                    <span style="background:#ce9178"></span>
+                                    <span style="background:#4ec9b0"></span>
+                                </span>
+                                <span class="theme-code-name">VS Code</span>
+                            </button>
+                            <button class="theme-code-chip" data-code-theme="monokai" title="经典 Monokai 配色">
+                                <span class="theme-code-preview">
+                                    <span style="background:#272822"></span>
+                                    <span style="background:#f92672"></span>
+                                    <span style="background:#ae81ff"></span>
+                                    <span style="background:#a6e22e"></span>
+                                </span>
+                                <span class="theme-code-name">Monokai</span>
+                            </button>
+                        </div>
+                    </div>
+                </div>
             </div>
         </header>
 
