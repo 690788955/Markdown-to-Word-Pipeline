@@ -330,7 +330,13 @@ func (s *EditorService) GetFileTree() (*FileTreeNode, error) {
 	return root, nil
 }
 
+// excludedDirs 文件树中排除的目录名
+var excludedDirs = map[string]bool{
+	"images": true,
+}
+
 // buildFileTree 递归构建文件树
+// 只展示目录和 Markdown 文件，排除 images 目录和图片文件
 func (s *EditorService) buildFileTree(basePath, relativePath string, parent *FileTreeNode, orderMap map[string][]string) error {
 	fullPath := basePath
 	if relativePath != "" {
@@ -363,22 +369,30 @@ func (s *EditorService) buildFileTree(basePath, relativePath string, parent *Fil
 		}
 
 		if entry.IsDir() {
+			// 排除 images 目录
+			if excludedDirs[strings.ToLower(name)] {
+				continue
+			}
+			
 			node.Type = "directory"
 			node.Children = []*FileTreeNode{}
 			if err := s.buildFileTree(basePath, childPath, node, orderMap); err != nil {
 				log.Printf("[Editor] 读取目录失败 %s: %v", childPath, err)
 				continue
 			}
+			
+			// 过滤空目录（不包含任何 Markdown 文件或有效子目录）
+			if !hasMarkdownContent(node) {
+				continue
+			}
+			
 			children = append(children, node)
 		} else if strings.HasSuffix(strings.ToLower(name), ".md") {
+			// 只展示 Markdown 文件
 			node.Type = "file"
 			children = append(children, node)
-		} else if isImageFile(name) {
-			// 支持图片文件显示在文件树中
-			node.Type = "image"
-			node.DisplayName = name // 图片文件显示完整文件名
-			children = append(children, node)
 		}
+		// 不再展示图片文件
 	}
 
 	if len(children) > 0 {
@@ -415,6 +429,25 @@ func (s *EditorService) buildFileTree(basePath, relativePath string, parent *Fil
 
 	parent.Children = children
 	return nil
+}
+
+// hasMarkdownContent 检查目录节点是否包含 Markdown 内容
+// 递归检查目录及其子目录是否包含任何 Markdown 文件
+func hasMarkdownContent(node *FileTreeNode) bool {
+	if node.Type != "directory" {
+		return false
+	}
+	
+	for _, child := range node.Children {
+		if child.Type == "file" {
+			return true
+		}
+		if child.Type == "directory" && hasMarkdownContent(child) {
+			return true
+		}
+	}
+	
+	return false
 }
 
 // extractDisplayName 从文件名提取显示名称（去除编号前缀）
@@ -665,4 +698,202 @@ func (s *EditorService) saveToGlobalImages(filename string, content []byte) (str
 	
 	log.Printf("[Editor] 图片已保存到全局目录: %s", absPath)
 	return "images/" + finalFilename, nil
+}
+
+
+// AttachmentInfo 附件信息
+type AttachmentInfo struct {
+	Name       string `json:"name"`       // 文件名
+	Path       string `json:"path"`       // 相对路径（用于 Markdown 引用）
+	FullPath   string `json:"fullPath"`   // 完整路径（用于 API 访问）
+	Size       int64  `json:"size"`       // 文件大小（字节）
+	ModifiedAt string `json:"modifiedAt"` // 修改时间（ISO 8601）
+}
+
+// GetAttachments 获取文档目录下的附件列表
+// 参数: modulePath - 文档的相对路径（如 "01-运维/01-日常巡检.md"）
+// 返回: 附件列表和错误
+func (s *EditorService) GetAttachments(modulePath string) ([]AttachmentInfo, error) {
+	// 验证路径安全性
+	if strings.Contains(modulePath, "..") {
+		log.Printf("[Editor] 检测到路径遍历尝试: %s", modulePath)
+		return nil, ErrPathForbidden
+	}
+
+	// 清理路径
+	cleanPath := filepath.Clean(modulePath)
+	cleanPath = strings.TrimPrefix(cleanPath, "src/")
+	cleanPath = strings.TrimPrefix(cleanPath, "src\\")
+
+	// 获取文档所在目录
+	moduleDir := filepath.Dir(cleanPath)
+	if moduleDir == "." {
+		moduleDir = ""
+	}
+
+	// 构建 images 目录的绝对路径
+	var imagesDir string
+	if moduleDir == "" {
+		imagesDir = filepath.Join(s.srcDir, "images")
+	} else {
+		imagesDir = filepath.Join(s.srcDir, moduleDir, "images")
+	}
+
+	// 确保路径在 srcDir 内
+	absImagesDir, err := filepath.Abs(imagesDir)
+	if err != nil {
+		return nil, ErrPathForbidden
+	}
+	absSrcDir, err := filepath.Abs(s.srcDir)
+	if err != nil {
+		return nil, ErrPathForbidden
+	}
+	if !strings.HasPrefix(absImagesDir, absSrcDir) {
+		log.Printf("[Editor] 路径超出 src 目录: %s", modulePath)
+		return nil, ErrPathForbidden
+	}
+
+	// 检查 images 目录是否存在
+	if _, err := os.Stat(absImagesDir); os.IsNotExist(err) {
+		// 目录不存在，返回空列表
+		return []AttachmentInfo{}, nil
+	}
+
+	// 读取 images 目录下的文件
+	entries, err := os.ReadDir(absImagesDir)
+	if err != nil {
+		return nil, fmt.Errorf("%w: %v", ErrReadError, err)
+	}
+
+	attachments := []AttachmentInfo{}
+	for _, entry := range entries {
+		if entry.IsDir() {
+			continue
+		}
+
+		name := entry.Name()
+		
+		// 跳过隐藏文件
+		if strings.HasPrefix(name, ".") {
+			continue
+		}
+
+		// 只包含图片文件
+		if !isImageFile(name) {
+			continue
+		}
+
+		// 获取文件信息
+		info, err := entry.Info()
+		if err != nil {
+			log.Printf("[Editor] 获取文件信息失败 %s: %v", name, err)
+			continue
+		}
+
+		// 构建路径
+		relPath := "images/" + name
+		var fullPath string
+		if moduleDir == "" {
+			fullPath = "images/" + name
+		} else {
+			fullPath = moduleDir + "/images/" + name
+		}
+
+		attachments = append(attachments, AttachmentInfo{
+			Name:       name,
+			Path:       relPath,
+			FullPath:   fullPath,
+			Size:       info.Size(),
+			ModifiedAt: info.ModTime().Format("2006-01-02T15:04:05Z07:00"),
+		})
+	}
+
+	return attachments, nil
+}
+
+// RenameAttachment 重命名附件文件
+// 参数: modulePath - 文档的相对路径, oldName - 原文件名, newName - 新文件名
+// 返回: 新的相对路径和错误
+func (s *EditorService) RenameAttachment(modulePath, oldName, newName string) (string, error) {
+	// 验证路径安全性
+	if strings.Contains(modulePath, "..") || strings.Contains(oldName, "..") || strings.Contains(newName, "..") {
+		log.Printf("[Editor] 检测到路径遍历尝试")
+		return "", ErrPathForbidden
+	}
+
+	// 验证新文件名
+	if strings.ContainsAny(newName, "/\\:*?\"<>|") || strings.HasPrefix(newName, ".") {
+		return "", ErrInvalidFilename
+	}
+
+	// 确保保留原扩展名
+	oldExt := filepath.Ext(oldName)
+	newExt := filepath.Ext(newName)
+	if oldExt != "" && newExt == "" {
+		newName = newName + oldExt
+	} else if oldExt != "" && !strings.EqualFold(oldExt, newExt) {
+		// 如果扩展名不同，使用原扩展名
+		newName = strings.TrimSuffix(newName, newExt) + oldExt
+	}
+
+	// 清理路径
+	cleanPath := filepath.Clean(modulePath)
+	cleanPath = strings.TrimPrefix(cleanPath, "src/")
+	cleanPath = strings.TrimPrefix(cleanPath, "src\\")
+
+	// 获取文档所在目录
+	moduleDir := filepath.Dir(cleanPath)
+	if moduleDir == "." {
+		moduleDir = ""
+	}
+
+	// 构建 images 目录的绝对路径
+	var imagesDir string
+	if moduleDir == "" {
+		imagesDir = filepath.Join(s.srcDir, "images")
+	} else {
+		imagesDir = filepath.Join(s.srcDir, moduleDir, "images")
+	}
+
+	// 确保路径在 srcDir 内
+	absImagesDir, err := filepath.Abs(imagesDir)
+	if err != nil {
+		return "", ErrPathForbidden
+	}
+	absSrcDir, err := filepath.Abs(s.srcDir)
+	if err != nil {
+		return "", ErrPathForbidden
+	}
+	if !strings.HasPrefix(absImagesDir, absSrcDir) {
+		log.Printf("[Editor] 路径超出 src 目录")
+		return "", ErrPathForbidden
+	}
+
+	// 构建原文件和新文件的完整路径
+	oldPath := filepath.Join(absImagesDir, oldName)
+	newPath := filepath.Join(absImagesDir, newName)
+
+	// 检查原文件是否存在
+	if _, err := os.Stat(oldPath); os.IsNotExist(err) {
+		return "", ErrFileNotFound
+	}
+
+	// 如果新旧文件名相同，直接返回成功
+	if oldName == newName {
+		return "images/" + newName, nil
+	}
+
+	// 检查新文件是否已存在
+	if _, err := os.Stat(newPath); err == nil {
+		return "", ErrFileExists
+	}
+
+	// 执行重命名
+	if err := os.Rename(oldPath, newPath); err != nil {
+		log.Printf("[Editor] 重命名附件失败: %v", err)
+		return "", fmt.Errorf("%w: %v", ErrWriteError, err)
+	}
+
+	log.Printf("[Editor] 附件重命名成功: %s -> %s", oldName, newName)
+	return "images/" + newName, nil
 }

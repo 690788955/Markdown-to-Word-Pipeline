@@ -129,6 +129,8 @@ func (h *APIHandler) RegisterRoutes(mux *http.ServeMux) {
 	mux.HandleFunc("/api/editor/tree/order", h.handleEditorTreeOrder)
 	mux.HandleFunc("/api/editor/upload", h.handleEditorUpload)
 	mux.HandleFunc("/api/editor/image/", h.handleEditorImage) // 图片删除路由
+	mux.HandleFunc("/api/editor/attachments", h.handleEditorAttachments) // 附件列表路由
+	mux.HandleFunc("/api/editor/attachment/rename", h.handleEditorAttachmentRename) // 附件重命名路由
 	mux.HandleFunc("/api/src/", h.handleSrcStatic)
 	// 新增：Git 相关路由
 	mux.HandleFunc("/api/git/check", h.handleGitCheck)
@@ -1999,5 +2001,79 @@ func (h *APIHandler) getTemplateUsage(w http.ResponseWriter, filename string) {
 
 	h.successResponse(w, map[string]interface{}{
 		"usedBy": usedBy,
+	})
+}
+
+// handleEditorAttachments 处理附件列表请求
+func (h *APIHandler) handleEditorAttachments(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodGet {
+		h.methodNotAllowed(w)
+		return
+	}
+
+	path := r.URL.Query().Get("path")
+	if path == "" {
+		h.errorResponse(w, http.StatusBadRequest, "path 参数不能为空", ErrInvalidInput)
+		return
+	}
+
+	attachments, err := h.editorSvc.GetAttachments(path)
+	if err != nil {
+		switch err {
+		case service.ErrPathForbidden:
+			h.errorResponse(w, http.StatusForbidden, err.Error(), "PATH_FORBIDDEN")
+		default:
+			h.errorResponse(w, http.StatusInternalServerError, err.Error(), "")
+		}
+		return
+	}
+
+	h.successResponse(w, map[string]interface{}{
+		"attachments": attachments,
+	})
+}
+
+// handleEditorAttachmentRename 处理附件重命名请求
+func (h *APIHandler) handleEditorAttachmentRename(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		h.methodNotAllowed(w)
+		return
+	}
+
+	var req struct {
+		ModulePath string `json:"modulePath"`
+		OldName    string `json:"oldName"`
+		NewName    string `json:"newName"`
+	}
+
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		h.errorResponse(w, http.StatusBadRequest, "无效的请求体", ErrInvalidInput)
+		return
+	}
+
+	if req.ModulePath == "" || req.OldName == "" || req.NewName == "" {
+		h.errorResponse(w, http.StatusBadRequest, "modulePath, oldName, newName 参数不能为空", ErrInvalidInput)
+		return
+	}
+
+	newPath, err := h.editorSvc.RenameAttachment(req.ModulePath, req.OldName, req.NewName)
+	if err != nil {
+		switch err {
+		case service.ErrPathForbidden:
+			h.errorResponse(w, http.StatusForbidden, err.Error(), "PATH_FORBIDDEN")
+		case service.ErrFileNotFound:
+			h.errorResponse(w, http.StatusNotFound, "附件不存在", "FILE_NOT_FOUND")
+		case service.ErrFileExists:
+			h.errorResponse(w, http.StatusConflict, "目标文件名已存在", "FILE_EXISTS")
+		case service.ErrInvalidFilename:
+			h.errorResponse(w, http.StatusBadRequest, "无效的文件名", "INVALID_FILENAME")
+		default:
+			h.errorResponse(w, http.StatusInternalServerError, err.Error(), "")
+		}
+		return
+	}
+
+	h.successResponse(w, map[string]interface{}{
+		"newPath": newPath,
 	})
 }

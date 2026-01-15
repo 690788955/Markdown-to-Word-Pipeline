@@ -34,7 +34,13 @@ const state = {
 
     // 拖拽排序
     draggingPath: null,
-    draggingParent: null
+    draggingParent: null,
+
+    // 附件面板状态
+    attachments: [],
+    attachmentExpanded: true,
+    attachmentLoading: false,
+    attachmentTarget: null  // 右键菜单目标附件
 };
 
 // ==================== 代码块主题配置 ====================
@@ -90,8 +96,10 @@ document.addEventListener('DOMContentLoaded', function () {
     // 初始化文件树
     loadFileTree();
 
-    // 初始化 Git 面板
-    loadGitStatus();
+    // 初始化 Git 面板（仅在面板展开时加载）
+    if (!state.gitPanelCollapsed) {
+        loadGitStatus();
+    }
 
     // 初始化默认编辑模式选择
     initDefaultEditorMode();
@@ -147,6 +155,9 @@ function bindEvents() {
     });
 
     initThemeControls();
+
+    // 附件面板
+    initAttachmentPanel();
 
     // 键盘快捷键
     document.addEventListener('keydown', onKeyDown);
@@ -570,30 +581,6 @@ function renderTreeNode(node, container, level, parentPath) {
                 renderTreeNode(child, childContainer, level + 1, child.path);
                 container.appendChild(childContainer);
             }
-        } else if (child.type === 'image') {
-            // ??
-            const name = document.createElement('span');
-            name.className = 'tree-item-name tree-image';
-            name.textContent = child.displayName || child.name;
-            item.appendChild(name);
-
-            // ?????????????????
-            const icon = document.createElement('span');
-            icon.className = 'tree-item-icon tree-item-badge';
-            item.appendChild(icon);
-            const imageIcon = getFileIconInfo(child);
-            icon.className = imageIcon.className + ' tree-item-badge';
-            icon.textContent = imageIcon.label;
-
-            // ????
-            if (state.selectedFile === child.path) {
-                item.classList.add('selected');
-            }
-
-            item.onclick = () => openFile(child.path);
-            item.oncontextmenu = (e) => showContextMenu(e, child);
-
-            container.appendChild(item);
         } else {
             // ??
             const name = document.createElement('span');
@@ -632,12 +619,6 @@ function getFileIconInfo(node, isExpanded) {
         return {
             label: isExpanded ? 'OPEN' : 'DIR',
             className: 'tree-item-icon icon-folder'
-        };
-    }
-    if (node.type === 'image') {
-        return {
-            label: 'IMG',
-            className: 'tree-item-icon icon-image'
         };
     }
     const ext = (node.name.split('.').pop() || '').toLowerCase();
@@ -767,11 +748,6 @@ function matchSearch(node, query) {
         return node.children.some(child => matchSearch(child, query));
     }
 
-    // 图片文件也参与搜索
-    if (node.type === 'image') {
-        return name.includes(query);
-    }
-
     return false;
 }
 
@@ -861,6 +837,14 @@ function switchTab(tabId) {
 
     // 显示编辑器
     showEditor(tab);
+
+    // 加载附件（仅 Markdown 文件）
+    if (tab.type !== 'image') {
+        loadAttachments(tab.path);
+    } else {
+        state.attachments = [];
+        renderAttachmentPanel();
+    }
 }
 
 function closeTab(tabId, force = false) {
@@ -1137,6 +1121,11 @@ function createVditorEditor(container, tab, linkBase = '/api/src/') {
                         convertedSuccMap[originalName] = linkBase + relPath;
                     }
                     
+                    // 上传成功后刷新附件面板
+                    if (Object.keys(convertedSuccMap).length > 0) {
+                        setTimeout(() => loadAttachments(tab.path), 100);
+                    }
+                    
                     return JSON.stringify({
                         msg: '',
                         code: 0,
@@ -1302,6 +1291,12 @@ function showPlaceholder() {
         container.appendChild(placeholder);
     }
     placeholder.style.display = 'flex';
+
+    // 隐藏附件面板
+    const attachmentPanel = document.getElementById('attachmentPanel');
+    if (attachmentPanel) {
+        attachmentPanel.style.display = 'none';
+    }
 }
 
 async function saveCurrentFile() {
@@ -2179,6 +2174,11 @@ function toggleGitPanel() {
     state.gitPanelCollapsed = !state.gitPanelCollapsed;
     applyLayout();
     saveLayoutPreferences();
+    
+    // 展开面板时加载 Git 状态
+    if (!state.gitPanelCollapsed) {
+        loadGitStatus();
+    }
 }
 
 function toggleFocusMode() {
@@ -2403,4 +2403,458 @@ function showToast(message, type = 'success', duration = 3000) {
             }
         }, 300);
     }, duration);
+}
+
+// ==================== 附件面板功能 ====================
+
+// 加载附件列表
+async function loadAttachments(modulePath) {
+    if (!modulePath) {
+        state.attachments = [];
+        renderAttachmentPanel();
+        return;
+    }
+
+    state.attachmentLoading = true;
+    renderAttachmentPanel();
+
+    try {
+        const response = await fetch('/api/editor/attachments?path=' + encodeURIComponent(modulePath));
+        const data = await response.json();
+
+        if (data.success) {
+            state.attachments = data.data?.attachments || [];
+        } else {
+            state.attachments = [];
+            console.error('加载附件失败:', data.error);
+        }
+    } catch (e) {
+        state.attachments = [];
+        console.error('加载附件失败:', e);
+    } finally {
+        state.attachmentLoading = false;
+        renderAttachmentPanel();
+    }
+}
+
+// 渲染附件面板
+function renderAttachmentPanel() {
+    const panel = document.getElementById('attachmentPanel');
+    const strip = document.getElementById('attachmentStrip');
+    const empty = document.getElementById('attachmentEmpty');
+    const count = document.getElementById('attachmentCount');
+
+    if (!panel) return;
+
+    // 如果没有打开的标签，隐藏面板
+    if (!state.activeTabId) {
+        panel.style.display = 'none';
+        return;
+    }
+
+    // 获取当前标签
+    const tab = state.tabs.find(t => t.id === state.activeTabId);
+    if (!tab || tab.type === 'image') {
+        panel.style.display = 'none';
+        return;
+    }
+
+    panel.style.display = 'block';
+
+    // 更新计数
+    count.textContent = state.attachments.length;
+
+    // 更新折叠状态
+    panel.classList.toggle('collapsed', !state.attachmentExpanded);
+
+    // 加载中状态
+    if (state.attachmentLoading) {
+        strip.innerHTML = '<div class="attachment-loading">加载中...</div>';
+        empty.style.display = 'none';
+        return;
+    }
+
+    // 空状态
+    if (state.attachments.length === 0) {
+        strip.innerHTML = '';
+        empty.style.display = 'flex';
+        // 隐藏滚动指示器
+        const leftIndicator = document.querySelector('.attachment-scroll-left');
+        const rightIndicator = document.querySelector('.attachment-scroll-right');
+        if (leftIndicator) leftIndicator.style.display = 'none';
+        if (rightIndicator) rightIndicator.style.display = 'none';
+        return;
+    }
+
+    // 渲染附件缩略图条
+    empty.style.display = 'none';
+    strip.innerHTML = '';
+
+    state.attachments.forEach(attachment => {
+        const card = document.createElement('div');
+        card.className = 'attachment-card';
+        card.dataset.path = attachment.path;
+        card.dataset.name = attachment.name;
+        card.title = attachment.name;
+
+        // 缩略图容器
+        const thumb = document.createElement('div');
+        thumb.className = 'attachment-thumb';
+        
+        const img = document.createElement('img');
+        // 构建图片 URL
+        const currentTab = state.tabs.find(t => t.id === state.activeTabId);
+        if (currentTab) {
+            const linkBase = calculateLinkBase(currentTab.path);
+            img.src = linkBase + attachment.path;
+        }
+        img.alt = attachment.name;
+        img.onerror = () => {
+            thumb.innerHTML = '<span class="attachment-thumb-fallback">🖼️</span>';
+        };
+        thumb.appendChild(img);
+        card.appendChild(thumb);
+
+        // 文件信息
+        const info = document.createElement('div');
+        info.className = 'attachment-info';
+
+        // 文件名
+        const name = document.createElement('span');
+        name.className = 'attachment-name';
+        name.textContent = attachment.name;
+        name.title = attachment.name;
+        info.appendChild(name);
+
+        // 文件大小
+        if (attachment.size !== undefined) {
+            const size = document.createElement('span');
+            size.className = 'attachment-size';
+            size.textContent = formatFileSize(attachment.size);
+            info.appendChild(size);
+        }
+
+        card.appendChild(info);
+
+        // 点击复制引用
+        card.onclick = () => copyImageReference(attachment);
+
+        // 双击预览
+        card.ondblclick = (e) => {
+            e.stopPropagation();
+            previewAttachment(attachment);
+        };
+
+        // 右键菜单
+        card.oncontextmenu = (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            showAttachmentContextMenu(e, attachment);
+        };
+
+        strip.appendChild(card);
+    });
+
+    // 延迟更新滚动指示器（等待DOM渲染完成）
+    setTimeout(updateScrollIndicators, 50);
+}
+
+// 切换附件面板折叠状态
+function toggleAttachmentPanel() {
+    state.attachmentExpanded = !state.attachmentExpanded;
+    localStorage.setItem('attachmentExpanded', state.attachmentExpanded ? '1' : '0');
+    renderAttachmentPanel();
+}
+
+// 复制图片 Markdown 引用
+function copyImageReference(attachment) {
+    const reference = `![${attachment.name}](${attachment.path})`;
+    navigator.clipboard.writeText(reference).then(() => {
+        showToast('已复制: ' + reference, 'success');
+    }).catch(e => {
+        console.error('复制失败:', e);
+        showToast('复制失败', 'error');
+    });
+}
+
+// 预览附件
+function previewAttachment(attachment) {
+    const tab = state.tabs.find(t => t.id === state.activeTabId);
+    if (!tab) return;
+
+    const linkBase = calculateLinkBase(tab.path);
+    const imgUrl = linkBase + attachment.path;
+
+    // 创建预览模态框
+    let modal = document.getElementById('attachmentPreviewModal');
+    if (!modal) {
+        modal = document.createElement('div');
+        modal.id = 'attachmentPreviewModal';
+        modal.className = 'modal attachment-preview-modal';
+        modal.innerHTML = `
+            <div class="modal-overlay" onclick="closeAttachmentPreview()"></div>
+            <div class="modal-content attachment-preview-content">
+                <button class="modal-close" onclick="closeAttachmentPreview()">×</button>
+                <img id="attachmentPreviewImg" src="" alt="">
+            </div>
+        `;
+        document.body.appendChild(modal);
+    }
+
+    const img = document.getElementById('attachmentPreviewImg');
+    img.src = imgUrl;
+    img.alt = attachment.name;
+
+    openModal(modal);
+
+    // 初始化 Viewer.js（如果可用）
+    if (typeof Viewer !== 'undefined') {
+        img.onload = () => {
+            if (img._viewer) {
+                img._viewer.destroy();
+            }
+            img._viewer = new Viewer(img, {
+                toolbar: {
+                    zoomIn: 1,
+                    zoomOut: 1,
+                    oneToOne: 1,
+                    reset: 1,
+                    rotateLeft: 1,
+                    rotateRight: 1,
+                    flipHorizontal: 1,
+                    flipVertical: 1,
+                },
+                navbar: false,
+                title: false,
+                tooltip: true,
+                transition: false,
+            });
+        };
+    }
+}
+
+// 关闭附件预览
+function closeAttachmentPreview() {
+    const modal = document.getElementById('attachmentPreviewModal');
+    if (modal) {
+        closeModal(modal);
+    }
+}
+
+// 显示附件右键菜单
+function showAttachmentContextMenu(e, attachment) {
+    state.attachmentTarget = attachment;
+
+    const menu = document.getElementById('attachmentContextMenu');
+    if (!menu) return;
+
+    menu.style.display = 'block';
+    menu.style.left = e.pageX + 'px';
+    menu.style.top = e.pageY + 'px';
+
+    // 确保菜单不超出视口
+    const rect = menu.getBoundingClientRect();
+    if (rect.right > window.innerWidth) {
+        menu.style.left = (e.pageX - rect.width) + 'px';
+    }
+    if (rect.bottom > window.innerHeight) {
+        menu.style.top = (e.pageY - rect.height) + 'px';
+    }
+}
+
+// 隐藏附件右键菜单
+function hideAttachmentContextMenu() {
+    const menu = document.getElementById('attachmentContextMenu');
+    if (menu) {
+        menu.style.display = 'none';
+    }
+    state.attachmentTarget = null;
+}
+
+// 处理附件右键菜单操作
+function onAttachmentContextAction(action) {
+    const attachment = state.attachmentTarget;
+    if (!attachment) return;
+
+    hideAttachmentContextMenu();
+
+    switch (action) {
+        case 'copyRef':
+            copyImageReference(attachment);
+            break;
+        case 'preview':
+            previewAttachment(attachment);
+            break;
+        case 'renameAttachment':
+            showRenameAttachmentPrompt(attachment);
+            break;
+        case 'deleteAttachment':
+            deleteAttachment(attachment);
+            break;
+    }
+}
+
+// 显示重命名附件提示
+function showRenameAttachmentPrompt(attachment) {
+    const newName = prompt('请输入新文件名:', attachment.name);
+    if (!newName || newName === attachment.name) return;
+
+    renameAttachment(attachment, newName);
+}
+
+// 重命名附件
+async function renameAttachment(attachment, newName) {
+    const tab = state.tabs.find(t => t.id === state.activeTabId);
+    if (!tab) return;
+
+    try {
+        const response = await fetch('/api/editor/attachment/rename', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                modulePath: tab.path,
+                oldName: attachment.name,
+                newName: newName
+            })
+        });
+        const data = await response.json();
+
+        if (data.success) {
+            showToast('附件已重命名', 'success');
+            loadAttachments(tab.path);
+        } else {
+            showToast('重命名失败: ' + data.error, 'error');
+        }
+    } catch (e) {
+        console.error('重命名附件失败:', e);
+        showToast('重命名失败', 'error');
+    }
+}
+
+// 删除附件
+async function deleteAttachment(attachment) {
+    if (!confirm(`确定要删除附件 "${attachment.name}" 吗？`)) {
+        return;
+    }
+
+    const tab = state.tabs.find(t => t.id === state.activeTabId);
+    if (!tab) return;
+
+    // 构建完整路径
+    const dir = tab.path.substring(0, tab.path.lastIndexOf('/'));
+    const fullPath = dir ? dir + '/' + attachment.path : attachment.path;
+
+    try {
+        const response = await fetch('/api/editor/module?path=' + encodeURIComponent(fullPath), {
+            method: 'DELETE'
+        });
+        const data = await response.json();
+
+        if (data.success) {
+            showToast('附件已删除', 'success');
+            loadAttachments(tab.path);
+        } else {
+            showToast('删除失败: ' + data.error, 'error');
+        }
+    } catch (e) {
+        console.error('删除附件失败:', e);
+        showToast('删除失败', 'error');
+    }
+}
+
+// 初始化附件面板事件
+function initAttachmentPanel() {
+    // 加载保存的展开状态
+    const savedExpanded = localStorage.getItem('attachmentExpanded');
+    state.attachmentExpanded = savedExpanded !== '0';
+
+    // 折叠/展开按钮
+    const toggleBtn = document.getElementById('attachmentToggle');
+    if (toggleBtn) {
+        toggleBtn.addEventListener('click', toggleAttachmentPanel);
+    }
+
+    // 刷新按钮
+    const refreshBtn = document.getElementById('attachmentRefresh');
+    if (refreshBtn) {
+        refreshBtn.addEventListener('click', () => {
+            const tab = state.tabs.find(t => t.id === state.activeTabId);
+            if (tab) {
+                loadAttachments(tab.path);
+            }
+        });
+    }
+
+    // 附件右键菜单事件
+    document.querySelectorAll('#attachmentContextMenu .context-item').forEach(item => {
+        item.addEventListener('click', () => {
+            const action = item.dataset.action;
+            onAttachmentContextAction(action);
+        });
+    });
+
+    // 点击其他地方隐藏附件右键菜单
+    document.addEventListener('click', hideAttachmentContextMenu);
+
+    // 初始化横向滚动功能
+    initAttachmentScroll();
+}
+
+// 初始化附件缩略图条横向滚动
+function initAttachmentScroll() {
+    const strip = document.getElementById('attachmentStrip');
+    if (!strip) return;
+
+    // 鼠标滚轮横向滚动
+    strip.addEventListener('wheel', (e) => {
+        if (e.deltaY !== 0) {
+            e.preventDefault();
+            strip.scrollLeft += e.deltaY;
+            updateScrollIndicators();
+        }
+    }, { passive: false });
+
+    // 监听滚动更新指示器
+    strip.addEventListener('scroll', updateScrollIndicators);
+
+    // 滚动指示器点击事件
+    const leftIndicator = document.querySelector('.attachment-scroll-left');
+    const rightIndicator = document.querySelector('.attachment-scroll-right');
+
+    if (leftIndicator) {
+        leftIndicator.addEventListener('click', () => {
+            strip.scrollBy({ left: -200, behavior: 'smooth' });
+        });
+    }
+
+    if (rightIndicator) {
+        rightIndicator.addEventListener('click', () => {
+            strip.scrollBy({ left: 200, behavior: 'smooth' });
+        });
+    }
+}
+
+// 更新滚动指示器显示状态
+function updateScrollIndicators() {
+    const strip = document.getElementById('attachmentStrip');
+    const leftIndicator = document.querySelector('.attachment-scroll-left');
+    const rightIndicator = document.querySelector('.attachment-scroll-right');
+
+    if (!strip || !leftIndicator || !rightIndicator) return;
+
+    const canScrollLeft = strip.scrollLeft > 0;
+    const canScrollRight = strip.scrollLeft < strip.scrollWidth - strip.clientWidth - 1;
+
+    leftIndicator.style.display = canScrollLeft ? 'flex' : 'none';
+    rightIndicator.style.display = canScrollRight ? 'flex' : 'none';
+}
+
+// 格式化文件大小
+function formatFileSize(bytes) {
+    if (bytes === 0) return '0 B';
+    if (bytes === undefined || bytes === null) return '';
+    const k = 1024;
+    const sizes = ['B', 'KB', 'MB', 'GB'];
+    const i = Math.floor(Math.log(bytes) / Math.log(k));
+    return parseFloat((bytes / Math.pow(k, i)).toFixed(1)) + ' ' + sizes[i];
 }

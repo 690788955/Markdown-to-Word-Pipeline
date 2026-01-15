@@ -166,6 +166,28 @@
                         <div class="placeholder-text">从左侧选择文件开始编辑</div>
                     </div>
                 </div>
+                <!-- 附件面板 -->
+                <div id="attachmentPanel" class="attachment-panel" style="display: none;">
+                    <div class="attachment-header">
+                        <button id="attachmentToggle" class="attachment-toggle" title="展开/折叠附件">
+                            <span class="attachment-toggle-icon">▼</span>
+                            <span class="attachment-title">📎 附件</span>
+                            <span id="attachmentCount" class="attachment-count">0</span>
+                        </button>
+                        <button id="attachmentRefresh" class="panel-btn attachment-refresh" title="刷新">↻</button>
+                    </div>
+                    <div id="attachmentContent" class="attachment-content">
+                        <div class="attachment-scroll-indicator attachment-scroll-left" style="display: none;">‹</div>
+                        <div id="attachmentStrip" class="attachment-strip">
+                            <!-- 附件缩略图卡片将在这里渲染 -->
+                        </div>
+                        <div class="attachment-scroll-indicator attachment-scroll-right" style="display: none;">›</div>
+                        <div id="attachmentEmpty" class="attachment-empty" style="display: none;">
+                            <span class="attachment-empty-icon">📁</span>
+                            <span class="attachment-empty-text">暂无附件</span>
+                        </div>
+                    </div>
+                </div>
             </section>
 
             <!-- 右侧拖拽分隔条 -->
@@ -191,6 +213,15 @@
         <div class="context-divider"></div>
         <div class="context-item" data-action="rename">✏️ 重命名</div>
         <div class="context-item" data-action="delete">🗑️ 删除</div>
+    </div>
+
+    <!-- 附件右键菜单 -->
+    <div id="attachmentContextMenu" class="context-menu" style="display:none;">
+        <div class="context-item" data-action="copyRef">📋 复制引用</div>
+        <div class="context-item" data-action="preview">👁️ 预览</div>
+        <div class="context-divider"></div>
+        <div class="context-item" data-action="renameAttachment">✏️ 重命名</div>
+        <div class="context-item context-item-danger" data-action="deleteAttachment">🗑️ 删除</div>
     </div>
 
     <!-- 模态框：新建文件 -->

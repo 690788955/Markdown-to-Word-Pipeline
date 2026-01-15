@@ -1541,3 +1541,289 @@ body.vditor-fullscreen-active {
 .editor-page[data-content-width="full"] .vditor-container .vditor-wysiwyg .vditor-reset {
     max-width: 100% !important;
 }
+
+
+/* ==================== 附件面板 ==================== */
+
+.attachment-panel {
+    border-top: 1px solid var(--color-border);
+    background: var(--color-panel);
+    flex-shrink: 0;
+    max-height: 200px;
+    display: flex;
+    flex-direction: column;
+    transition: max-height 0.2s ease;
+}
+
+.attachment-panel.collapsed {
+    max-height: 40px;
+}
+
+.attachment-panel.collapsed .attachment-content {
+    display: none;
+}
+
+.attachment-panel.collapsed .attachment-toggle-icon {
+    transform: rotate(-90deg);
+}
+
+.attachment-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 8px 12px;
+    background: var(--color-panel-strong);
+    border-bottom: 1px solid var(--color-border);
+    flex-shrink: 0;
+}
+
+.attachment-toggle {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    background: none;
+    border: none;
+    cursor: pointer;
+    padding: 4px 8px;
+    border-radius: 6px;
+    color: var(--color-text);
+    font-size: 13px;
+    transition: background 0.15s;
+}
+
+.attachment-toggle:hover {
+    background: rgba(31, 110, 140, 0.08);
+}
+
+.attachment-toggle-icon {
+    font-size: 10px;
+    color: var(--color-muted);
+    transition: transform 0.2s;
+}
+
+.attachment-title {
+    font-weight: 500;
+}
+
+.attachment-count {
+    background: rgba(31, 110, 140, 0.12);
+    color: var(--color-primary);
+    padding: 2px 8px;
+    border-radius: 10px;
+    font-size: 11px;
+    font-weight: 500;
+}
+
+.attachment-refresh {
+    width: 24px;
+    height: 24px;
+    font-size: 12px;
+}
+
+.attachment-content {
+    position: relative;
+    display: flex;
+    align-items: center;
+    flex: 1;
+    overflow: hidden;
+    padding: 0;
+}
+
+/* 横向滚动缩略图条 */
+.attachment-strip {
+    display: flex;
+    flex-direction: row;
+    gap: 12px;
+    overflow-x: auto;
+    overflow-y: hidden;
+    padding: 12px 16px;
+    scroll-behavior: smooth;
+    scrollbar-width: none; /* Firefox */
+    flex: 1;
+}
+
+.attachment-strip::-webkit-scrollbar {
+    display: none; /* Chrome/Safari */
+}
+
+/* 缩略图卡片 */
+.attachment-card {
+    flex-shrink: 0;
+    width: 80px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    cursor: pointer;
+    border-radius: 8px;
+    padding: 8px;
+    transition: background 0.2s, transform 0.2s;
+    border: 1px solid transparent;
+}
+
+.attachment-card:hover {
+    background: rgba(31, 110, 140, 0.08);
+    transform: translateY(-2px);
+}
+
+.attachment-card.selected {
+    background: var(--color-primary-soft);
+    border-color: var(--color-primary-light);
+}
+
+.attachment-thumb {
+    width: 64px;
+    height: 64px;
+    border-radius: 6px;
+    overflow: hidden;
+    background: var(--color-panel-strong);
+    border: 1px solid var(--color-border);
+    box-shadow: var(--shadow-sm);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.attachment-thumb img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.attachment-thumb-fallback {
+    font-size: 24px;
+    opacity: 0.5;
+}
+
+.attachment-info {
+    margin-top: 6px;
+    text-align: center;
+    width: 100%;
+}
+
+.attachment-name {
+    display: block;
+    font-size: 11px;
+    color: var(--color-text);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 76px;
+}
+
+.attachment-size {
+    display: block;
+    font-size: 10px;
+    color: var(--color-muted);
+    margin-top: 2px;
+}
+
+/* 滚动指示器 */
+.attachment-scroll-indicator {
+    position: absolute;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 28px;
+    height: 48px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--color-muted);
+    font-size: 20px;
+    font-weight: bold;
+    cursor: pointer;
+    z-index: 2;
+    opacity: 0.7;
+    transition: opacity 0.2s;
+}
+
+.attachment-scroll-indicator:hover {
+    opacity: 1;
+    color: var(--color-primary);
+}
+
+.attachment-scroll-left {
+    left: 0;
+    background: linear-gradient(to right, var(--color-panel) 60%, transparent);
+    padding-right: 8px;
+}
+
+.attachment-scroll-right {
+    right: 0;
+    background: linear-gradient(to left, var(--color-panel) 60%, transparent);
+    padding-left: 8px;
+}
+
+/* 保留旧的 attachment-grid 样式以兼容 */
+.attachment-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(80px, 1fr));
+    gap: 12px;
+}
+
+.attachment-item {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 8px;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: background 0.15s, transform 0.15s;
+    border: 1px solid transparent;
+}
+
+.attachment-item:hover {
+    background: rgba(31, 110, 140, 0.08);
+    transform: translateY(-2px);
+}
+
+.attachment-item.selected {
+    background: var(--color-primary-soft);
+    border-color: var(--color-primary-light);
+}
+
+.attachment-empty {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 24px;
+    color: var(--color-muted);
+}
+
+.attachment-empty-icon {
+    font-size: 32px;
+    opacity: 0.5;
+    margin-bottom: 8px;
+}
+
+.attachment-empty-text {
+    font-size: 13px;
+}
+
+/* 附件右键菜单危险项 */
+.context-item-danger {
+    color: #c2514a;
+}
+
+.context-item-danger:hover {
+    background: rgba(194, 81, 74, 0.1);
+}
+
+/* 附件面板滚动条 */
+.attachment-content::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+}
+
+.attachment-content::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+.attachment-content::-webkit-scrollbar-thumb {
+    background: rgba(15, 31, 43, 0.2);
+    border-radius: 3px;
+}
+
+.attachment-content::-webkit-scrollbar-thumb:hover {
+    background: rgba(15, 31, 43, 0.35);
+}
