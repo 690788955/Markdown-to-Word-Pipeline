@@ -1502,3 +1502,42 @@ body.vditor-fullscreen-active {
         transition: none;
     }
 }
+
+/* ==================== 内容宽度控制 ==================== */
+
+/* 默认/中等宽度 (820px) */
+.editor-page[data-content-width="medium"] .vditor-container .vditor-reset,
+.editor-page .vditor-container .vditor-reset {
+    max-width: 820px !important;
+}
+
+/* 窄宽度 (680px) */
+.editor-page[data-content-width="narrow"] .vditor-container .vditor-reset {
+    max-width: 680px !important;
+}
+
+/* 宽 (1000px) */
+.editor-page[data-content-width="wide"] .vditor-container .vditor-reset {
+    max-width: 1000px !important;
+}
+
+/* 全宽 */
+.editor-page[data-content-width="full"] .vditor-container .vditor-reset {
+    max-width: 100% !important;
+    border-radius: 0 !important;
+    border-left: none !important;
+    border-right: none !important;
+}
+
+/* WYSIWYG 模式同步宽度 */
+.editor-page[data-content-width="narrow"] .vditor-container .vditor-wysiwyg .vditor-reset {
+    max-width: 680px !important;
+}
+
+.editor-page[data-content-width="wide"] .vditor-container .vditor-wysiwyg .vditor-reset {
+    max-width: 1000px !important;
+}
+
+.editor-page[data-content-width="full"] .vditor-container .vditor-wysiwyg .vditor-reset {
+    max-width: 100% !important;
+}

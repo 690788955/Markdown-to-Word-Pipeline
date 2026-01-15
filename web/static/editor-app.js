@@ -74,6 +74,7 @@ const themeState = {
     theme: 'light',
     accent: '#1a8fbf',
     contentStyle: 'comfortable',
+    contentWidth: 'medium',   // 内容宽度: narrow, medium, wide, full
     codeTheme: 'github',      // 代码块主题 ID
     codeThemeManual: false    // 是否手动选择
 };
@@ -163,6 +164,7 @@ function initTheme() {
     const savedTheme = localStorage.getItem('uiTheme');
     const savedAccent = localStorage.getItem('uiAccent');
     const savedContentStyle = localStorage.getItem('uiContentStyle');
+    const savedContentWidth = localStorage.getItem('uiContentWidth');
     const savedCodeTheme = localStorage.getItem('codeTheme');
     const savedCodeThemeManual = localStorage.getItem('codeThemeManual');
     
@@ -176,6 +178,9 @@ function initTheme() {
     }
     if (savedContentStyle) {
         themeState.contentStyle = savedContentStyle;
+    }
+    if (savedContentWidth) {
+        themeState.contentWidth = savedContentWidth;
     }
     // 加载代码块主题设置
     if (savedCodeTheme && CODE_THEMES[savedCodeTheme]) {
@@ -232,6 +237,15 @@ function initThemeControls() {
         });
     });
 
+    // 内容宽度选择器事件绑定
+    document.querySelectorAll('[data-content-width]').forEach(btn => {
+        btn.addEventListener('click', () => {
+            const width = btn.getAttribute('data-content-width');
+            if (!width) return;
+            setContentWidth(width);
+        });
+    });
+
     if (accentInput) {
         accentInput.value = themeState.accent;
         accentInput.addEventListener('input', (e) => {
@@ -253,6 +267,7 @@ function applyTheme() {
     document.documentElement.setAttribute('data-theme', themeState.theme);
     setAccent(themeState.accent, true);
     applyContentStyle();
+    applyContentWidth();
     updateThemeControls();
     // 应用代码块主题（会根据当前整体主题选择 light/dark 变体）
     applyCodeTheme();
@@ -267,6 +282,10 @@ function updateThemeControls() {
     document.querySelectorAll('[data-content-style]').forEach(btn => {
         const style = btn.getAttribute('data-content-style');
         btn.classList.toggle('active', style === themeState.contentStyle);
+    });
+    document.querySelectorAll('[data-content-width]').forEach(btn => {
+        const width = btn.getAttribute('data-content-width');
+        btn.classList.toggle('active', width === themeState.contentWidth);
     });
     const accentInput = document.getElementById('themeAccentInput');
     if (accentInput) accentInput.value = themeState.accent;
@@ -346,6 +365,17 @@ function setContentStyle(style) {
 
 function applyContentStyle() {
     document.body.dataset.contentStyle = themeState.contentStyle;
+}
+
+function setContentWidth(width) {
+    themeState.contentWidth = width;
+    localStorage.setItem('uiContentWidth', width);
+    applyContentWidth();
+    updateThemeControls();
+}
+
+function applyContentWidth() {
+    document.body.dataset.contentWidth = themeState.contentWidth;
 }
 
 function rgba(hex, alpha) {
