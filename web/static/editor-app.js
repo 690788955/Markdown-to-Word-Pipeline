@@ -2568,13 +2568,32 @@ function toggleAttachmentPanel() {
 
 // 复制图片 Markdown 引用
 function copyImageReference(attachment) {
-    const reference = `![${attachment.name}](${attachment.path})`;
+    const tab = state.tabs.find(t => t.id === state.activeTabId);
+    const rawPath = attachment.path || attachment.fullPath || '';
+    const normalizedPath = rawPath.replace(/^\/+/, '');
+    const encodedPath = encodePathSegments(normalizedPath);
+
+    let markdownPath = '';
+    if (tab && attachment.path) {
+        const linkBase = calculateLinkBase(tab.path);
+        const encodedRelative = encodePathSegments(attachment.path.replace(/^\/+/, ''));
+        markdownPath = linkBase + encodedRelative;
+    } else {
+        markdownPath = `/api/src/${encodedPath}`;
+    }
+
+    const reference = `![${attachment.name}](${markdownPath})`;
     navigator.clipboard.writeText(reference).then(() => {
         showToast('已复制: ' + reference, 'success');
     }).catch(e => {
         console.error('复制失败:', e);
         showToast('复制失败', 'error');
     });
+}
+
+function encodePathSegments(value) {
+    if (!value) return '';
+    return value.split('/').map(encodeURIComponent).join('/');
 }
 
 // 预览附件
