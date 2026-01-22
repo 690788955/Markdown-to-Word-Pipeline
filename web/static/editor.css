@@ -68,7 +68,7 @@
     display: flex;
     justify-content: space-between;
     align-items: center;
-    padding: 0 16px;
+    padding: 0 var(--spacing-md);
     height: 52px;
     background: var(--color-header);
     color: #f0f4f7;
@@ -79,17 +79,17 @@
 .header-left {
     display: flex;
     align-items: center;
-    gap: 16px;
+    gap: var(--spacing-md);
 }
 
 .back-btn {
     display: flex;
     align-items: center;
-    gap: 4px;
+    gap: var(--spacing-xs);
     color: #f0f4f7;
     text-decoration: none;
-    padding: 6px 12px;
-    border-radius: 6px;
+    padding: 6px var(--spacing-md);
+    border-radius: var(--radius-sm);
     border: 1px solid rgba(255, 255, 255, 0.16);
     transition: background 0.2s, border-color 0.2s;
 }
@@ -104,7 +104,7 @@
 }
 
 .editor-title {
-    font-size: 16px;
+    font-size: 1rem;
     font-weight: 600;
     margin: 0;
     letter-spacing: 0.4px;
@@ -114,18 +114,18 @@
 .header-right {
     display: flex;
     align-items: center;
-    gap: 10px;
+    gap: var(--spacing-sm);
     position: relative;
 }
 
 .header-select {
     height: 30px;
-    padding: 0 8px;
-    border-radius: 6px;
+    padding: 0 var(--spacing-sm);
+    border-radius: var(--radius-sm);
     border: 1px solid rgba(255, 255, 255, 0.2);
     background: rgba(255, 255, 255, 0.08);
     color: white;
-    font-size: 12px;
+    font-size: 0.75rem;
 }
 
 .header-select:focus {
@@ -138,37 +138,43 @@
     color: #333;
 }
 
-.header-btn {
+.editor-header .header-btn {
     display: flex;
     align-items: center;
     justify-content: center;
     width: 36px;
     height: 36px;
+    padding: 0;
     background: rgba(255, 255, 255, 0.06);
     border: 1px solid rgba(255, 255, 255, 0.14);
-    border-radius: 6px;
+    border-radius: var(--radius-sm);
     color: white;
     cursor: pointer;
     position: relative;
     transition: background 0.2s, border-color 0.2s, color 0.2s;
+    box-shadow: none;
+    font-size: 1rem;
 }
 
-.header-btn:hover {
+.editor-header .header-btn:hover {
     background: rgba(255, 255, 255, 0.16);
     border-color: rgba(255, 255, 255, 0.3);
+    color: white;
+    transform: none;
+    box-shadow: none;
 }
 
-.header-group {
+.editor-header .header-group {
     display: inline-flex;
     align-items: center;
-    gap: 8px;
-    padding: 4px;
-    border-radius: 999px;
+    gap: var(--spacing-sm);
+    padding: var(--spacing-xs);
+    border-radius: var(--radius-full);
     background: rgba(255, 255, 255, 0.06);
     border: 1px solid rgba(255, 255, 255, 0.12);
 }
 
-.header-group-theme {
+.editor-header .header-group-theme {
     position: relative;
 }
 
@@ -178,7 +184,7 @@
     letter-spacing: 0.5px;
 }
 
-.header-btn.is-active {
+.editor-header .header-btn.is-active {
     background: rgba(227, 168, 87, 0.2);
     border-color: rgba(227, 168, 87, 0.6);
     color: #f7e3b7;
@@ -193,8 +199,8 @@
     padding: 0 4px;
     background: var(--color-accent);
     color: white;
-    font-size: 10px;
-    border-radius: 8px;
+    font-size: 0.625rem;
+    border-radius: var(--radius-full);
     display: flex;
     align-items: center;
     justify-content: center;
@@ -231,30 +237,30 @@
     display: flex;
     justify-content: space-between;
     align-items: center;
-    padding: 12px 16px;
+    padding: var(--spacing-md) var(--spacing-lg);
     border-bottom: 1px solid var(--color-border);
     background: rgba(15, 31, 43, 0.03);
 }
 
 .panel-title {
     font-weight: 500;
-    font-size: 14px;
+    font-size: 0.875rem;
     color: var(--color-text);
 }
 
 .panel-actions {
     display: flex;
-    gap: 4px;
+    gap: var(--spacing-xs);
 }
 
 .panel-btn {
     width: 28px;
     height: 28px;
-    background: rgba(255, 255, 255, 0.8);
+    background: var(--color-surface);
     border: 1px solid var(--color-border);
-    border-radius: 6px;
+    border-radius: var(--radius-sm);
     cursor: pointer;
-    font-size: 14px;
+    font-size: 0.875rem;
     display: flex;
     align-items: center;
     justify-content: center;
@@ -268,19 +274,19 @@
 }
 
 .search-box {
-    padding: 8px 12px;
+    padding: var(--spacing-sm) var(--spacing-md);
     border-bottom: 1px solid var(--color-border);
 }
 
 .search-box input {
     width: 100%;
-    padding: 8px 12px;
+    padding: 12px 16px;
     border: 1px solid var(--color-border);
-    border-radius: 8px;
-    font-size: 13px;
+    border-radius: var(--radius-md);
+    font-size: 0.85rem;
     outline: none;
     transition: border-color 0.2s;
-    background: #ffffff;
+    background: var(--color-surface);
 }
 
 .search-box input:focus {
@@ -291,7 +297,7 @@
 .file-tree {
     flex: 1;
     overflow-y: auto;
-    padding: 8px 0;
+    padding: var(--spacing-sm) 0;
 }
 
 .tree-loading {
@@ -304,12 +310,12 @@
 .tree-item {
     display: flex;
     align-items: center;
-    padding: 8px 12px 8px 16px;
+    padding: 8px var(--spacing-md) 8px var(--spacing-lg);
     cursor: pointer;
     user-select: none;
     transition: background 0.15s;
-    margin: 2px 8px;
-    border-radius: 8px;
+    margin: 2px var(--spacing-sm);
+    border-radius: var(--radius-sm);
     position: relative;
 }
 
@@ -329,14 +335,14 @@
     bottom: 6px;
     width: 3px;
     background: var(--color-primary);
-    border-radius: 2px;
+    border-radius: var(--radius-sm);
 }
 
 .tree-item.modified .tree-item-name::after {
     content: '●';
-    color: #f39c12;
-    margin-left: 4px;
-    font-size: 10px;
+    color: var(--color-warning);
+    margin-left: var(--spacing-xs);
+    font-size: 0.625rem;
 }
 
 .tree-item-icon {
@@ -346,8 +352,8 @@
 }
 
 .tree-item-badge {
-    margin-left: 8px;
-    font-size: 10px;
+    margin-left: var(--spacing-sm);
+    font-size: 0.625rem;
     letter-spacing: 0.4px;
     color: var(--color-muted);
     opacity: 0.65;
@@ -359,7 +365,7 @@
 }
 .tree-item-name {
     flex: 1;
-    font-size: 13px;
+    font-size: 0.8125rem;
     color: var(--color-text);
     white-space: nowrap;
     overflow: hidden;
@@ -376,8 +382,8 @@
     display: flex;
     align-items: center;
     justify-content: center;
-    margin-right: 4px;
-    font-size: 10px;
+    margin-right: var(--spacing-xs);
+    font-size: 0.625rem;
     color: var(--color-muted);
     transition: transform 0.2s;
 }
@@ -387,7 +393,7 @@
 }
 
 .tree-children {
-    padding-left: 16px;
+    padding-left: var(--spacing-lg);
 }
 
 .tree-children.collapsed {
@@ -444,23 +450,23 @@
 }
 
 .tab-empty {
-    padding: 0 16px;
+    padding: 0 var(--spacing-md);
     color: var(--color-muted);
-    font-size: 13px;
+    font-size: 0.8125rem;
     line-height: 40px;
 }
 
 .tab-item {
     display: flex;
     align-items: center;
-    gap: 8px;
-    padding: 0 12px;
+    gap: var(--spacing-sm);
+    padding: 0 var(--spacing-md);
     height: 40px;
     background: transparent;
     border: none;
     border-right: 1px solid var(--color-border);
     cursor: pointer;
-    font-size: 13px;
+    font-size: 0.8125rem;
     color: var(--color-muted);
     white-space: nowrap;
     transition: all 0.15s;
@@ -479,9 +485,9 @@
 
 .tab-item.dirty .tab-name::after {
     content: '●';
-    color: #f39c12;
-    margin-left: 4px;
-    font-size: 10px;
+    color: var(--color-warning);
+    margin-left: var(--spacing-xs);
+    font-size: 0.625rem;
 }
 
 .tab-close {
@@ -490,9 +496,9 @@
     display: flex;
     align-items: center;
     justify-content: center;
-    border-radius: 3px;
-    font-size: 14px;
-    color: #999;
+    border-radius: var(--radius-sm);
+    font-size: 0.875rem;
+    color: var(--color-text-muted);
     transition: all 0.15s;
 }
 
@@ -523,12 +529,12 @@
 
 .placeholder-icon {
     font-size: 64px;
-    margin-bottom: 16px;
+    margin-bottom: var(--spacing-md);
     opacity: 0.5;
 }
 
 .placeholder-text {
-    font-size: 16px;
+    font-size: 1rem;
 }
 
 /* Vditor 编辑器容器 */
@@ -587,7 +593,7 @@
     box-sizing: border-box;
     background: var(--color-surface);
     border: 1px solid var(--color-border);
-    border-radius: 14px;
+    border-radius: var(--radius-lg);
     box-shadow: var(--shadow-card);
     color: var(--color-text);
     font-size: var(--content-font-size);
@@ -600,13 +606,13 @@
 .vditor-container .vditor-reset h4 {
     font-family: "Source Han Serif SC", "Noto Serif CJK SC", "SimSun", serif;
     color: var(--color-text);
-    margin-top: 1.4em;
+    margin-top: 1.6em;
 }
 
 .vditor-container .vditor-reset h1 {
     font-size: 1.8em;
     border-bottom: 1px solid var(--color-border);
-    padding-bottom: 0.4em;
+    padding-bottom: 0.5em;
 }
 
 .vditor-container .vditor-reset h2 {
@@ -618,29 +624,29 @@
 }
 
 .vditor-container .vditor-reset p {
-    margin: 0.8em 0;
+    margin: 1em 0;
     color: var(--color-text);
 }
 
 .vditor-container .vditor-reset code {
     font-family: "JetBrains Mono", "Fira Code", "Consolas", monospace;
-    background: rgba(31, 110, 140, 0.08);
-    padding: 0 4px;
-    border-radius: 4px;
+    background: var(--color-primary-light);
+    padding: 0 var(--spacing-xs);
+    border-radius: var(--radius-sm);
 }
 
 .vditor-container .vditor-reset pre code {
     display: block;
-    padding: 12px 14px;
-    border-radius: 10px;
+    padding: var(--spacing-md) var(--spacing-lg);
+    border-radius: var(--radius-md);
     overflow-x: auto;
     /* 背景色和文字颜色由 highlight.js 主题控制 */
 }
 
 .vditor-container .vditor-reset blockquote {
-    margin: 1em 0;
-    padding: 10px 16px;
-    background: rgba(31, 110, 140, 0.08);
+    margin: 1.2em 0;
+    padding: 10px var(--spacing-lg);
+    background: var(--color-primary-light);
     border-left: 3px solid var(--color-primary);
     color: var(--color-muted);
 }
@@ -648,13 +654,13 @@
 .vditor-container .vditor-reset table {
     width: 100%;
     border-collapse: collapse;
-    margin: 1em 0;
+    margin: 1.5em 0;
 }
 
 .vditor-container .vditor-reset th,
 .vditor-container .vditor-reset td {
     border: 1px solid var(--color-border);
-    padding: 8px 10px;
+    padding: var(--spacing-sm) var(--spacing-md);
 }
 
 .vditor-container .vditor-reset th {
@@ -791,10 +797,10 @@ body.vditor-fullscreen-active {
 
 /* Git 状态区域 */
 .git-status {
-    margin-bottom: 16px;
-    padding: 12px;
+    margin-bottom: var(--spacing-md);
+    padding: var(--spacing-md);
     background: var(--color-surface);
-    border-radius: 10px;
+    border-radius: var(--radius-md);
     border: 1px solid var(--color-border);
     box-shadow: var(--shadow-card);
 }
@@ -802,25 +808,25 @@ body.vditor-fullscreen-active {
 .git-branch {
     display: flex;
     align-items: center;
-    gap: 8px;
-    font-size: 13px;
+    gap: var(--spacing-sm);
+    font-size: 0.8125rem;
     color: var(--color-text);
 }
 
 .git-branch-icon {
-    color: #27ae60;
+    color: var(--color-success);
 }
 
 .git-remote-tag {
     display: inline-flex;
     align-items: center;
-    gap: 4px;
-    padding: 2px 8px;
-    margin-left: 8px;
-    font-size: 11px;
-    background: rgba(31, 110, 140, 0.12);
+    gap: var(--spacing-xs);
+    padding: 2px var(--spacing-sm);
+    margin-left: var(--spacing-sm);
+    font-size: 0.6875rem;
+    background: var(--color-primary-light);
     color: var(--color-primary);
-    border-radius: 4px;
+    border-radius: var(--radius-sm);
     cursor: pointer;
     transition: all 0.2s;
 }
@@ -830,12 +836,12 @@ body.vditor-fullscreen-active {
 }
 
 .git-remote-tag.git-no-remote {
-    background: rgba(227, 168, 87, 0.2);
-    color: #b56d1f;
+    background: var(--color-warning-light);
+    color: var(--color-warning-hover);
 }
 
 .git-remote-tag.git-no-remote:hover {
-    background: rgba(227, 168, 87, 0.32);
+    background: rgba(243, 156, 18, 0.32);
 }
 
 /* 变更列表 */
@@ -843,29 +849,29 @@ body.vditor-fullscreen-active {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    margin-bottom: 8px;
+    margin-bottom: var(--spacing-sm);
 }
 
 .git-changes-title {
-    font-size: 13px;
+    font-size: 0.8125rem;
     font-weight: 500;
     color: var(--color-text);
 }
 
 .git-changes-count {
-    font-size: 12px;
+    font-size: 0.75rem;
     color: var(--color-muted);
-    background: rgba(15, 31, 43, 0.08);
-    padding: 2px 8px;
-    border-radius: 10px;
+    background: var(--color-bg);
+    padding: 2px var(--spacing-sm);
+    border-radius: var(--radius-full);
 }
 
 .git-change-item {
     display: flex;
     align-items: center;
-    gap: 8px;
-    padding: 8px;
-    border-radius: 4px;
+    gap: var(--spacing-sm);
+    padding: var(--spacing-sm);
+    border-radius: var(--radius-sm);
     cursor: pointer;
     transition: background 0.15s;
 }
@@ -881,12 +887,12 @@ body.vditor-fullscreen-active {
 .git-change-status {
     width: 20px;
     text-align: center;
-    font-size: 12px;
+    font-size: 0.75rem;
     font-weight: 500;
 }
 
 .git-change-status.added {
-    color: #27ae60;
+    color: var(--color-success);
 }
 
 .git-change-status.modified {
@@ -894,16 +900,16 @@ body.vditor-fullscreen-active {
 }
 
 .git-change-status.deleted {
-    color: #e74c3c;
+    color: var(--color-danger);
 }
 
 .git-change-status.untracked {
-    color: #95a5a6;
+    color: var(--color-text-muted);
 }
 
 .git-change-path {
     flex: 1;
-    font-size: 12px;
+    font-size: 0.75rem;
     color: var(--color-text);
     white-space: nowrap;
     overflow: hidden;
@@ -919,13 +925,13 @@ body.vditor-fullscreen-active {
 
 .git-commit-input {
     width: 100%;
-    padding: 10px;
+    padding: 12px 16px;
     border: 1px solid var(--color-border);
-    border-radius: 8px;
-    font-size: 13px;
+    border-radius: var(--radius-md);
+    font-size: 0.85rem;
     resize: vertical;
     min-height: 60px;
-    margin-bottom: 8px;
+    margin-bottom: var(--spacing-sm);
 }
 
 .git-commit-input:focus {
@@ -941,8 +947,8 @@ body.vditor-fullscreen-active {
 
 .git-actions .btn {
     flex: 1;
-    font-size: 12px;
-    padding: 8px 12px;
+    font-size: 0.75rem;
+    padding: 8px var(--spacing-md);
 }
 
 /* ==================== 右键菜单 ==================== */
@@ -951,7 +957,7 @@ body.vditor-fullscreen-active {
     position: fixed;
     background: var(--color-surface);
     border: 1px solid var(--color-border);
-    border-radius: 10px;
+    border-radius: var(--radius-md);
     box-shadow: var(--shadow-panel);
     min-width: 160px;
     z-index: 1000;
@@ -959,8 +965,8 @@ body.vditor-fullscreen-active {
 }
 
 .context-item {
-    padding: 8px 16px;
-    font-size: 13px;
+    padding: var(--spacing-sm) var(--spacing-md);
+    font-size: 0.8125rem;
     cursor: pointer;
     transition: background 0.15s;
 }
@@ -1033,10 +1039,10 @@ body.vditor-fullscreen-active {
 
 .toast {
     padding: 12px 20px;
-    background: #1f2a33;
+    background: var(--color-header);
     color: #fff;
-    border-radius: 6px;
-    font-size: 14px;
+    border-radius: var(--radius-sm);
+    font-size: 0.875rem;
     box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
     transform: translateX(100%);
     opacity: 0;
@@ -1049,15 +1055,15 @@ body.vditor-fullscreen-active {
 }
 
 .toast-success {
-    background: #1f6e8c;
+    background: var(--color-primary);
 }
 
 .toast-error {
-    background: #c2514a;
+    background: var(--color-danger);
 }
 
 .toast-warning {
-    background: #d08a2f;
+    background: var(--color-warning);
 }
 
 /* ==================== 滚动条样式 ==================== */
@@ -1087,7 +1093,7 @@ body.vditor-fullscreen-active {
 
 /* 变更区域 */
 .git-changes-section {
-    margin-bottom: 8px;
+    margin-bottom: var(--spacing-sm);
 }
 
 .git-changes-section.collapsed .git-section-content {
@@ -1102,14 +1108,14 @@ body.vditor-fullscreen-active {
 .git-section-header {
     display: flex;
     align-items: center;
-    gap: 6px;
-    padding: 6px 8px;
+    gap: var(--spacing-xs);
+    padding: 6px var(--spacing-sm);
     cursor: pointer;
-    font-size: 12px;
+    font-size: 0.75rem;
     font-weight: 500;
     color: var(--color-text);
-    background: rgba(15, 31, 43, 0.04);
-    border-radius: 8px;
+    background: var(--color-bg);
+    border-radius: var(--radius-sm);
     user-select: none;
 }
 
@@ -1118,17 +1124,17 @@ body.vditor-fullscreen-active {
 }
 
 .git-section-toggle {
-    font-size: 10px;
+    font-size: 0.625rem;
     transition: transform 0.15s;
     color: var(--color-muted);
 }
 
 .git-section-count {
     margin-left: auto;
-    background: rgba(15, 31, 43, 0.08);
+    background: var(--color-bg);
     padding: 1px 6px;
-    border-radius: 8px;
-    font-size: 11px;
+    border-radius: var(--radius-sm);
+    font-size: 0.6875rem;
     color: var(--color-muted);
 }
 
@@ -1145,8 +1151,8 @@ body.vditor-fullscreen-active {
     background: transparent;
     cursor: pointer;
     border-radius: 3px;
-    font-size: 14px;
-    color: #666;
+    font-size: 0.875rem;
+    color: var(--color-text-secondary);
     display: flex;
     align-items: center;
     justify-content: center;
@@ -1159,13 +1165,13 @@ body.vditor-fullscreen-active {
 
 /* 区域内容 */
 .git-section-content {
-    padding: 4px 0;
+    padding: var(--spacing-xs) 0;
 }
 
 .git-empty-hint {
-    padding: 8px 12px;
+    padding: var(--spacing-sm) var(--spacing-md);
     color: var(--color-muted);
-    font-size: 12px;
+    font-size: 0.75rem;
     font-style: italic;
 }
 
@@ -1173,11 +1179,11 @@ body.vditor-fullscreen-active {
 .git-file-item {
     display: flex;
     align-items: center;
-    gap: 8px;
-    padding: 4px 8px;
-    border-radius: 4px;
+    gap: var(--spacing-sm);
+    padding: 4px var(--spacing-sm);
+    border-radius: var(--radius-sm);
     cursor: pointer;
-    font-size: 12px;
+    font-size: 0.75rem;
 }
 
 .git-file-item:hover {
@@ -1198,7 +1204,7 @@ body.vditor-fullscreen-active {
 
 .git-file-actions {
     display: flex;
-    gap: 2px;
+    gap: var(--spacing-xs);
     opacity: 0;
     transition: opacity 0.15s;
 }
@@ -1210,8 +1216,8 @@ body.vditor-fullscreen-active {
     background: transparent;
     cursor: pointer;
     border-radius: 3px;
-    font-size: 12px;
-    color: #666;
+    font-size: 0.75rem;
+    color: var(--color-text-secondary);
     display: flex;
     align-items: center;
     justify-content: center;
@@ -1223,8 +1229,8 @@ body.vditor-fullscreen-active {
 }
 
 .git-file-btn.git-discard-btn:hover {
-    background: rgba(194, 81, 74, 0.15);
-    color: #c2514a;
+    background: var(--color-danger-light);
+    color: var(--color-danger);
 }
 
 /* 状态颜色 */
@@ -1232,11 +1238,11 @@ body.vditor-fullscreen-active {
     width: 16px;
     text-align: center;
     font-weight: 600;
-    font-size: 11px;
+    font-size: 0.6875rem;
 }
 
 .git-file-status.status-modified {
-    color: #cca700;
+    color: var(--color-warning);
 }
 
 .git-file-status.status-added,
@@ -1248,8 +1254,8 @@ body.vditor-fullscreen-active {
     color: #f14c4c;
 }
 
-.git-file-status.status-renamed {
-    color: #4fc1ff;
+.git-change-status.renamed {
+    color: var(--color-primary);
 }
 
 /* 提交按钮禁用状态 */
@@ -1286,31 +1292,31 @@ body.vditor-fullscreen-active {
 }
 
 .header-btn {
-    border-radius: 10px;
+    border-radius: var(--radius-sm);
     border: 1px solid rgba(255, 255, 255, 0.18);
     background: rgba(255, 255, 255, 0.08);
     backdrop-filter: blur(6px);
 }
 
-.header-btn:hover {
+.editor-header .header-btn:hover {
     background: rgba(255, 255, 255, 0.18);
 }
 
-.header-btn-theme {
+.editor-header .header-btn-theme {
     width: auto;
     padding: 0 10px;
     gap: 6px;
 }
 
-.header-btn-theme .theme-text {
+.editor-header .header-btn-theme .theme-text {
     font-size: 12px;
     letter-spacing: 0.2px;
 }
 
-.header-btn-theme .theme-dot {
+.editor-header .header-btn-theme .theme-dot {
     width: 8px;
     height: 8px;
-    border-radius: 999px;
+    border-radius: var(--radius-full);
     background: var(--color-primary);
     box-shadow: 0 0 0 3px var(--color-primary-soft);
 }
@@ -1361,7 +1367,7 @@ body.vditor-fullscreen-active {
 }
 
 .tree-item.selected::before {
-    border-radius: 999px;
+    border-radius: var(--radius-full);
 }
 
 .tree-folder-toggle {
@@ -1387,10 +1393,10 @@ body.vditor-fullscreen-active {
 .tree-item-icon {
     width: 30px;
     height: 22px;
-    border-radius: 8px;
+    border-radius: var(--radius-sm);
     background: var(--color-panel-strong);
     color: var(--color-text-secondary);
-    font-size: 10px;
+    font-size: 0.625rem;
     font-weight: 700;
     letter-spacing: 0.4px;
     display: inline-flex;
@@ -1408,37 +1414,37 @@ body.vditor-fullscreen-active {
 
 .tree-item-icon.icon-markdown {
     background: rgba(20, 184, 166, 0.16);
-    color: #0f766e;
+    color: var(--color-accent);
     border-color: rgba(20, 184, 166, 0.25);
 }
 
 .tree-item-icon.icon-image {
     background: rgba(14, 165, 233, 0.16);
-    color: #0369a1;
+    color: var(--color-primary);
     border-color: rgba(14, 165, 233, 0.25);
 }
 
 .tree-item-icon.icon-config {
     background: rgba(45, 212, 191, 0.16);
-    color: #0f766e;
+    color: var(--color-accent);
     border-color: rgba(45, 212, 191, 0.25);
 }
 
 .tree-item-icon.icon-script {
     background: rgba(59, 130, 246, 0.18);
-    color: #1d4ed8;
+    color: var(--color-primary);
     border-color: rgba(59, 130, 246, 0.25);
 }
 
 .tree-item-icon.icon-style {
     background: rgba(14, 116, 144, 0.16);
-    color: #0e7490;
+    color: var(--color-primary);
     border-color: rgba(14, 116, 144, 0.25);
 }
 
 .tree-item-icon.icon-markup {
     background: rgba(56, 189, 248, 0.18);
-    color: #0369a1;
+    color: var(--color-primary);
     border-color: rgba(56, 189, 248, 0.25);
 }
 

@@ -76,25 +76,83 @@ function initTheme() {
 }
 
 function initThemeControls() {
-    const toggleBtn = document.getElementById('themeToggleBtn');
-    const panel = document.getElementById('themePanel');
-    const accentInput = document.getElementById('themeAccentInput');
+    // Utility Panel 控制
+    const utilityToggleBtn = document.getElementById('utilityToggleBtn');
+    const utilityPanel = document.getElementById('utilityPanel');
+    const utilityOverlay = document.getElementById('utilityOverlay');
+    const utilityCloseBtn = utilityPanel ? utilityPanel.querySelector('.utility-panel-close') : null;
+    const utilityAccentInput = document.getElementById('utilityAccentInput');
+    const utilityResourceBtn = document.getElementById('utilityResourceBtn');
 
-    if (toggleBtn && panel) {
-        toggleBtn.addEventListener('click', (e) => {
+    // 打开工具面板
+    function openUtilityPanel() {
+        if (utilityPanel) {
+            utilityPanel.classList.add('is-open');
+            utilityPanel.setAttribute('aria-hidden', 'false');
+        }
+        if (utilityOverlay) {
+            utilityOverlay.classList.add('is-open');
+        }
+    }
+
+    // 关闭工具面板
+    function closeUtilityPanel() {
+        if (utilityPanel) {
+            utilityPanel.classList.remove('is-open');
+            utilityPanel.setAttribute('aria-hidden', 'true');
+        }
+        if (utilityOverlay) {
+            utilityOverlay.classList.remove('is-open');
+        }
+    }
+
+    // 切换工具面板
+    function toggleUtilityPanel() {
+        if (utilityPanel && utilityPanel.classList.contains('is-open')) {
+            closeUtilityPanel();
+        } else {
+            openUtilityPanel();
+        }
+    }
+
+    // 绑定工具按钮点击事件
+    if (utilityToggleBtn) {
+        utilityToggleBtn.addEventListener('click', (e) => {
             e.stopPropagation();
-            panel.classList.toggle('is-open');
-        });
-
-        panel.addEventListener('click', (e) => {
-            e.stopPropagation();
-        });
-
-        document.addEventListener('click', () => {
-            panel.classList.remove('is-open');
+            toggleUtilityPanel();
         });
     }
 
+    // 绑定遮罩层点击关闭
+    if (utilityOverlay) {
+        utilityOverlay.addEventListener('click', closeUtilityPanel);
+    }
+
+    // 绑定关闭按钮点击
+    if (utilityCloseBtn) {
+        utilityCloseBtn.addEventListener('click', closeUtilityPanel);
+    }
+
+    // 绑定 Escape 键关闭
+    document.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape' && utilityPanel && utilityPanel.classList.contains('is-open')) {
+            closeUtilityPanel();
+        }
+    });
+
+    // 资源管理按钮
+    if (utilityResourceBtn) {
+        utilityResourceBtn.addEventListener('click', () => {
+            closeUtilityPanel();
+            if (typeof openResourcePanel === 'function') {
+                openResourcePanel();
+            } else if (typeof toggleResourcePanel === 'function') {
+                toggleResourcePanel();
+            }
+        });
+    }
+
+    // 主题切换按钮
     document.querySelectorAll('[data-theme-option]').forEach(btn => {
         btn.addEventListener('click', () => {
             const nextTheme = btn.getAttribute('data-theme-option');
@@ -105,6 +163,7 @@ function initThemeControls() {
         });
     });
 
+    // 强调色色板
     document.querySelectorAll('[data-accent]').forEach(btn => {
         btn.addEventListener('click', () => {
             const accent = btn.getAttribute('data-accent');
@@ -113,12 +172,18 @@ function initThemeControls() {
         });
     });
 
-    if (accentInput) {
-        accentInput.value = themeState.accent;
-        accentInput.addEventListener('input', (e) => {
+    // 强调色输入框
+    if (utilityAccentInput) {
+        utilityAccentInput.value = themeState.accent;
+        utilityAccentInput.addEventListener('input', (e) => {
             setAccent(e.target.value);
         });
     }
+
+    // 暴露函数到全局
+    window.openUtilityPanel = openUtilityPanel;
+    window.closeUtilityPanel = closeUtilityPanel;
+    window.toggleUtilityPanel = toggleUtilityPanel;
 }
 
 function applyTheme() {
@@ -132,8 +197,8 @@ function updateThemeControls() {
         const option = btn.getAttribute('data-theme-option');
         btn.classList.toggle('active', option === themeState.theme);
     });
-    const accentInput = document.getElementById('themeAccentInput');
-    if (accentInput) accentInput.value = themeState.accent;
+    const utilityAccentInput = document.getElementById('utilityAccentInput');
+    if (utilityAccentInput) utilityAccentInput.value = themeState.accent;
 }
 
 function setAccent(color, skipPersist) {
@@ -602,7 +667,7 @@ function renderDocList() {
     if (!docList) return;
     
     if (documentTypes.length === 0) {
-        docList.innerHTML = '<div class="list-empty">没有可用的文档类型</div>';
+        docList.innerHTML = '<div class="list-empty list-empty-guide"><span class="list-empty-icon">📋</span><span class="list-empty-text">没有可用的文档类型</span><span class="list-empty-hint">请选择其他客户配置或新建配置</span></div>';
         return;
     }
     
@@ -628,14 +693,14 @@ function renderDocList() {
         actions.className = 'doc-actions';
         
         const genBtn = document.createElement('button');
-        genBtn.className = 'btn btn-outline btn-sm';
+        genBtn.className = 'btn btn-ghost btn-sm';
         genBtn.innerHTML = '<span class="btn-text">生成</span><span class="btn-loading" style="display:none;">生成中</span>';
         genBtn.onclick = function() { generateSingle(doc.name, genBtn); };
         actions.appendChild(genBtn);
         
         // 所有配置都显示编辑按钮（锁定时禁用）
         const editBtn = document.createElement('button');
-        editBtn.className = 'btn btn-outline btn-sm';
+        editBtn.className = 'btn btn-ghost btn-sm';
         editBtn.textContent = '编辑';
         if (isLocked) {
             editBtn.disabled = true;
@@ -648,7 +713,7 @@ function renderDocList() {
         // 自定义配置显示删除按钮（锁定时禁用）
         if (isCustomClient) {
             const delBtn = document.createElement('button');
-            delBtn.className = 'btn btn-outline btn-sm btn-danger-outline';
+            delBtn.className = 'btn btn-ghost btn-sm btn-danger-outline';
             delBtn.textContent = '删除';
             if (isLocked) {
                 delBtn.disabled = true;
@@ -799,6 +864,17 @@ function showResult(files) {
     
     if (downloadAllBtn) {
         downloadAllBtn.style.display = files.length > 1 ? 'inline-flex' : 'none';
+    }
+    
+    // 自动滚动到结果区域
+    scrollToResult();
+}
+
+// 滚动到结果区域
+function scrollToResult() {
+    const resultSection = document.getElementById('resultSection');
+    if (resultSection) {
+        resultSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
     }
 }
 

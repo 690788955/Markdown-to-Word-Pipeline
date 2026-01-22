@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>运维文档生成系统</title>
-    <link rel="stylesheet" href="/static/style.css?v=11">
+    <link rel="stylesheet" href="/static/style.css?v=12">
     <!-- Vditor Markdown 编辑器（本地文件，支持离线使用） -->
     <link rel="stylesheet" href="/static/vendor/vditor/dist/index.css" />
     <script src="/static/vendor/vditor/dist/index.min.js"></script>
@@ -13,87 +13,105 @@
     <div class="container">
         <header>
             <h1>运维文档生成系统</h1>
-            
             <div class="header-actions">
-                <div class="header-group header-group-actions">
-                    <a href="/editor" class="header-btn" title="打开知识库">
-                        <span class="header-btn-icon">🗂️</span>
-                        <span class="header-btn-text">知识库</span>
-                    </a>
-                    <button id="resourceToggleBtn" class="header-btn" title="资源管理">
-                        <span class="header-btn-icon">📦</span>
-                        <span class="header-btn-text">资源</span>
-                    </button>
-                </div>
-                <div class="header-group header-group-tools">
-                    <button id="themeToggleBtn" class="header-btn theme-toggle" title="主题设置">
-                        <span class="theme-dot"></span>
-                        <span class="header-btn-text">主题</span>
-                    </button>
-                    <div id="themePanel" class="theme-panel" aria-hidden="true">
-                        <div class="theme-panel-title">主题设置</div>
-                        <div class="theme-row">
-                            <button class="theme-chip" data-theme-option="light">浅色</button>
-                            <button class="theme-chip" data-theme-option="dark">深色</button>
-                        </div>
-                        <div class="theme-row">
-                            <label class="theme-label" for="themeAccentInput">强调色</label>
-                            <input id="themeAccentInput" type="color" value="#1a8fbf">
-                        </div>
-                        <div class="theme-row theme-swatches">
-                            <button class="theme-swatch" data-accent="#1a8fbf" style="--swatch: #1a8fbf;"></button>
-                            <button class="theme-swatch" data-accent="#1f7ae0" style="--swatch: #1f7ae0;"></button>
-                            <button class="theme-swatch" data-accent="#14b8a6" style="--swatch: #14b8a6;"></button>
-                            <button class="theme-swatch" data-accent="#2f855a" style="--swatch: #2f855a;"></button>
-                            <button class="theme-swatch" data-accent="#0ea5e9" style="--swatch: #0ea5e9;"></button>
-                        </div>
-                    </div>
-                </div>
+                <a href="/editor" class="header-btn header-knowledge-btn" title="打开知识库">
+                    <span class="header-btn-icon">🗂️</span>
+                    <span class="header-btn-text">知识库</span>
+                </a>
+                <button id="utilityToggleBtn" class="header-btn header-tools-toggle" title="工具">
+                    <span class="header-btn-icon">⚙️</span>
+                    <span class="header-btn-text">工具</span>
+                </button>
             </div>
         </header>
+        
+        <!-- 工具面板 (Utility Panel) -->
+        <aside id="utilityPanel" class="utility-panel" aria-hidden="true">
+            <div class="utility-panel-header">
+                <h3>工具</h3>
+                <button class="utility-panel-close" aria-label="关闭">&times;</button>
+            </div>
+            <div class="utility-panel-body">
+                <!-- 主题设置 -->
+                <section class="utility-section">
+                    <h4>主题设置</h4>
+                    <div class="theme-mode-toggle">
+                        <button class="theme-chip" data-theme-option="light">浅色</button>
+                        <button class="theme-chip" data-theme-option="dark">深色</button>
+                    </div>
+                    <div class="theme-accent-row">
+                        <label>强调色</label>
+                        <input type="color" id="utilityAccentInput" value="#1a8fbf">
+                    </div>
+                    <div class="theme-swatches">
+                        <button class="theme-swatch" data-accent="#1a8fbf" style="--swatch: #1a8fbf;"></button>
+                        <button class="theme-swatch" data-accent="#1f7ae0" style="--swatch: #1f7ae0;"></button>
+                        <button class="theme-swatch" data-accent="#14b8a6" style="--swatch: #14b8a6;"></button>
+                        <button class="theme-swatch" data-accent="#2f855a" style="--swatch: #2f855a;"></button>
+                        <button class="theme-swatch" data-accent="#0ea5e9" style="--swatch: #0ea5e9;"></button>
+                    </div>
+                </section>
+                
+                <!-- 资源管理 -->
+                <section class="utility-section">
+                    <h4>资源管理</h4>
+                    <button id="utilityResourceBtn" class="utility-link-btn">
+                        <span>📦</span> 打开资源管理
+                    </button>
+                </section>
+            </div>
+        </aside>
+        <div id="utilityOverlay" class="utility-overlay"></div>
 
         <main>
             <!-- 配置区域 -->
             <section class="config-bar">
-                <div class="config-item">
-                    <label>客户配置</label>
-                    <div class="client-select-row">
-                        <select id="clientSelect">
-                            <option value="">加载中...</option>
+                <div class="config-bar-row config-bar-inputs">
+                    <div class="config-item">
+                        <label>客户配置</label>
+                        <div class="client-select-row">
+                            <select id="clientSelect">
+                                <option value="">加载中...</option>
+                            </select>
+                            <button id="lockBtn" class="btn btn-icon" style="display:none;" onclick="toggleClientLock()" title="锁定/解锁配置">
+                                <span id="lockIcon">🔓</span>
+                            </button>
+                        </div>
+                    </div>
+                    <div class="config-item">
+                        <label>客户名称</label>
+                        <input type="text" id="clientNameInput" placeholder="可选，覆盖默认名称">
+                    </div>
+                    <div class="config-item">
+                        <label>输出格式</label>
+                        <select id="formatSelect">
+                            <option value="word" selected>Word (.docx)</option>
+                            <option value="pdf">PDF (.pdf)</option>
                         </select>
-                        <button id="lockBtn" class="btn btn-icon" style="display:none;" onclick="toggleClientLock()" title="锁定/解锁配置">
-                            <span id="lockIcon">🔓</span>
-                        </button>
                     </div>
                 </div>
-                <div class="config-item">
-                    <label>客户名称</label>
-                    <input type="text" id="clientNameInput" placeholder="可选，覆盖默认名称">
+                <div class="config-bar-row config-bar-actions">
+                    <button id="generateAllBtn" class="btn btn-primary btn-lg" disabled>
+                        <span class="btn-text">全部生成</span>
+                        <span class="btn-loading" style="display:none;">生成中...</span>
+                    </button>
+                    <button id="newConfigBtn" class="btn btn-secondary" onclick="showConfigModal()">
+                        <span class="btn-text">+ 新建配置</span>
+                    </button>
                 </div>
-                <div class="config-item">
-                    <label>输出格式</label>
-                    <select id="formatSelect">
-                        <option value="word" selected>Word (.docx)</option>
-                        <option value="pdf">PDF (.pdf)</option>
-                    </select>
-                </div>
-                <button id="generateAllBtn" class="btn btn-primary" disabled>
-                    <span class="btn-text">全部生成</span>
-                    <span class="btn-loading" style="display:none;">生成中...</span>
-                </button>
-                <button id="newConfigBtn" class="btn btn-secondary" onclick="showConfigModal()">
-                    <span class="btn-text">+ 新建配置</span>
-                </button>
             </section>
 
             <!-- 文档列表 -->
             <section class="doc-list">
-                <div class="list-header">
+                <div class="list-header list-header-compact">
                     <span>文档类型</span>
-                    <span>操作</span>
                 </div>
                 <div id="docList" class="list-body">
-                    <div class="list-empty">请先选择客户配置</div>
+                    <div class="list-empty list-empty-guide">
+                        <span class="list-empty-icon">📋</span>
+                        <span class="list-empty-text">请先选择客户配置</span>
+                        <span class="list-empty-hint">从上方下拉菜单选择一个客户配置开始</span>
+                    </div>
                 </div>
             </section>
 

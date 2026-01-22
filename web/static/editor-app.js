@@ -38,7 +38,7 @@ const state = {
 
     // 附件面板状态
     attachments: [],
-    attachmentExpanded: true,
+    attachmentExpanded: false,
     attachmentLoading: false,
     attachmentTarget: null  // 右键菜单目标附件
 };
