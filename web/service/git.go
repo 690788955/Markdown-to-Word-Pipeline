@@ -973,3 +973,131 @@ func isUnstagedStatus(code byte) bool {
 	// M=Modified, D=Deleted, ?=Untracked
 	return code == 'M' || code == 'D' || code == '?'
 }
+
+// FileCommit 文件提交历史
+type FileCommit struct {
+	Hash      string `json:"hash"`
+	ShortHash string `json:"shortHash"`
+	Author    string `json:"author"`
+	Date      string `json:"date"`
+	Message   string `json:"message"`
+}
+
+// GetFileHistory 获取文件的提交历史
+func (s *GitService) GetFileHistory(filePath string, limit int) ([]FileCommit, error) {
+	if !s.IsRepository() {
+		return nil, &GitError{
+			Operation:  "file-history",
+			Message:    "当前目录不是 Git 仓库",
+			Suggestion: "请先初始化 Git 仓库",
+		}
+	}
+
+	if limit <= 0 {
+		limit = 20
+	}
+
+	// 获取文件的提交历史
+	// 格式: hash|shortHash|author|date|message
+	format := "%H|%h|%an|%aI|%s"
+	limitArg := fmt.Sprintf("-n%d", limit)
+
+	output, err := s.runGit("log", limitArg, "--format="+format, "--follow", "--", filePath)
+	if err != nil {
+		// 可能是新文件或空仓库
+		if strings.Contains(output, "does not have any commits") ||
+			strings.Contains(output, "unknown revision") {
+			return []FileCommit{}, nil
+		}
+		return nil, &GitError{
+			Operation:  "file-history",
+			Message:    "获取文件历史失败: " + err.Error(),
+			Suggestion: "请检查文件路径是否正确",
+		}
+	}
+
+	if output == "" {
+		return []FileCommit{}, nil
+	}
+
+	var commits []FileCommit
+	scanner := bufio.NewScanner(strings.NewReader(output))
+	for scanner.Scan() {
+		line := scanner.Text()
+		parts := strings.SplitN(line, "|", 5)
+		if len(parts) < 5 {
+			continue
+		}
+
+		// 格式化日期
+		dateStr := parts[3]
+		t, err := time.Parse(time.RFC3339, dateStr)
+		if err == nil {
+			dateStr = t.Format("2006-01-02 15:04")
+		}
+
+		commit := FileCommit{
+			Hash:      parts[0],
+			ShortHash: parts[1],
+			Author:    parts[2],
+			Date:      dateStr,
+			Message:   parts[4],
+		}
+		commits = append(commits, commit)
+	}
+
+	return commits, nil
+}
+
+// GetFileAtCommit 获取特定提交版本的文件内容
+func (s *GitService) GetFileAtCommit(filePath string, commitHash string) (string, error) {
+	if !s.IsRepository() {
+		return "", &GitError{
+			Operation:  "file-show",
+			Message:    "当前目录不是 Git 仓库",
+			Suggestion: "请先初始化 Git 仓库",
+		}
+	}
+
+	// 验证 commit hash 格式（防止命令注入）
+	if !isValidCommitHash(commitHash) {
+		return "", &GitError{
+			Operation:  "file-show",
+			Message:    "无效的提交哈希",
+			Suggestion: "请提供有效的 Git 提交哈希",
+		}
+	}
+
+	// 使用 git show 获取文件内容
+	output, err := s.runGitUntrimmed("show", commitHash+":"+filePath)
+	if err != nil {
+		if strings.Contains(output, "does not exist") ||
+			strings.Contains(output, "fatal: path") {
+			return "", &GitError{
+				Operation:  "file-show",
+				Message:    "该版本中不存在此文件",
+				Suggestion: "文件可能在该提交之后才创建",
+			}
+		}
+		return "", &GitError{
+			Operation:  "file-show",
+			Message:    "获取文件内容失败: " + err.Error(),
+			Suggestion: "请检查提交哈希和文件路径",
+		}
+	}
+
+	return output, nil
+}
+
+// isValidCommitHash 验证提交哈希格式
+func isValidCommitHash(hash string) bool {
+	if len(hash) < 4 || len(hash) > 40 {
+		return false
+	}
+	for _, c := range hash {
+		if !((c >= '0' && c <= '9') || (c >= 'a' && c <= 'f') || (c >= 'A' && c <= 'F')) {
+			return false
+		}
+	}
+	return true
+}

@@ -6,7 +6,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>知识库编辑器 - 运维文档生成系统</title>
     <link rel="stylesheet" href="/static/style.css?v=12">
-    <link rel="stylesheet" href="/static/editor.css?v=2">
+    <link rel="stylesheet" href="/static/editor.css?v=4">
     <!-- Vditor Markdown 编辑器 -->
     <link rel="stylesheet" href="/static/vendor/vditor/dist/index.css" />
     <script src="/static/vendor/vditor/dist/index.min.js"></script>
@@ -30,23 +30,22 @@
             </div>
             
             <div class="header-right">
-                <div class="header-group header-group-primary">
-                    <select id="defaultEditorMode" class="header-select" title="默认编辑模式">
-                        <option value="ir">IR</option>
-                        <option value="wysiwyg">WYSIWYG</option>
-                        <option value="sv">SV</option>
-                    </select>
-                </div>
-                <div class="header-group header-group-secondary">
-                    <button id="toggleFileTree" class="header-btn" title="切换文件树">
-                        <span>📁</span>
+                <!-- VSCode 风格的活动栏按钮 -->
+                <div class="activity-bar">
+                    <button id="toggleFileTree" class="activity-btn is-active" title="资源管理器 (Ctrl+Shift+E)">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                            <path d="M3 7V17C3 18.1046 3.89543 19 5 19H19C20.1046 19 21 18.1046 21 17V9C21 7.89543 20.1046 7 19 7H13L11 5H5C3.89543 5 3 5.89543 3 7Z"/>
+                        </svg>
                     </button>
-                    <button id="toggleGitPanel" class="header-btn" title="切换 Git 面板">
-                        <span class="git-icon">🔀</span>
-                        <span id="gitBadge" class="git-badge" style="display:none;">0</span>
-                    </button>
-                    <button id="toggleFocusMode" class="header-btn" title="专注模式">
-                        <span class="focus-icon">F</span>
+                    <button id="toggleGitPanel" class="activity-btn" title="源代码管理 (Ctrl+Shift+G)">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                            <circle cx="6" cy="6" r="2"/>
+                            <circle cx="18" cy="18" r="2"/>
+                            <circle cx="6" cy="18" r="2"/>
+                            <path d="M6 8V16"/>
+                            <path d="M6 8C6 8 6 12 12 12C18 12 18 16 18 16"/>
+                        </svg>
+                        <span id="gitBadge" class="activity-badge" style="display:none;">0</span>
                     </button>
                 </div>
                 <div class="header-group header-group-theme">
@@ -56,6 +55,18 @@
                     </button>
                     <div id="themePanel" class="theme-panel">
                         <div class="theme-panel-title">主题设置</div>
+                        
+                        <!-- 主题预设 -->
+                        <div class="theme-row">
+                            <span class="theme-label">主题预设</span>
+                        </div>
+                        <div class="theme-row theme-presets" id="themePresets">
+                            <!-- 预设按钮将由 JS 动态生成 -->
+                        </div>
+                        
+                        <div class="theme-divider"></div>
+                        
+                        <!-- 基础主题 -->
                         <div class="theme-row">
                             <button class="theme-chip" data-theme-option="light">浅色</button>
                             <button class="theme-chip" data-theme-option="dark">深色</button>
@@ -71,6 +82,10 @@
                             <button class="theme-swatch" data-accent="#2f855a" style="--swatch: #2f855a;"></button>
                             <button class="theme-swatch" data-accent="#0ea5e9" style="--swatch: #0ea5e9;"></button>
                         </div>
+                        
+                        <div class="theme-divider"></div>
+                        
+                        <!-- 内容设置 -->
                         <div class="theme-row">
                             <span class="theme-label">内容密度</span>
                             <button class="theme-chip" data-content-style="comfortable">舒适</button>
@@ -83,6 +98,27 @@
                             <button class="theme-chip" data-content-width="wide">宽</button>
                             <button class="theme-chip" data-content-width="full">全宽</button>
                         </div>
+                        
+                        <div class="theme-divider"></div>
+                        
+                        <!-- 字体设置 -->
+                        <div class="theme-row">
+                            <span class="theme-label">字体</span>
+                            <select id="fontFamilySelect" class="theme-select">
+                                <option value="system-ui, -apple-system, sans-serif">系统默认</option>
+                                <option value="Georgia, serif">衬线字体</option>
+                                <option value="Consolas, monospace">等宽字体</option>
+                            </select>
+                        </div>
+                        <div class="theme-row">
+                            <span class="theme-label">字号</span>
+                            <input type="range" id="fontSizeSlider" min="12" max="24" value="16" class="theme-slider">
+                            <span id="fontSizeValue" class="theme-value">16px</span>
+                        </div>
+                        
+                        <div class="theme-divider"></div>
+                        
+                        <!-- 代码配色 -->
                         <div class="theme-row">
                             <span class="theme-label">代码配色</span>
                         </div>
@@ -124,6 +160,26 @@
                                 <span class="theme-code-name">Monokai</span>
                             </button>
                         </div>
+                        
+                        <div class="theme-divider"></div>
+                        
+                        <!-- 默认编辑模式 -->
+                        <div class="theme-row">
+                            <span class="theme-label">编辑模式</span>
+                            <select id="defaultEditorMode" class="theme-select">
+                                <option value="ir">IR 模式</option>
+                                <option value="wysiwyg">所见即所得</option>
+                                <option value="sv">分屏预览</option>
+                            </select>
+                        </div>
+                        
+                        <div class="theme-divider"></div>
+                        
+                        <!-- 导入导出 -->
+                        <div class="theme-row theme-actions">
+                            <button id="exportThemeBtn" class="theme-action-btn" title="导出当前主题配置">导出</button>
+                            <button id="importThemeBtn" class="theme-action-btn" title="导入主题配置">导入</button>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -153,6 +209,8 @@
 
             <!-- 中间：编辑区域 -->
             <section class="editor-section">
+                <!-- 面包屑导航 -->
+                <div id="breadcrumbNav" class="breadcrumb-nav" style="display: none;"></div>
                 <!-- 标签栏 -->
                 <div id="tabBar" class="tab-bar">
                     <div id="tabList" class="tab-list">
@@ -213,6 +271,8 @@
         <div class="context-divider"></div>
         <div class="context-item" data-action="rename">✏️ 重命名</div>
         <div class="context-item" data-action="delete">🗑️ 删除</div>
+        <div class="context-divider"></div>
+        <div class="context-item" data-action="history">📜 查看历史</div>
     </div>
 
     <!-- 附件右键菜单 -->
@@ -303,8 +363,27 @@
     <!-- Toast 容器 -->
     <div id="toastContainer" class="toast-container"></div>
 
-    <!-- JavaScript 文件 -->
-    <script src="/static/editor-app.js?v=11"></script>
+    <!-- JavaScript 模块（按依赖顺序加载） -->
+    <script src="/static/editor/utils.js?v=2"></script>
+    <script src="/static/editor/state.js?v=3"></script>
+    <script src="/static/editor/loading.js?v=1"></script>
+    <script src="/static/editor/recent.js?v=1"></script>
+    <script src="/static/editor/theme.js?v=3"></script>
+    <script src="/static/editor/layout.js?v=2"></script>
+    <script src="/static/editor/tree.js?v=2"></script>
+    <script src="/static/editor/virtual-tree.js?v=1"></script>
+    <script src="/static/editor/tabs.js?v=2"></script>
+    <script src="/static/editor/vditor.js?v=2"></script>
+    <script src="/static/editor/editor-cache.js?v=1"></script>
+    <script src="/static/editor/git.js?v=2"></script>
+    <script src="/static/editor/files.js?v=2"></script>
+    <script src="/static/editor/attachments.js?v=2"></script>
+    <script src="/static/editor/quickopen.js?v=1"></script>
+    <script src="/static/editor/commands.js?v=1"></script>
+    <script src="/static/editor/autosave.js?v=1"></script>
+    <script src="/static/editor/breadcrumb.js?v=1"></script>
+    <script src="/static/editor/history.js?v=1"></script>
+    <script src="/static/editor/main.js?v=4"></script>
 </body>
 
 </html>

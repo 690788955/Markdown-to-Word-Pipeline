@@ -149,6 +149,8 @@ func (h *APIHandler) RegisterRoutes(mux *http.ServeMux) {
 	mux.HandleFunc("/api/git/stage-all", h.handleGitStageAll)
 	mux.HandleFunc("/api/git/unstage-all", h.handleGitUnstageAll)
 	mux.HandleFunc("/api/git/discard", h.handleGitDiscard)
+	mux.HandleFunc("/api/git/file-history", h.handleGitFileHistory)
+	mux.HandleFunc("/api/git/file-show", h.handleGitFileShow)
 	// 新增：资源管理路由
 	mux.HandleFunc("/api/resources/fonts", h.handleResourceFonts)
 	mux.HandleFunc("/api/resources/fonts/", h.handleResourceFontDetail)
@@ -2075,5 +2077,67 @@ func (h *APIHandler) handleEditorAttachmentRename(w http.ResponseWriter, r *http
 
 	h.successResponse(w, map[string]interface{}{
 		"newPath": newPath,
+	})
+}
+
+// handleGitFileHistory 获取文件的 Git 提交历史
+func (h *APIHandler) handleGitFileHistory(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodGet {
+		h.methodNotAllowed(w)
+		return
+	}
+
+	path := r.URL.Query().Get("path")
+	if path == "" {
+		h.errorResponse(w, http.StatusBadRequest, "path 参数不能为空", ErrInvalidInput)
+		return
+	}
+
+	// 解析 limit 参数
+	limit := 20
+	if l := r.URL.Query().Get("limit"); l != "" {
+		if n, err := parseInt(l); err == nil && n > 0 {
+			limit = n
+		}
+	}
+
+	commits, err := h.gitSvc.GetFileHistory(path, limit)
+	if err != nil {
+		h.errorResponse(w, http.StatusInternalServerError, err.Error(), "GIT_ERROR")
+		return
+	}
+
+	h.successResponse(w, map[string]interface{}{
+		"commits": commits,
+	})
+}
+
+// handleGitFileShow 获取特定版本的文件内容
+func (h *APIHandler) handleGitFileShow(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodGet {
+		h.methodNotAllowed(w)
+		return
+	}
+
+	path := r.URL.Query().Get("path")
+	commit := r.URL.Query().Get("commit")
+
+	if path == "" {
+		h.errorResponse(w, http.StatusBadRequest, "path 参数不能为空", ErrInvalidInput)
+		return
+	}
+	if commit == "" {
+		h.errorResponse(w, http.StatusBadRequest, "commit 参数不能为空", ErrInvalidInput)
+		return
+	}
+
+	content, err := h.gitSvc.GetFileAtCommit(path, commit)
+	if err != nil {
+		h.errorResponse(w, http.StatusInternalServerError, err.Error(), "GIT_ERROR")
+		return
+	}
+
+	h.successResponse(w, map[string]interface{}{
+		"content": content,
 	})
 }
