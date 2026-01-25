@@ -8,6 +8,34 @@ EditorApp.Vditor = (function() {
 
     const state = EditorApp.State.getState();
 
+    // ==================== 主题支持 ====================
+
+    function getVditorTheme() {
+        const theme = document.documentElement.getAttribute('data-theme');
+        return theme === 'dark' ? 'dark' : 'classic';
+    }
+
+    function updateAllEditorsTheme() {
+        const vditorTheme = getVditorTheme();
+        state.editors.forEach((editor) => {
+            if (editor && typeof editor.setTheme === 'function') {
+                editor.setTheme(vditorTheme, EditorApp.Theme.getHljsStyle());
+            }
+        });
+    }
+
+    // 监听主题变化
+    function initThemeObserver() {
+        const observer = new MutationObserver((mutations) => {
+            mutations.forEach((mutation) => {
+                if (mutation.attributeName === 'data-theme') {
+                    updateAllEditorsTheme();
+                }
+            });
+        });
+        observer.observe(document.documentElement, { attributes: true, attributeFilter: ['data-theme'] });
+    }
+
     // ==================== 文件内容 ====================
 
     async function loadContent(tab) {
@@ -155,6 +183,7 @@ EditorApp.Vditor = (function() {
                 cdn: '/static/vendor/vditor',
                 height: '100%',
                 mode: getDefaultMode(),
+                theme: getVditorTheme(),
                 lang: 'zh_CN',
                 value: tab.content || '',
                 cache: { enable: false },
@@ -397,6 +426,9 @@ EditorApp.Vditor = (function() {
         });
     }
 
+    // 初始化主题观察器
+    initThemeObserver();
+
     // 导出公共接口
     return {
         loadContent: loadContent,
@@ -409,7 +441,9 @@ EditorApp.Vditor = (function() {
         getDefaultMode: getDefaultMode,
         onModeChange: onModeChange,
         ensureIrPadding: ensureIrPadding,
-        observeIrPadding: observeIrPadding
+        observeIrPadding: observeIrPadding,
+        getVditorTheme: getVditorTheme,
+        updateAllEditorsTheme: updateAllEditorsTheme
     };
 })();
 

@@ -8,12 +8,19 @@ EditorApp.Tree = (function() {
 
     const state = EditorApp.State.getState();
 
+    // 搜索防抖定时器
+    let searchDebounceTimer = null;
+    const SEARCH_DEBOUNCE_DELAY = 300;
+
+    // 事件委托是否已初始化
+    let eventDelegationInitialized = false;
+
     // ==================== 加载和渲染 ====================
 
     async function load() {
         const container = document.getElementById('fileTree');
         if (!container) return;
-        
+
         container.innerHTML = '<div class="tree-loading">加载中...</div>';
 
         try {
@@ -28,10 +35,140 @@ EditorApp.Tree = (function() {
             state.fileTree = data.data.tree;
             console.log('[FileTree] 文件树数据:', state.fileTree);
             render();
+
+            // 初始化事件委托（只执行一次）
+            initEventDelegation();
         } catch (e) {
             container.innerHTML = '<div class="tree-loading">加载失败: ' + e.message + '</div>';
             console.error('加载文件树失败:', e);
         }
+    }
+
+    // ==================== 事件委托 ====================
+
+    function initEventDelegation() {
+        if (eventDelegationInitialized) return;
+
+        const container = document.getElementById('fileTree');
+        if (!container) return;
+
+        // 点击事件委托
+        container.addEventListener('click', handleTreeClick);
+
+        // 右键菜单事件委托
+        container.addEventListener('contextmenu', handleTreeContextMenu);
+
+        // 拖拽事件委托
+        container.addEventListener('dragstart', handleDragStart);
+        container.addEventListener('dragover', handleDragOver);
+        container.addEventListener('dragleave', handleDragLeave);
+        container.addEventListener('drop', handleDrop);
+        container.addEventListener('dragend', handleDragEnd);
+
+        eventDelegationInitialized = true;
+        console.log('[FileTree] 事件委托已初始化');
+    }
+
+    function handleTreeClick(e) {
+        const item = e.target.closest('.tree-item');
+        if (!item) return;
+
+        const toggle = e.target.closest('.tree-folder-toggle');
+        const path = item.dataset.path;
+        const type = item.dataset.type;
+
+        if (type === 'directory') {
+            toggleDirectory(path);
+        } else if (!toggle) {
+            // 文件点击
+            if (EditorApp.Tabs) {
+                EditorApp.Tabs.open(path);
+            }
+        }
+    }
+
+    function handleTreeContextMenu(e) {
+        const item = e.target.closest('.tree-item');
+        if (!item) return;
+
+        const path = item.dataset.path;
+        const node = findNodeByPath(state.fileTree, path);
+        if (node && EditorApp.Files) {
+            EditorApp.Files.showContextMenu(e, node);
+        }
+    }
+
+    function handleDragStart(e) {
+        const item = e.target.closest('.tree-item');
+        if (!item || state.searchQuery) {
+            e.preventDefault();
+            return;
+        }
+        state.draggingPath = item.dataset.path;
+        state.draggingParent = item.dataset.parent || '';
+        item.classList.add('dragging');
+        e.dataTransfer.effectAllowed = 'move';
+        e.dataTransfer.setData('text/plain', state.draggingPath || '');
+    }
+
+    function handleDragOver(e) {
+        const target = e.target.closest('.tree-item');
+        if (!target) return;
+
+        const targetParent = target.dataset.parent || '';
+        if (!state.draggingPath || targetParent !== state.draggingParent) return;
+        if (state.draggingPath === target.dataset.path) return;
+
+        e.preventDefault();
+        const rect = target.getBoundingClientRect();
+        const placeAfter = e.clientY > rect.top + rect.height / 2;
+        clearDropIndicators();
+        target.classList.add(placeAfter ? 'drop-after' : 'drop-before');
+    }
+
+    function handleDragLeave(e) {
+        const target = e.target.closest('.tree-item');
+        if (target) {
+            target.classList.remove('drop-before', 'drop-after');
+        }
+    }
+
+    function handleDrop(e) {
+        e.preventDefault();
+        const target = e.target.closest('.tree-item');
+        if (!target) return;
+
+        const targetParent = target.dataset.parent || '';
+        if (!state.draggingPath || targetParent !== state.draggingParent) return;
+        if (state.draggingPath === target.dataset.path) return;
+
+        const rect = target.getBoundingClientRect();
+        const placeAfter = e.clientY > rect.top + rect.height / 2;
+        const parentNode = getParentNode(state.draggingParent);
+        if (!parentNode || !parentNode.children) return;
+
+        const draggedIndex = parentNode.children.findIndex(item => item.path === state.draggingPath);
+        if (draggedIndex === -1) return;
+        const [dragged] = parentNode.children.splice(draggedIndex, 1);
+
+        const targetIndex = parentNode.children.findIndex(item => item.path === target.dataset.path);
+        if (targetIndex === -1) return;
+        const insertIndex = placeAfter ? targetIndex + 1 : targetIndex;
+        parentNode.children.splice(insertIndex, 0, dragged);
+
+        clearDropIndicators();
+        render();
+        saveOrder(state.draggingParent || '', parentNode.children.map(item => item.name));
+    }
+
+    function handleDragEnd(e) {
+        const item = e.target.closest('.tree-item');
+        if (item) {
+            item.classList.remove('dragging');
+        }
+        clearDropIndicators();
+        state.draggingPath = null;
+        state.draggingParent = null;
     }
 
     function render() {
@@ -65,11 +202,6 @@ EditorApp.Tree = (function() {
             item.dataset.type = child.type;
             item.dataset.parent = parentPath;
             item.draggable = !state.searchQuery;
-            item.addEventListener('dragstart', onDragStart);
-            item.addEventListener('dragover', onDragOver);
-            item.addEventListener('dragleave', onDragLeave);
-            item.addEventListener('drop', onDrop);
-            item.addEventListener('dragend', onDragEnd);
 
             if (child.type === 'directory') {
                 const isExpanded = state.expandedDirs.has(child.path);
@@ -78,10 +210,6 @@ EditorApp.Tree = (function() {
                 const toggle = document.createElement('span');
                 toggle.className = 'tree-folder-toggle' + (isExpanded ? ' expanded' : '');
                 toggle.textContent = '▶';
-                toggle.onclick = (e) => {
-                    e.stopPropagation();
-                    toggleDirectory(child.path);
-                };
                 item.appendChild(toggle);
 
                 // 文件夹图标
@@ -98,13 +226,6 @@ EditorApp.Tree = (function() {
                 name.className = 'tree-item-name tree-folder';
                 name.textContent = child.displayName || child.name;
                 item.appendChild(name);
-
-                item.onclick = () => toggleDirectory(child.path);
-                item.oncontextmenu = (e) => {
-                    if (EditorApp.Files) {
-                        EditorApp.Files.showContextMenu(e, child);
-                    }
-                };
 
                 container.appendChild(item);
 
@@ -141,17 +262,6 @@ EditorApp.Tree = (function() {
                     item.classList.add('selected');
                 }
 
-                item.onclick = () => {
-                    if (EditorApp.Tabs) {
-                        EditorApp.Tabs.open(child.path);
-                    }
-                };
-                item.oncontextmenu = (e) => {
-                    if (EditorApp.Files) {
-                        EditorApp.Files.showContextMenu(e, child);
-                    }
-                };
-
                 container.appendChild(item);
             }
         });
@@ -186,14 +296,24 @@ EditorApp.Tree = (function() {
     // ==================== 搜索 ====================
 
     function onSearchInput(e) {
-        state.searchQuery = e.target.value.trim();
+        const query = e.target.value.trim();
 
-        // 搜索时展开所有目录
-        if (state.searchQuery) {
-            expandAllDirectories(state.fileTree);
+        // 清除之前的防抖定时器
+        if (searchDebounceTimer) {
+            clearTimeout(searchDebounceTimer);
         }
 
-        render();
+        // 设置新的防抖定时器
+        searchDebounceTimer = setTimeout(() => {
+            state.searchQuery = query;
+
+            // 搜索时展开所有目录
+            if (state.searchQuery) {
+                expandAllDirectories(state.fileTree);
+            }
+
+            render();
+        }, SEARCH_DEBOUNCE_DELAY);
     }
 
     function matchSearch(node, query) {
@@ -231,69 +351,6 @@ EditorApp.Tree = (function() {
     }
 
     // ==================== 拖拽排序 ====================
-
-    function onDragStart(e) {
-        if (state.searchQuery) {
-            e.preventDefault();
-            return;
-        }
-        const item = e.currentTarget;
-        state.draggingPath = item.dataset.path;
-        state.draggingParent = item.dataset.parent || '';
-        item.classList.add('dragging');
-        e.dataTransfer.effectAllowed = 'move';
-        e.dataTransfer.setData('text/plain', state.draggingPath || '');
-    }
-
-    function onDragOver(e) {
-        const target = e.currentTarget;
-        const targetParent = target.dataset.parent || '';
-        if (!state.draggingPath || targetParent !== state.draggingParent) return;
-        if (state.draggingPath === target.dataset.path) return;
-
-        e.preventDefault();
-        const rect = target.getBoundingClientRect();
-        const placeAfter = e.clientY > rect.top + rect.height / 2;
-        clearDropIndicators();
-        target.classList.add(placeAfter ? 'drop-after' : 'drop-before');
-    }
-
-    function onDragLeave(e) {
-        e.currentTarget.classList.remove('drop-before', 'drop-after');
-    }
-
-    function onDrop(e) {
-        e.preventDefault();
-        const target = e.currentTarget;
-        const targetParent = target.dataset.parent || '';
-        if (!state.draggingPath || targetParent !== state.draggingParent) return;
-        if (state.draggingPath === target.dataset.path) return;
-
-        const rect = target.getBoundingClientRect();
-        const placeAfter = e.clientY > rect.top + rect.height / 2;
-        const parentNode = getParentNode(state.draggingParent);
-        if (!parentNode || !parentNode.children) return;
-
-        const draggedIndex = parentNode.children.findIndex(item => item.path === state.draggingPath);
-        if (draggedIndex === -1) return;
-        const [dragged] = parentNode.children.splice(draggedIndex, 1);
-
-        const targetIndex = parentNode.children.findIndex(item => item.path === target.dataset.path);
-        if (targetIndex === -1) return;
-        const insertIndex = placeAfter ? targetIndex + 1 : targetIndex;
-        parentNode.children.splice(insertIndex, 0, dragged);
-
-        clearDropIndicators();
-        render();
-        saveOrder(state.draggingParent || '', parentNode.children.map(item => item.name));
-    }
-
-    function onDragEnd(e) {
-        e.currentTarget.classList.remove('dragging');
-        clearDropIndicators();
-        state.draggingPath = null;
-        state.draggingParent = null;
-    }
 
     function clearDropIndicators() {
         document.querySelectorAll('.tree-item.drop-before, .tree-item.drop-after').forEach(item => {
@@ -343,15 +400,11 @@ EditorApp.Tree = (function() {
         matchSearch: matchSearch,
         expandAllDirectories: expandAllDirectories,
         toggleDirectory: toggleDirectory,
-        onDragStart: onDragStart,
-        onDragOver: onDragOver,
-        onDragLeave: onDragLeave,
-        onDrop: onDrop,
-        onDragEnd: onDragEnd,
         saveOrder: saveOrder,
         getFileIconInfo: getFileIconInfo,
         findNodeByPath: findNodeByPath,
-        getParentNode: getParentNode
+        getParentNode: getParentNode,
+        initEventDelegation: initEventDelegation
     };
 })();
 

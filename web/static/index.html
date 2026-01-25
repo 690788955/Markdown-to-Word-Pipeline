@@ -15,11 +15,16 @@
             <h1>运维文档生成系统</h1>
             <div class="header-actions">
                 <a href="/editor" class="header-btn header-knowledge-btn" title="打开知识库">
-                    <span class="header-btn-icon">🗂️</span>
+                    <svg class="header-btn-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M3 7V17C3 18.1 3.9 19 5 19H19C20.1 19 21 18.1 21 17V9C21 7.9 20.1 7 19 7H13L11 5H5C3.9 5 3 5.9 3 7Z"/>
+                    </svg>
                     <span class="header-btn-text">知识库</span>
                 </a>
                 <button id="utilityToggleBtn" class="header-btn header-tools-toggle" title="工具">
-                    <span class="header-btn-icon">⚙️</span>
+                    <svg class="header-btn-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <circle cx="12" cy="12" r="3"/>
+                        <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/>
+                    </svg>
                     <span class="header-btn-text">工具</span>
                 </button>
             </div>
@@ -56,7 +61,12 @@
                 <section class="utility-section">
                     <h4>资源管理</h4>
                     <button id="utilityResourceBtn" class="utility-link-btn">
-                        <span>📦</span> 打开资源管理
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/>
+                            <polyline points="3.27 6.96 12 12.01 20.73 6.96"/>
+                            <line x1="12" y1="22.08" x2="12" y2="12"/>
+                        </svg>
+                        <span>打开资源管理</span>
                     </button>
                 </section>
             </div>
@@ -108,7 +118,9 @@
                 </div>
                 <div id="docList" class="list-body">
                     <div class="list-empty list-empty-guide">
-                        <span class="list-empty-icon">📋</span>
+                        <svg class="list-empty-icon" width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                            <path d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/>
+                        </svg>
                         <span class="list-empty-text">请先选择客户配置</span>
                         <span class="list-empty-hint">从上方下拉菜单选择一个客户配置开始</span>
                     </div>
@@ -118,7 +130,14 @@
             <!-- 生成结果 -->
             <section id="resultSection" class="result-section" style="display:none;">
                 <div class="result-header">
-                    <span>📦 已生成文档</span>
+                    <span>
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align: middle; margin-right: 6px;">
+                            <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/>
+                            <polyline points="3.27 6.96 12 12.01 20.73 6.96"/>
+                            <line x1="12" y1="22.08" x2="12" y2="12"/>
+                        </svg>
+                        已生成文档
+                    </span>
                     <button id="downloadAllBtn" class="btn btn-success btn-sm">打包下载</button>
                 </div>
                 <div id="resultList" class="result-list"></div>
@@ -651,24 +670,56 @@
     <div id="resourcePanelOverlay" class="resource-panel-overlay"></div>
     <aside id="resourceSidePanel" class="resource-side-panel">
         <div class="resource-side-header">
-            <h3>📦 资源管理</h3>
+            <h3>
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align: middle; margin-right: 6px;">
+                    <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/>
+                    <polyline points="3.27 6.96 12 12.01 20.73 6.96"/>
+                    <line x1="12" y1="22.08" x2="12" y2="12"/>
+                </svg>
+                资源管理
+            </h3>
             <button id="resourceSideCloseBtn" class="resource-side-close">&times;</button>
         </div>
-        
+
         <!-- Tab 导航 -->
         <div class="resource-tabs">
-            <button class="resource-tab-btn active" data-tab="fonts">🔤 字体</button>
-            <button class="resource-tab-btn" data-tab="templates">📄 模板</button>
+            <button class="resource-tab-btn active" data-tab="fonts">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <polyline points="4 7 4 4 20 4 20 7"/>
+                    <line x1="9" y1="20" x2="15" y2="20"/>
+                    <line x1="12" y1="4" x2="12" y2="20"/>
+                </svg>
+                字体
+            </button>
+            <button class="resource-tab-btn" data-tab="templates">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+                    <polyline points="14 2 14 8 20 8"/>
+                    <line x1="16" y1="13" x2="8" y2="13"/>
+                    <line x1="16" y1="17" x2="8" y2="17"/>
+                    <polyline points="10 9 9 9 8 9"/>
+                </svg>
+                模板
+            </button>
         </div>
-        
+
         <!-- 字体 Tab -->
         <div id="fontsTab" class="resource-tab-content active">
             <div class="resource-toolbar">
                 <button class="btn btn-primary btn-sm" onclick="uploadFont()">
-                    <span>⬆️</span> 上传字体
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+                        <polyline points="17 8 12 3 7 8"/>
+                        <line x1="12" y1="3" x2="12" y2="15"/>
+                    </svg>
+                    上传字体
                 </button>
                 <button class="btn btn-outline btn-sm" onclick="loadFonts()">
-                    <span>↻</span> 刷新
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <polyline points="23 4 23 10 17 10"/>
+                        <path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/>
+                    </svg>
+                    刷新
                 </button>
             </div>
             <div id="fontsList" class="resource-list">
@@ -679,15 +730,24 @@
                 <p>最大文件大小：50MB</p>
             </div>
         </div>
-        
+
         <!-- 模板 Tab -->
         <div id="templatesTab" class="resource-tab-content">
             <div class="resource-toolbar">
                 <button class="btn btn-primary btn-sm" onclick="uploadTemplate()">
-                    <span>⬆️</span> 上传模板
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+                        <polyline points="17 8 12 3 7 8"/>
+                        <line x1="12" y1="3" x2="12" y2="15"/>
+                    </svg>
+                    上传模板
                 </button>
                 <button class="btn btn-outline btn-sm" onclick="loadResourceTemplates()">
-                    <span>↻</span> 刷新
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <polyline points="23 4 23 10 17 10"/>
+                        <path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/>
+                    </svg>
+                    刷新
                 </button>
             </div>
             <div id="templatesList" class="resource-list">

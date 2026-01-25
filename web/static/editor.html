@@ -190,10 +190,20 @@
             <!-- 左侧：文件树面板 -->
             <aside id="fileTreePanel" class="file-tree-panel">
                 <div class="panel-header">
-                    <span class="panel-title">📂 文档</span>
+                    <span class="panel-title">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align: middle; margin-right: 4px;">
+                            <path d="M3 7V17C3 18.1 3.9 19 5 19H19C20.1 19 21 18.1 21 17V9C21 7.9 20.1 7 19 7H13L11 5H5C3.9 5 3 5.9 3 7Z"/>
+                        </svg>
+                        文档
+                    </span>
                     <div class="panel-actions">
                         <button id="newFileBtn" class="panel-btn" title="新建文件">+</button>
-                        <button id="refreshTreeBtn" class="panel-btn" title="刷新">↻</button>
+                        <button id="refreshTreeBtn" class="panel-btn" title="刷新">
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <polyline points="23 4 23 10 17 10"/>
+                                <path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/>
+                            </svg>
+                        </button>
                     </div>
                 </div>
                 <div class="search-box">
@@ -220,7 +230,10 @@
                 <!-- 编辑器容器 -->
                 <div id="editorContainer" class="editor-content">
                     <div class="editor-placeholder">
-                        <div class="placeholder-icon">📝</div>
+                        <svg class="placeholder-icon" width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" style="opacity: 0.5;">
+                            <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
+                            <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
+                        </svg>
                         <div class="placeholder-text">从左侧选择文件开始编辑</div>
                     </div>
                 </div>
@@ -229,10 +242,18 @@
                     <div class="attachment-header">
                         <button id="attachmentToggle" class="attachment-toggle" title="展开/折叠附件">
                             <span class="attachment-toggle-icon">▼</span>
-                            <span class="attachment-title">📎 附件</span>
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align: middle; margin-right: 4px;">
+                                <path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48"/>
+                            </svg>
+                            <span class="attachment-title">附件</span>
                             <span id="attachmentCount" class="attachment-count">0</span>
                         </button>
-                        <button id="attachmentRefresh" class="panel-btn attachment-refresh" title="刷新">↻</button>
+                        <button id="attachmentRefresh" class="panel-btn attachment-refresh" title="刷新">
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <polyline points="23 4 23 10 17 10"/>
+                                <path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/>
+                            </svg>
+                        </button>
                     </div>
                     <div id="attachmentContent" class="attachment-content">
                         <div class="attachment-scroll-indicator attachment-scroll-left" style="display: none;">‹</div>
@@ -241,7 +262,9 @@
                         </div>
                         <div class="attachment-scroll-indicator attachment-scroll-right" style="display: none;">›</div>
                         <div id="attachmentEmpty" class="attachment-empty" style="display: none;">
-                            <span class="attachment-empty-icon">📁</span>
+                            <svg class="attachment-empty-icon" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" style="opacity: 0.5;">
+                                <path d="M3 7V17C3 18.1 3.9 19 5 19H19C20.1 19 21 18.1 21 17V9C21 7.9 20.1 7 19 7H13L11 5H5C3.9 5 3 5.9 3 7Z"/>
+                            </svg>
                             <span class="attachment-empty-text">暂无附件</span>
                         </div>
                     </div>
@@ -254,8 +277,22 @@
             <!-- 右侧：Git 面板 -->
             <aside id="gitPanel" class="git-panel">
                 <div class="panel-header">
-                    <span class="panel-title">🔀 版本控制</span>
-                    <button id="gitRefreshBtn" class="panel-btn" title="刷新">↻</button>
+                    <span class="panel-title">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align: middle; margin-right: 4px;">
+                            <circle cx="6" cy="6" r="2"/>
+                            <circle cx="18" cy="18" r="2"/>
+                            <circle cx="6" cy="18" r="2"/>
+                            <path d="M6 8V16"/>
+                            <path d="M6 8C6 8 6 12 12 12C18 12 18 16 18 16"/>
+                        </svg>
+                        版本控制
+                    </span>
+                    <button id="gitRefreshBtn" class="panel-btn" title="刷新">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <polyline points="23 4 23 10 17 10"/>
+                            <path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/>
+                        </svg>
+                    </button>
                 </div>
                 <div id="gitContent" class="git-content">
                     <div class="git-loading">加载中...</div>
@@ -266,22 +303,79 @@
 
     <!-- 右键上下文菜单 -->
     <div id="contextMenu" class="context-menu" style="display:none;">
-        <div class="context-item" data-action="new">📄 新建文件</div>
-        <div class="context-item" data-action="newFolder">📁 新建文件夹</div>
+        <div class="context-item" data-action="new">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align: middle; margin-right: 6px;">
+                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+                <polyline points="14 2 14 8 20 8"/>
+                <line x1="12" y1="18" x2="12" y2="12"/>
+                <line x1="9" y1="15" x2="15" y2="15"/>
+            </svg>
+            新建文件
+        </div>
+        <div class="context-item" data-action="newFolder">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align: middle; margin-right: 6px;">
+                <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/>
+                <line x1="12" y1="11" x2="12" y2="17"/>
+                <line x1="9" y1="14" x2="15" y2="14"/>
+            </svg>
+            新建文件夹
+        </div>
         <div class="context-divider"></div>
-        <div class="context-item" data-action="rename">✏️ 重命名</div>
-        <div class="context-item" data-action="delete">🗑️ 删除</div>
+        <div class="context-item" data-action="rename">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align: middle; margin-right: 6px;">
+                <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
+                <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
+            </svg>
+            重命名
+        </div>
+        <div class="context-item" data-action="delete">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align: middle; margin-right: 6px;">
+                <polyline points="3 6 5 6 21 6"/>
+                <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/>
+            </svg>
+            删除
+        </div>
         <div class="context-divider"></div>
-        <div class="context-item" data-action="history">📜 查看历史</div>
+        <div class="context-item" data-action="history">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align: middle; margin-right: 6px;">
+                <circle cx="12" cy="12" r="10"/>
+                <polyline points="12 6 12 12 16 14"/>
+            </svg>
+            查看历史
+        </div>
     </div>
 
     <!-- 附件右键菜单 -->
     <div id="attachmentContextMenu" class="context-menu" style="display:none;">
-        <div class="context-item" data-action="copyRef">📋 复制引用</div>
-        <div class="context-item" data-action="preview">👁️ 预览</div>
+        <div class="context-item" data-action="copyRef">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align: middle; margin-right: 6px;">
+                <rect x="9" y="9" width="13" height="13" rx="2" ry="2"/>
+                <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/>
+            </svg>
+            复制引用
+        </div>
+        <div class="context-item" data-action="preview">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align: middle; margin-right: 6px;">
+                <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/>
+                <circle cx="12" cy="12" r="3"/>
+            </svg>
+            预览
+        </div>
         <div class="context-divider"></div>
-        <div class="context-item" data-action="renameAttachment">✏️ 重命名</div>
-        <div class="context-item context-item-danger" data-action="deleteAttachment">🗑️ 删除</div>
+        <div class="context-item" data-action="renameAttachment">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align: middle; margin-right: 6px;">
+                <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
+                <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
+            </svg>
+            重命名
+        </div>
+        <div class="context-item context-item-danger" data-action="deleteAttachment">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align: middle; margin-right: 6px;">
+                <polyline points="3 6 5 6 21 6"/>
+                <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/>
+            </svg>
+            删除
+        </div>
     </div>
 
     <!-- 模态框：新建文件 -->
@@ -363,27 +457,27 @@
     <!-- Toast 容器 -->
     <div id="toastContainer" class="toast-container"></div>
 
-    <!-- JavaScript 模块（按依赖顺序加载） -->
-    <script src="/static/editor/utils.js?v=2"></script>
-    <script src="/static/editor/state.js?v=3"></script>
-    <script src="/static/editor/loading.js?v=1"></script>
-    <script src="/static/editor/recent.js?v=1"></script>
-    <script src="/static/editor/theme.js?v=3"></script>
-    <script src="/static/editor/layout.js?v=2"></script>
-    <script src="/static/editor/tree.js?v=2"></script>
-    <script src="/static/editor/virtual-tree.js?v=1"></script>
-    <script src="/static/editor/tabs.js?v=2"></script>
-    <script src="/static/editor/vditor.js?v=2"></script>
-    <script src="/static/editor/editor-cache.js?v=1"></script>
-    <script src="/static/editor/git.js?v=2"></script>
-    <script src="/static/editor/files.js?v=2"></script>
-    <script src="/static/editor/attachments.js?v=2"></script>
-    <script src="/static/editor/quickopen.js?v=1"></script>
-    <script src="/static/editor/commands.js?v=1"></script>
-    <script src="/static/editor/autosave.js?v=1"></script>
-    <script src="/static/editor/breadcrumb.js?v=1"></script>
-    <script src="/static/editor/history.js?v=1"></script>
-    <script src="/static/editor/main.js?v=4"></script>
+    <!-- JavaScript 模块（按依赖顺序加载，使用 defer 避免阻塞渲染） -->
+    <script src="/static/editor/utils.js?v=3" defer></script>
+    <script src="/static/editor/state.js?v=3" defer></script>
+    <script src="/static/editor/loading.js?v=1" defer></script>
+    <script src="/static/editor/recent.js?v=1" defer></script>
+    <script src="/static/editor/theme.js?v=3" defer></script>
+    <script src="/static/editor/layout.js?v=2" defer></script>
+    <script src="/static/editor/tree.js?v=3" defer></script>
+    <script src="/static/editor/virtual-tree.js?v=1" defer></script>
+    <script src="/static/editor/tabs.js?v=2" defer></script>
+    <script src="/static/editor/vditor.js?v=2" defer></script>
+    <script src="/static/editor/editor-cache.js?v=1" defer></script>
+    <script src="/static/editor/git.js?v=2" defer></script>
+    <script src="/static/editor/files.js?v=2" defer></script>
+    <script src="/static/editor/attachments.js?v=2" defer></script>
+    <script src="/static/editor/quickopen.js?v=1" defer></script>
+    <script src="/static/editor/commands.js?v=1" defer></script>
+    <script src="/static/editor/autosave.js?v=1" defer></script>
+    <script src="/static/editor/breadcrumb.js?v=1" defer></script>
+    <script src="/static/editor/history.js?v=1" defer></script>
+    <script src="/static/editor/main.js?v=5" defer></script>
 </body>
 
 </html>

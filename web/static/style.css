@@ -4320,48 +4320,214 @@ header {
 }
 
 /* ==================== 响应式布局 ==================== */
+
+/* 平板设备 */
+@media (max-width: 1024px) {
+    .container {
+        padding: var(--spacing-md);
+    }
+
+    .modal-lg {
+        max-width: 90vw;
+    }
+
+    .transfer-container {
+        flex-direction: column;
+    }
+
+    .transfer-panel {
+        min-width: 100%;
+    }
+
+    .transfer-buttons {
+        flex-direction: row;
+        padding: var(--spacing-sm) 0;
+    }
+
+    .pdf-settings-grid {
+        grid-template-columns: 1fr;
+    }
+}
+
+/* 手机设备 */
 @media (max-width: 768px) {
     /* Config Bar 垂直堆叠 */
+    .config-bar {
+        padding: var(--spacing-md);
+    }
+
     .config-bar-row {
         flex-direction: column;
         align-items: stretch;
+        gap: var(--spacing-md);
     }
-    
+
+    .config-bar-inputs {
+        flex-direction: column;
+    }
+
     .config-bar-inputs .config-item {
         min-width: 100%;
     }
-    
+
     .config-bar-actions {
         flex-direction: column;
     }
-    
+
     .config-bar-actions .btn {
         width: 100%;
     }
-    
+
+    /* Header 响应式 */
+    header {
+        flex-direction: column;
+        gap: var(--spacing-md);
+        padding: var(--spacing-md);
+    }
+
+    header h1 {
+        font-size: 1.25rem;
+    }
+
+    .header-actions {
+        width: 100%;
+        justify-content: center;
+    }
+
     /* Utility Panel 全宽 */
     .utility-panel {
         width: 100%;
         right: -100%;
     }
-    
-    /* 触摸友好的按钮尺寸 */
+
+    .utility-panel.is-open {
+        right: 0;
+    }
+
+    /* 触摸友好的按钮尺寸 (44px 最小触摸目标) */
     .btn {
         min-height: 44px;
         min-width: 44px;
     }
-    
+
     .btn-sm {
         min-height: 44px;
         padding: 10px 16px;
     }
-    
+
     .btn-icon {
         min-width: 44px;
         min-height: 44px;
     }
-    
+
     .header-tools-toggle {
         min-height: 44px;
+    }
+
+    /* 表单元素触摸优化 */
+    input[type="text"],
+    input[type="number"],
+    input[type="email"],
+    input[type="password"],
+    select,
+    textarea {
+        min-height: 44px;
+        font-size: 16px; /* 防止 iOS 缩放 */
+    }
+
+    /* 模态框全屏 */
+    .modal-content {
+        max-width: 100%;
+        max-height: 100%;
+        margin: 0;
+        border-radius: 0;
+    }
+
+    .modal-lg {
+        max-width: 100%;
+    }
+
+    /* 文档列表优化 */
+    .doc-item {
+        padding: var(--spacing-md);
+    }
+
+    .doc-item-actions {
+        flex-direction: column;
+        gap: var(--spacing-xs);
+    }
+
+    /* 表单行垂直堆叠 */
+    .form-row {
+        flex-direction: column;
+        gap: var(--spacing-md);
+    }
+
+    .form-group {
+        width: 100%;
+    }
+
+    /* Tab 导航滚动 */
+    .config-tabs {
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
+        scrollbar-width: none;
+    }
+
+    .config-tabs::-webkit-scrollbar {
+        display: none;
+    }
+
+    .tab-btn {
+        white-space: nowrap;
+        flex-shrink: 0;
+    }
+}
+
+/* 小屏手机 */
+@media (max-width: 480px) {
+    .container {
+        padding: var(--spacing-sm);
+    }
+
+    header h1 {
+        font-size: 1.1rem;
+    }
+
+    .header-btn-text {
+        display: none;
+    }
+
+    .header-btn {
+        padding: var(--spacing-sm);
+    }
+
+    /* 模态框标题 */
+    .modal-header h2,
+    .modal-header h3 {
+        font-size: 1rem;
+    }
+
+    /* 结果列表 */
+    .result-item {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: var(--spacing-sm);
+    }
+
+    .result-item-actions {
+        width: 100%;
+        justify-content: flex-end;
+    }
+}
+
+/* 减少动画偏好 */
+@media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+        animation-duration: 0.01ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: 0.01ms !important;
     }
 }

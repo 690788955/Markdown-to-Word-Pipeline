@@ -3,6 +3,7 @@ package handler
 
 import (
 	"archive/zip"
+	"crypto/subtle"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -74,22 +75,22 @@ type APIHandler struct {
 func NewAPIHandler(clientSvc *service.ClientService, docSvc *service.DocumentService, buildSvc *service.BuildService, moduleSvc *service.ModuleService, templateSvc *service.TemplateService, configMgr *service.ConfigManager, editorSvc *service.EditorService, srcDir string, adminPassword string, fontsDir string, templatesDir string, clientsDir string) *APIHandler {
 	// 创建变量服务
 	variableSvc := service.NewVariableService(srcDir)
-	
+
 	// 创建 Git 服务（工作目录为 srcDir 的父目录，即项目根目录）
 	workDir := filepath.Dir(srcDir)
 	gitSvc := service.NewGitService(workDir)
 	gitSvc.LoadCredentialsFromEnv()
-	
+
 	// 创建资源服务
 	resourceSvc := service.NewResourceService(fontsDir, templatesDir, clientsDir)
-	
+
 	// 检测 Git 是否可用
 	if version, err := gitSvc.CheckGitAvailable(); err == nil {
 		log.Printf("[APIHandler] Git 可用，版本: %s", version)
 	} else {
 		log.Printf("[APIHandler] Git 不可用: %v", err)
 	}
-	
+
 	return &APIHandler{
 		clientSvc:     clientSvc,
 		docSvc:        docSvc,
@@ -128,8 +129,8 @@ func (h *APIHandler) RegisterRoutes(mux *http.ServeMux) {
 	mux.HandleFunc("/api/editor/tree", h.handleEditorTree)
 	mux.HandleFunc("/api/editor/tree/order", h.handleEditorTreeOrder)
 	mux.HandleFunc("/api/editor/upload", h.handleEditorUpload)
-	mux.HandleFunc("/api/editor/image/", h.handleEditorImage) // 图片删除路由
-	mux.HandleFunc("/api/editor/attachments", h.handleEditorAttachments) // 附件列表路由
+	mux.HandleFunc("/api/editor/image/", h.handleEditorImage)                       // 图片删除路由
+	mux.HandleFunc("/api/editor/attachments", h.handleEditorAttachments)            // 附件列表路由
 	mux.HandleFunc("/api/editor/attachment/rename", h.handleEditorAttachmentRename) // 附件重命名路由
 	mux.HandleFunc("/api/src/", h.handleSrcStatic)
 	// 新增：Git 相关路由
@@ -190,7 +191,7 @@ func (h *APIHandler) handleClientDocs(w http.ResponseWriter, r *http.Request) {
 	// 解析路径: /api/clients/{name}/docs
 	path := strings.TrimPrefix(r.URL.Path, "/api/clients/")
 	parts := strings.Split(path, "/")
-	
+
 	if len(parts) < 2 || parts[1] != "docs" {
 		h.errorResponse(w, http.StatusBadRequest, "无效的请求路径", ErrInvalidInput)
 		return
@@ -300,7 +301,7 @@ func (h *APIHandler) handleGenerate(w http.ResponseWriter, r *http.Request) {
 			}
 
 			result, err := h.buildSvc.Build(buildReq)
-			
+
 			mu.Lock()
 			defer mu.Unlock()
 
@@ -383,21 +384,25 @@ func (h *APIHandler) handleDownload(w http.ResponseWriter, r *http.Request) {
 // successResponse 发送成功响应
 func (h *APIHandler) successResponse(w http.ResponseWriter, data interface{}) {
 	w.Header().Set("Content-Type", "application/json; charset=utf-8")
-	json.NewEncoder(w).Encode(Response{
+	if err := json.NewEncoder(w).Encode(Response{
 		Success: true,
 		Data:    data,
-	})
+	}); err != nil {
+		log.Printf("[API] JSON 编码失败: %v", err)
+	}
 }
 
 // errorResponse 发送错误响应
 func (h *APIHandler) errorResponse(w http.ResponseWriter, status int, message, code string) {
 	w.Header().Set("Content-Type", "application/json; charset=utf-8")
 	w.WriteHeader(status)
-	json.NewEncoder(w).Encode(Response{
+	if err := json.NewEncoder(w).Encode(Response{
 		Success: false,
 		Error:   message,
 		Code:    code,
-	})
+	}); err != nil {
+		log.Printf("[API] JSON 编码失败: %v", err)
+	}
 }
 
 // methodNotAllowed 发送方法不允许响应
@@ -473,19 +478,18 @@ func (h *APIHandler) handleDownloadZip(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-
 // CreateConfigRequest 创建配置请求
 type CreateConfigRequest struct {
-	ClientName    string                   `json:"clientName"`
-	DocTypeName   string                   `json:"docTypeName"`
-	DisplayName   string                   `json:"displayName"`
-	Template      string                   `json:"template"`
-	Modules       []string                 `json:"modules"`
-	PandocArgs    []string                 `json:"pandocArgs"`
-	OutputPattern string                   `json:"outputPattern"`
-	PdfOptions    *service.PdfOptions      `json:"pdfOptions,omitempty"`
-	Variables     map[string]interface{}   `json:"variables,omitempty"`
-	Metadata      *service.MetadataConfig  `json:"metadata,omitempty"`
+	ClientName    string                  `json:"clientName"`
+	DocTypeName   string                  `json:"docTypeName"`
+	DisplayName   string                  `json:"displayName"`
+	Template      string                  `json:"template"`
+	Modules       []string                `json:"modules"`
+	PandocArgs    []string                `json:"pandocArgs"`
+	OutputPattern string                  `json:"outputPattern"`
+	PdfOptions    *service.PdfOptions     `json:"pdfOptions,omitempty"`
+	Variables     map[string]interface{}  `json:"variables,omitempty"`
+	Metadata      *service.MetadataConfig `json:"metadata,omitempty"`
 }
 
 // handleModules 处理模块列表请求
@@ -693,7 +697,6 @@ func (h *APIHandler) deleteConfig(w http.ResponseWriter, clientName, docTypeName
 	})
 }
 
-
 // VariablesRequest 变量提取请求
 type VariablesRequest struct {
 	Modules []string `json:"modules"`
@@ -702,7 +705,7 @@ type VariablesRequest struct {
 // handleVariables 处理变量提取请求
 func (h *APIHandler) handleVariables(w http.ResponseWriter, r *http.Request) {
 	log.Printf("[API] handleVariables 被调用, 方法: %s", r.Method)
-	
+
 	if r.Method == http.MethodGet {
 		// GET 请求：从 query 参数获取模块列表
 		modulesParam := r.URL.Query().Get("modules")
@@ -741,7 +744,7 @@ func (h *APIHandler) extractVariables(w http.ResponseWriter, modules []string) {
 	log.Printf("[API] extractVariables 被调用, 模块: %v", modules)
 	variables, errors := h.variableSvc.ExtractVariables(modules)
 	log.Printf("[API] 提取到变量数量: %d, 错误数量: %d", len(variables), len(errors))
-	
+
 	if len(variables) > 0 {
 		for _, v := range variables {
 			log.Printf("[API]   变量: %s (类型: %s, 来源: %s)", v.Name, v.Type, v.SourceFile)
@@ -786,7 +789,7 @@ func (h *APIHandler) handleClientLock(w http.ResponseWriter, r *http.Request) {
 			h.errorResponse(w, http.StatusBadRequest, "无效的请求格式", ErrInvalidInput)
 			return
 		}
-		if req.Password != h.adminPassword {
+		if subtle.ConstantTimeCompare([]byte(req.Password), []byte(h.adminPassword)) != 1 {
 			h.errorResponse(w, http.StatusUnauthorized, "管理密码错误", "INVALID_PASSWORD")
 			return
 		}
@@ -806,7 +809,7 @@ func (h *APIHandler) handleClientLock(w http.ResponseWriter, r *http.Request) {
 			h.errorResponse(w, http.StatusBadRequest, "无效的请求格式", ErrInvalidInput)
 			return
 		}
-		if req.Password != h.adminPassword {
+		if subtle.ConstantTimeCompare([]byte(req.Password), []byte(h.adminPassword)) != 1 {
 			h.errorResponse(w, http.StatusUnauthorized, "管理密码错误", "INVALID_PASSWORD")
 			return
 		}
@@ -825,19 +828,19 @@ func (h *APIHandler) handleClientLock(w http.ResponseWriter, r *http.Request) {
 // extractErrorDetail 从构建输出中提取关键错误信息
 func extractErrorDetail(output string) string {
 	var details []string
-	
+
 	// 匹配 LaTeX/fontspec 错误
 	fontErrRegex := regexp.MustCompile(`The font "([^"]+)" cannot be found`)
 	if matches := fontErrRegex.FindStringSubmatch(output); len(matches) > 1 {
 		details = append(details, "字体 \""+matches[1]+"\" 未安装")
 	}
-	
+
 	// 匹配 LaTeX 文件未找到错误 (如 ctexhook.sty)
 	latexFileRegex := regexp.MustCompile(`File \x60([^']+)' not found`)
 	if matches := latexFileRegex.FindStringSubmatch(output); len(matches) > 1 {
 		details = append(details, "LaTeX 文件未找到: "+matches[1])
 	}
-	
+
 	// 匹配 ! 开头的 LaTeX 错误（如 ! Illegal parameter number）
 	latexBangErrRegex := regexp.MustCompile(`(?m)^! ([^\n]+)`)
 	if matches := latexBangErrRegex.FindAllStringSubmatch(output, 3); len(matches) > 0 {
@@ -851,33 +854,33 @@ func extractErrorDetail(output string) string {
 			}
 		}
 	}
-	
+
 	// 匹配 Pandoc 错误
 	if strings.Contains(output, "Error producing PDF") {
 		if len(details) == 0 {
 			details = append(details, "PDF 生成失败")
 		}
 	}
-	
+
 	// 匹配文件未找到错误
 	fileNotFoundRegex := regexp.MustCompile(`(?i)(?:file not found|cannot find|no such file)[:\s]*([^\n]+)`)
 	if matches := fileNotFoundRegex.FindStringSubmatch(output); len(matches) > 1 {
 		details = append(details, "文件未找到: "+strings.TrimSpace(matches[1]))
 	}
-	
+
 	// 匹配 LaTeX 包错误
 	pkgErrRegex := regexp.MustCompile(`Package ([^\s]+) Error: ([^\n]+)`)
 	if matches := pkgErrRegex.FindStringSubmatch(output); len(matches) > 2 {
 		details = append(details, matches[1]+" 错误: "+matches[2])
 	}
-	
+
 	// 匹配 Emergency stop
 	if strings.Contains(output, "Emergency stop") {
 		if len(details) == 0 {
 			details = append(details, "LaTeX 紧急停止")
 		}
 	}
-	
+
 	// 如果还没有找到错误，尝试匹配一般性错误行
 	if len(details) == 0 {
 		lines := strings.Split(output, "\n")
@@ -891,17 +894,13 @@ func extractErrorDetail(output string) string {
 			}
 		}
 	}
-	
+
 	if len(details) == 0 {
 		return ""
 	}
-	
+
 	return strings.Join(details, "\n")
 }
-
-
-
-
 
 // ==================== 编辑器相关处理 ====================
 
@@ -1084,7 +1083,7 @@ type RenameModuleRequest struct {
 func (h *APIHandler) handleEditorModuleWithPath(w http.ResponseWriter, r *http.Request) {
 	// 解析路径: /api/editor/module/{path} 或 /api/editor/module/{path}/rename
 	path := strings.TrimPrefix(r.URL.Path, "/api/editor/module/")
-	
+
 	// 检查是否是重命名请求
 	if strings.HasSuffix(path, "/rename") {
 		path = strings.TrimSuffix(path, "/rename")
@@ -1092,9 +1091,9 @@ func (h *APIHandler) handleEditorModuleWithPath(w http.ResponseWriter, r *http.R
 		h.renameModule(w, r, path)
 		return
 	}
-	
+
 	path, _ = url.PathUnescape(path)
-	
+
 	switch r.Method {
 	case http.MethodDelete:
 		h.deleteModule(w, path)
@@ -1219,7 +1218,6 @@ func (h *APIHandler) handleSrcStatic(w http.ResponseWriter, r *http.Request) {
 	// 提供文件服务
 	http.ServeFile(w, r, absPath)
 }
-
 
 // ==================== Git 相关处理 ====================
 
@@ -1629,7 +1627,7 @@ func (h *APIHandler) handleEditorUpload(w http.ResponseWriter, r *http.Request) 
 
 	// 获取模块路径
 	modulePath := r.FormValue("modulePath")
-	
+
 	files := r.MultipartForm.File["file[]"]
 	succMap := make(map[string]string)
 	errFiles := make([]string, 0)
@@ -1640,7 +1638,7 @@ func (h *APIHandler) handleEditorUpload(w http.ResponseWriter, r *http.Request) 
 			errFiles = append(errFiles, fileHeader.Filename)
 			continue
 		}
-		
+
 		content, err := io.ReadAll(file)
 		file.Close()
 		if err != nil {
@@ -1655,7 +1653,7 @@ func (h *APIHandler) handleEditorUpload(w http.ResponseWriter, r *http.Request) 
 			errFiles = append(errFiles, fileHeader.Filename)
 			continue
 		}
-		
+
 		succMap[fileHeader.Filename] = relPath
 	}
 
@@ -1712,18 +1710,17 @@ func (h *APIHandler) deleteImage(w http.ResponseWriter, path string) {
 	})
 }
 
-
 // ==================== 资源管理相关处理 ====================
 
 // 资源管理错误码
 const (
-	ErrInvalidFileType  = "INVALID_FILE_TYPE"
-	ErrFileTooLarge     = "FILE_TOO_LARGE"
-	ErrInvalidFilename  = "INVALID_FILENAME"
-	ErrFileExists       = "FILE_EXISTS"
-	ErrTemplateInUse    = "TEMPLATE_IN_USE"
-	ErrUploadFailed     = "UPLOAD_FAILED"
-	ErrDeleteFailed     = "DELETE_FAILED"
+	ErrInvalidFileType = "INVALID_FILE_TYPE"
+	ErrFileTooLarge    = "FILE_TOO_LARGE"
+	ErrInvalidFilename = "INVALID_FILENAME"
+	ErrFileExists      = "FILE_EXISTS"
+	ErrTemplateInUse   = "TEMPLATE_IN_USE"
+	ErrUploadFailed    = "UPLOAD_FAILED"
+	ErrDeleteFailed    = "DELETE_FAILED"
 )
 
 // handleResourceFonts 处理字体资源请求（列表和上传）
@@ -1905,7 +1902,7 @@ func (h *APIHandler) uploadTemplate(w http.ResponseWriter, r *http.Request) {
 func (h *APIHandler) handleResourceTemplateDetail(w http.ResponseWriter, r *http.Request) {
 	// 解析路径: /api/resources/templates/{filename} 或 /api/resources/templates/{filename}/download 或 /api/resources/templates/{filename}/usage
 	path := strings.TrimPrefix(r.URL.Path, "/api/resources/templates/")
-	
+
 	// 检查是否是下载请求
 	if strings.HasSuffix(path, "/download") {
 		filename := strings.TrimSuffix(path, "/download")
