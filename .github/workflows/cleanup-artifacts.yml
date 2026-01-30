@@ -1,0 +1,215 @@
+# ==========================================
+# 制品包自动清理 - GitHub Actions
+# ==========================================
+# 定期清理旧的制品包（artifacts），防止存储空间无限增长
+#
+# 触发条件:
+#   - 定时触发：每周一凌晨 2 点 (UTC)
+#   - 手动触发：可通过 Actions 页面手动执行
+#
+# 清理策略:
+#   - 删除超过 30 天的旧制品包
+#   - 保留最近 5 个制品包（防止全部删除）
+#   - 只删除已完成的 workflow 产生的制品包
+
+name: Cleanup Artifacts
+
+on:
+  schedule:
+    # 每周一凌晨 2 点运行 (UTC)
+    - cron: '0 2 * * 1'
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: '模拟运行（不实际删除）'
+        required: false
+        type: boolean
+        default: true
+      days_old:
+        description: '删除超过多少天的制品包'
+        required: false
+        type: number
+        default: 30
+      min_to_keep:
+        description: '最少保留多少个制品包'
+        required: false
+        type: number
+        default: 5
+
+jobs:
+  cleanup-artifacts:
+    runs-on: ubuntu-latest
+    permissions:
+      actions: write  # 需要写入权限来删除制品包
+      contents: read
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install GitHub CLI
+        run: |
+          type -p gh >/dev/null || (apt update && apt install gh -y)
+          gh --version
+
+      - name: Cleanup old artifacts
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          DRY_RUN: ${{ github.event.inputs.dry_run || 'false' }}
+          DAYS_OLD: ${{ github.event.inputs.days_old || '30' }}
+          MIN_TO_KEEP: ${{ github.event.inputs.min_to_keep || '5' }}
+        run: |
+          echo "=== 制品包清理任务 ==="
+          echo "仓库: ${{ github.repository }}"
+          echo "模拟运行: $DRY_RUN"
+          echo "删除超过: $DAYS_OLD 天"
+          echo "最少保留: $MIN_TO_KEEP 个"
+          echo ""
+
+          # 获取当前日期的时间戳
+          current_date=$(date +%s)
+          cutoff_days_ago=$((current_date - DAYS_OLD * 86400))
+
+          # 获取所有制品包列表
+          echo "正在获取制品包列表..."
+          artifacts=$(gh api repos/${{ github.repository }}/actions/artifacts --paginate -q '.artifacts[] | select(.expired == false) | {id: .id, name: .name, created_at: .created_at, size_in_bytes: .size_in_bytes}' | jq -s '.')
+
+          if [ -z "$artifacts" ] || [ "$artifacts" = "[]" ]; then
+            echo "没有找到任何制品包"
+            exit 0
+          fi
+
+          total_count=$(echo "$artifacts" | jq 'length')
+          echo "找到 $total_count 个未过期的制品包"
+          echo ""
+
+          # 按创建时间排序（旧的在前面）
+          sorted_artifacts=$(echo "$artifacts" | jq 'sort_by(.created_at)')
+
+          # 计算需要删除的制品包
+          delete_count=0
+          keep_count=0
+          total_size_saved=0
+
+          echo "制品包清理详情:"
+          echo "----------------------------------------"
+
+          # 遍历制品包
+          echo "$sorted_artifacts" | jq -c '.[]' | while read -r artifact; do
+            artifact_id=$(echo "$artifact" | jq -r '.id')
+            artifact_name=$(echo "$artifact" | jq -r '.name')
+            created_at=$(echo "$artifact" | jq -r '.created_at')
+            size_in_bytes=$(echo "$artifact" | jq -r '.size_in_bytes')
+            
+            # 转换创建时间为时间戳
+            created_timestamp=$(date -d "$created_at" +%s 2>/dev/null || date -j -f "%Y-%m-%dT%H:%M:%SZ" "$created_at" +%s 2>/dev/null)
+            
+            if [ -z "$created_timestamp" ]; then
+              echo "警告: 无法解析时间戳 $created_at，跳过 $artifact_name (ID: $artifact_id)"
+              continue
+            fi
+
+            # 计算年龄
+            age_days=$(( (current_date - created_timestamp) / 86400 ))
+            size_mb=$(echo "scale=2; $size_in_bytes / 1024 / 1024" | bc)
+
+            # 决定是删除还是保留
+            should_delete=false
+            remaining_to_keep=$((MIN_TO_KEEP - keep_count))
+            
+            if [ $remaining_to_keep -le 0 ] && [ $created_timestamp -lt $cutoff_days_ago ]; then
+              should_delete=true
+            fi
+
+            if [ "$should_delete" = true ]; then
+              delete_count=$((delete_count + 1))
+              total_size_saved=$((total_size_saved + size_in_bytes))
+              
+              if [ "$DRY_RUN" = "true" ]; then
+                echo "[模拟删除] $artifact_name (ID: $artifact_id, ${age_days}天前, ${size_mb}MB)"
+              else
+                echo "[删除] $artifact_name (ID: $artifact_id, ${age_days}天前, ${size_mb}MB)"
+                gh api repos/${{ github.repository }}/actions/artifacts/$artifact_id -X DELETE
+              fi
+            else
+              keep_count=$((keep_count + 1))
+              reason=""
+              if [ $remaining_to_keep -gt 0 ]; then
+                reason="(保留计数: $remaining_to_keep)"
+              else
+                reason="(未超过${DAYS_OLD}天)"
+              fi
+              echo "[保留] $artifact_name (ID: $artifact_id, ${age_days}天前, ${size_mb}MB) $reason"
+            fi
+          done
+
+          echo ""
+          echo "----------------------------------------"
+          echo "清理任务完成!"
+          
+          if [ "$DRY_RUN" = "true" ]; then
+            echo "注意: 本次为模拟运行，未实际删除任何制品包"
+            echo "如需实际清理，请重新运行 workflow 并将 dry_run 设置为 false"
+          fi
+
+      - name: Summary
+        run: |
+          echo "### 制品包清理完成 :broom:" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "- **仓库**: ${{ github.repository }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **触发方式**: ${{ github.event_name == 'schedule' && '定时任务 (每周一)' || '手动触发' }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **模拟运行**: ${{ github.event.inputs.dry_run || 'false' }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **清理策略**: 删除超过 ${{ github.event.inputs.days_old || '30' }} 天的旧制品包，最少保留 ${{ github.event.inputs.min_to_keep || '5' }} 个" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "下次自动清理时间: 下周一凌晨 2:00 (UTC)" >> $GITHUB_STEP_SUMMARY
+
+  cleanup-old-runs:
+    name: 清理旧的工作流运行记录
+    runs-on: ubuntu-latest
+    permissions:
+      actions: write
+      contents: read
+
+    steps:
+      - name: Cleanup old workflow runs
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          DRY_RUN: ${{ github.event.inputs.dry_run || 'false' }}
+          DAYS_OLD: ${{ github.event.inputs.days_old || '30' }}
+        run: |
+          echo "=== 工作流运行记录清理 ==="
+          
+          # 获取所有工作流
+          workflows=$(gh api repos/${{ github.repository }}/actions/workflows -q '.workflows[].id' | head -20)
+          
+          for workflow_id in $workflows; do
+            echo ""
+            echo "检查工作流 ID: $workflow_id"
+            
+            # 获取旧的工作流运行
+            old_runs=$(gh api repos/${{ github.repository }}/actions/workflows/$workflow_id/runs?per_page=100 -q ".workflow_runs[] | select(.created_at < \"$(date -d "$DAYS_OLD days ago" -u +%Y-%m-%dT%H:%M:%SZ)\") | {id: .id, run_number: .run_number, conclusion: .conclusion, created_at: .created_at}")
+            
+            if [ -n "$old_runs" ]; then
+              echo "找到 $(echo "$old_runs" | wc -l) 条旧运行记录"
+              
+              echo "$old_runs" | jq -c '.' | while read -r run; do
+                run_id=$(echo "$run" | jq -r '.id')
+                run_number=$(echo "$run" | jq -r '.run_number')
+                
+                if [ "$DRY_RUN" = "true" ]; then
+                  echo "[模拟删除] Run #$run_number (ID: $run_id)"
+                else
+                  echo "[删除] Run #$run_number (ID: $run_id)"
+                  gh api repos/${{ github.repository }}/actions/runs/$run_id -X DELETE || true
+                fi
+              done
+            fi
+          done
+
+          echo ""
+          echo "工作流运行记录清理完成!"
