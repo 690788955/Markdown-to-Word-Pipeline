@@ -49,7 +49,7 @@ type ChangesResult struct {
 
 // CommitInfo 提交信息
 type CommitInfo struct {
-	Hash      string `json:"hash"`      // 短哈希
+	Hash      string `json:"hash"` // 短哈希
 	Message   string `json:"message"`
 	Author    string `json:"author"`
 	Timestamp string `json:"timestamp"` // ISO 8601 格式
@@ -90,9 +90,20 @@ func NewGitService(workDir string) *GitService {
 	}
 }
 
+// requireRepository 检查是否为 Git 仓库，返回统一的错误
+func (s *GitService) requireRepository(operation string) error {
+	if !s.IsRepository() {
+		return &GitError{
+			Operation:  operation,
+			Message:    "当前目录不是 Git 仓库",
+			Suggestion: "请先初始化 Git 仓库",
+		}
+	}
+	return nil
+}
 
-// runGit 执行 git 命令
-func (s *GitService) runGit(args ...string) (string, error) {
+// runGitInternal 执行 git 命令的内部实现
+func (s *GitService) runGitInternal(trim bool, args ...string) (string, error) {
 	// 注入配置：禁用路径引用（解决中文文件名乱码问题）
 	finalArgs := append([]string{"-c", "core.quotePath=false"}, args...)
 	cmd := exec.Command("git", finalArgs...)
@@ -101,7 +112,7 @@ func (s *GitService) runGit(args ...string) (string, error) {
 	// 设置环境变量
 	env := os.Environ()
 	env = append(env, "GIT_TERMINAL_PROMPT=0")
-	
+
 	// 如果有凭据，设置凭据相关环境变量
 	if s.credentials != nil {
 		if s.credentials.Username != "" {
@@ -112,31 +123,20 @@ func (s *GitService) runGit(args ...string) (string, error) {
 	cmd.Env = env
 
 	output, err := cmd.CombinedOutput()
-	return strings.TrimSpace(string(output)), err
+	if trim {
+		return strings.TrimSpace(string(output)), err
+	}
+	return string(output), err
+}
+
+// runGit 执行 git 命令（去除首尾空白）
+func (s *GitService) runGit(args ...string) (string, error) {
+	return s.runGitInternal(true, args...)
 }
 
 // runGitUntrimmed 执行 git 命令，不去除首尾空白
 func (s *GitService) runGitUntrimmed(args ...string) (string, error) {
-	// 注入配置：禁用路径引用（解决中文文件名乱码问题）
-	finalArgs := append([]string{"-c", "core.quotePath=false"}, args...)
-	cmd := exec.Command("git", finalArgs...)
-	cmd.Dir = s.workDir
-
-	// 设置环境变量
-	env := os.Environ()
-	env = append(env, "GIT_TERMINAL_PROMPT=0")
-	
-	// 如果有凭据，设置凭据相关环境变量
-	if s.credentials != nil {
-		if s.credentials.Username != "" {
-			env = append(env, "GIT_AUTHOR_NAME="+s.credentials.Username)
-			env = append(env, "GIT_COMMITTER_NAME="+s.credentials.Username)
-		}
-	}
-	cmd.Env = env
-
-	output, err := cmd.CombinedOutput()
-	return string(output), err
+	return s.runGitInternal(false, args...)
 }
 
 // CheckGitAvailable 检测 git 命令是否可用
@@ -221,7 +221,6 @@ func (s *GitService) updateAheadBehind(status *GitStatus) {
 	}
 }
 
-
 // GetChanges 获取变更文件列表（仅管理目录）- 兼容旧接口
 func (s *GitService) GetChanges() ([]FileChange, error) {
 	result, err := s.GetChangesResult()
@@ -245,7 +244,6 @@ func (s *GitService) GetChangesResult() (*ChangesResult, error) {
 		}
 	}
 
-	// 使用 git status --porcelain 获取变更
 	// 使用 git status --porcelain 获取变更
 	output, err := s.runGitUntrimmed("status", "--porcelain")
 	if err != nil {
@@ -345,7 +343,7 @@ func statusCodeToText(code byte) string {
 func (s *GitService) getFileDirectory(filePath string) string {
 	// 规范化路径分隔符
 	filePath = filepath.ToSlash(filePath)
-	
+
 	for _, dir := range s.managedDirs {
 		if strings.HasPrefix(filePath, dir+"/") || filePath == dir {
 			return dir
@@ -482,7 +480,6 @@ func (s *GitService) Discard(files []string) error {
 	return nil
 }
 
-
 // defaultGitignore 默认的 .gitignore 内容
 const defaultGitignore = `# Build output
 build/
@@ -539,7 +536,6 @@ func (s *GitService) Init() error {
 	log.Printf("[GitService] Git 仓库初始化成功")
 	return nil
 }
-
 
 // Commit 提交暂存区变更
 func (s *GitService) Commit(message string, files []string) (string, error) {
@@ -611,7 +607,6 @@ func (s *GitService) Commit(message string, files []string) (string, error) {
 	log.Printf("[GitService] 提交成功: %s", hash)
 	return hash, nil
 }
-
 
 // GetRemote 获取远程仓库 URL
 func (s *GitService) GetRemote() (string, error) {
@@ -704,7 +699,6 @@ func (s *GitService) SetRemote(url string) error {
 	log.Printf("[GitService] 远程仓库设置成功: %s", url)
 	return nil
 }
-
 
 // Push 推送到远程仓库
 func (s *GitService) Push() error {
@@ -829,7 +823,6 @@ func (s *GitService) parseConflicts(output string) []string {
 	return conflicts
 }
 
-
 // GetLog 获取提交历史
 func (s *GitService) GetLog(limit int, offset int) ([]CommitInfo, int, error) {
 	if !s.IsRepository() {
@@ -909,7 +902,6 @@ func (s *GitService) GetLogFormatted(limit int) ([]CommitInfo, error) {
 	return commits, nil
 }
 
-
 // SetCredentials 设置凭据
 func (s *GitService) SetCredentials(creds *GitCredentials) {
 	s.credentials = creds
@@ -972,4 +964,132 @@ func isStagedStatus(code byte) bool {
 func isUnstagedStatus(code byte) bool {
 	// M=Modified, D=Deleted, ?=Untracked
 	return code == 'M' || code == 'D' || code == '?'
+}
+
+// FileCommit 文件提交历史
+type FileCommit struct {
+	Hash      string `json:"hash"`
+	ShortHash string `json:"shortHash"`
+	Author    string `json:"author"`
+	Date      string `json:"date"`
+	Message   string `json:"message"`
+}
+
+// GetFileHistory 获取文件的提交历史
+func (s *GitService) GetFileHistory(filePath string, limit int) ([]FileCommit, error) {
+	if !s.IsRepository() {
+		return nil, &GitError{
+			Operation:  "file-history",
+			Message:    "当前目录不是 Git 仓库",
+			Suggestion: "请先初始化 Git 仓库",
+		}
+	}
+
+	if limit <= 0 {
+		limit = 20
+	}
+
+	// 获取文件的提交历史
+	// 格式: hash|shortHash|author|date|message
+	format := "%H|%h|%an|%aI|%s"
+	limitArg := fmt.Sprintf("-n%d", limit)
+
+	output, err := s.runGit("log", limitArg, "--format="+format, "--follow", "--", filePath)
+	if err != nil {
+		// 可能是新文件或空仓库
+		if strings.Contains(output, "does not have any commits") ||
+			strings.Contains(output, "unknown revision") {
+			return []FileCommit{}, nil
+		}
+		return nil, &GitError{
+			Operation:  "file-history",
+			Message:    "获取文件历史失败: " + err.Error(),
+			Suggestion: "请检查文件路径是否正确",
+		}
+	}
+
+	if output == "" {
+		return []FileCommit{}, nil
+	}
+
+	var commits []FileCommit
+	scanner := bufio.NewScanner(strings.NewReader(output))
+	for scanner.Scan() {
+		line := scanner.Text()
+		parts := strings.SplitN(line, "|", 5)
+		if len(parts) < 5 {
+			continue
+		}
+
+		// 格式化日期
+		dateStr := parts[3]
+		t, err := time.Parse(time.RFC3339, dateStr)
+		if err == nil {
+			dateStr = t.Format("2006-01-02 15:04")
+		}
+
+		commit := FileCommit{
+			Hash:      parts[0],
+			ShortHash: parts[1],
+			Author:    parts[2],
+			Date:      dateStr,
+			Message:   parts[4],
+		}
+		commits = append(commits, commit)
+	}
+
+	return commits, nil
+}
+
+// GetFileAtCommit 获取特定提交版本的文件内容
+func (s *GitService) GetFileAtCommit(filePath string, commitHash string) (string, error) {
+	if !s.IsRepository() {
+		return "", &GitError{
+			Operation:  "file-show",
+			Message:    "当前目录不是 Git 仓库",
+			Suggestion: "请先初始化 Git 仓库",
+		}
+	}
+
+	// 验证 commit hash 格式（防止命令注入）
+	if !isValidCommitHash(commitHash) {
+		return "", &GitError{
+			Operation:  "file-show",
+			Message:    "无效的提交哈希",
+			Suggestion: "请提供有效的 Git 提交哈希",
+		}
+	}
+
+	// 使用 git show 获取文件内容
+	output, err := s.runGitUntrimmed("show", commitHash+":"+filePath)
+	if err != nil {
+		if strings.Contains(output, "does not exist") ||
+			strings.Contains(output, "fatal: path") {
+			return "", &GitError{
+				Operation:  "file-show",
+				Message:    "该版本中不存在此文件",
+				Suggestion: "文件可能在该提交之后才创建",
+			}
+		}
+		return "", &GitError{
+			Operation:  "file-show",
+			Message:    "获取文件内容失败: " + err.Error(),
+			Suggestion: "请检查提交哈希和文件路径",
+		}
+	}
+
+	return output, nil
+}
+
+// isValidCommitHash 验证提交哈希格式
+func isValidCommitHash(hash string) bool {
+	if len(hash) < 4 || len(hash) > 40 {
+		return false
+	}
+	for _, c := range hash {
+		if !((c >= '0' && c <= '9') || (c >= 'a' && c <= 'f') || (c >= 'A' && c <= 'F')) {
+			return false
+		}
+	}
+	return true
 }
