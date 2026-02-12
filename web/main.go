@@ -2,11 +2,14 @@
 package main
 
 import (
+	"compress/gzip"
 	"flag"
+	"io"
 	"log"
 	"net/http"
 	"os"
 	"path/filepath"
+	"strings"
 
 	"doc-generator-web/config"
 	"doc-generator-web/handler"
@@ -102,7 +105,7 @@ func main() {
 	editorSvc := service.NewEditorService(cfg.SrcDir)
 
 	// 创建 API 处理器
-	apiHandler := handler.NewAPIHandler(clientSvc, docSvc, buildSvc, moduleSvc, templateSvc, configMgr, editorSvc, cfg.SrcDir, cfg.AdminPassword, cfg.FontsDir, cfg.TemplatesDir, cfg.ClientsDir)
+	apiHandler := handler.NewAPIHandler(clientSvc, docSvc, buildSvc, moduleSvc, templateSvc, configMgr, editorSvc, cfg.SrcDir, cfg.AdminPassword, cfg.FontsDir, cfg.TemplatesDir, cfg.ClientsDir, cfg)
 
 	// 创建路由
 	mux := http.NewServeMux()
@@ -133,6 +136,9 @@ func main() {
 		http.ServeFile(w, r, filepath.Join(staticDir, "index.html"))
 	})
 
+	// 应用 Gzip 压缩中间件
+	handler := gzipMiddleware(mux)
+
 	// 启动服务器
 	addr := ":" + cfg.Port
 	log.Printf("[WebService] ==========================================")
@@ -152,5 +158,52 @@ func main() {
 	log.Printf("[WebService] ==========================================")
 	log.Printf("[WebService] 服务启动中...")
 
-	log.Fatal(http.ListenAndServe(addr, mux))
+	log.Fatal(http.ListenAndServe(addr, handler))
+}
+
+// gzipResponseWriter 包装 http.ResponseWriter 以支持 gzip 压缩
+type gzipResponseWriter struct {
+	io.Writer
+	http.ResponseWriter
+}
+
+func (w gzipResponseWriter) Write(b []byte) (int, error) {
+	return w.Writer.Write(b)
+}
+
+// gzipMiddleware 为静态资源添加 Gzip 压缩
+func gzipMiddleware(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		// 检查客户端是否支持 gzip
+		if !strings.Contains(r.Header.Get("Accept-Encoding"), "gzip") {
+			next.ServeHTTP(w, r)
+			return
+		}
+
+		// 只压缩文本类型资源
+		path := r.URL.Path
+		shouldCompress := strings.HasSuffix(path, ".js") ||
+			strings.HasSuffix(path, ".css") ||
+			strings.HasSuffix(path, ".html") ||
+			strings.HasSuffix(path, ".json") ||
+			strings.HasSuffix(path, ".xml") ||
+			strings.HasSuffix(path, ".svg")
+
+		if !shouldCompress {
+			next.ServeHTTP(w, r)
+			return
+		}
+
+		// 设置压缩响应头
+		w.Header().Set("Content-Encoding", "gzip")
+		w.Header().Set("Vary", "Accept-Encoding")
+
+		// 创建 gzip writer
+		gz := gzip.NewWriter(w)
+		defer gz.Close()
+
+		// 包装 ResponseWriter
+		gzw := gzipResponseWriter{Writer: gz, ResponseWriter: w}
+		next.ServeHTTP(gzw, r)
+	})
 }

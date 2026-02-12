@@ -69,7 +69,7 @@
     justify-content: space-between;
     align-items: center;
     padding: 0 var(--spacing-md);
-    height: 52px;
+    height: 56px;
     background: var(--color-header);
     color: #f0f4f7;
     border-bottom: 1px solid var(--color-header-border);
@@ -88,26 +88,28 @@
     gap: var(--spacing-xs);
     color: #f0f4f7;
     text-decoration: none;
-    padding: 6px var(--spacing-md);
+    padding: 8px var(--spacing-md);
     border-radius: var(--radius-sm);
-    border: 1px solid rgba(255, 255, 255, 0.16);
-    transition: background 0.2s, border-color 0.2s;
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    transition: all var(--transition-fast);
+    font-size: 14px;
 }
 
 .back-btn:hover {
-    background: rgba(255, 255, 255, 0.12);
-    border-color: rgba(255, 255, 255, 0.3);
+    background: rgba(255, 255, 255, 0.1);
+    border-color: rgba(255, 255, 255, 0.25);
+    transform: translateX(-2px);
 }
 
 .back-icon {
-    font-size: 18px;
+    font-size: 16px;
 }
 
 .editor-title {
-    font-size: 1rem;
+    font-size: 16px;
     font-weight: 600;
     margin: 0;
-    letter-spacing: 0.4px;
+    letter-spacing: 0.3px;
     font-family: "Source Han Serif SC", "Noto Serif CJK SC", "SimSun", serif;
 }
 
@@ -123,31 +125,33 @@
 .activity-bar {
     display: flex;
     align-items: center;
-    gap: 2px;
-    padding: 4px;
-    background: rgba(0, 0, 0, 0.15);
-    border-radius: var(--radius-md);
-    border: 1px solid rgba(255, 255, 255, 0.08);
+    gap: 4px;
+    padding: 6px;
+    background: rgba(0, 0, 0, 0.2);
+    border-radius: var(--radius-sm);
+    border: 1px solid rgba(255, 255, 255, 0.1);
 }
 
 .activity-btn {
     display: flex;
     align-items: center;
     justify-content: center;
-    width: 36px;
-    height: 36px;
+    width: 40px;
+    height: 40px;
     padding: 0;
     background: transparent;
     border: none;
     border-radius: var(--radius-sm);
-    color: rgba(255, 255, 255, 0.5);
+    color: rgba(255, 255, 255, 0.6);
     cursor: pointer;
     position: relative;
-    transition: color 0.15s, background 0.15s;
+    transition: all var(--transition-fast);
 }
 
 .activity-btn:hover {
-    color: rgba(255, 255, 255, 0.85);
+    color: rgba(255, 255, 255, 0.9);
+    background: rgba(255, 255, 255, 0.1);
+}
     background: rgba(255, 255, 255, 0.08);
 }
 
@@ -624,6 +628,8 @@
     flex: 1;
     overflow: hidden;
     position: relative;
+    z-index: 1;
+    isolation: isolate;
     display: flex;
     flex-direction: column;
     min-height: 0;
@@ -658,6 +664,7 @@
     min-height: 0;
     /* 关键：允许 flex 子元素收缩 */
     position: relative;
+    isolation: isolate;
 }
 
 .vditor-container .vditor {
@@ -776,8 +783,18 @@
 }
 
 .vditor-container .vditor-reset th {
-    background: var(--color-panel-strong);
+    background: var(--color-primary-soft);
+    color: var(--color-text);
+    font-weight: 600;
     text-align: left;
+}
+
+.vditor-container .vditor-reset td {
+    background: var(--color-surface);
+}
+
+.vditor-container .vditor-reset tr:nth-child(even) td {
+    background: var(--color-panel);
 }
 
 /* WYSIWYG 和 SV 模式 */
@@ -1529,6 +1546,7 @@ body.vditor-fullscreen-active {
 
 .focus-mode .file-tree-panel,
 .focus-mode .git-panel,
+.focus-mode .chat-panel,
 .focus-mode .resizer {
     display: none;
 }
@@ -3082,4 +3100,65 @@ html[data-theme="dark"] .vditor-menu button:hover {
 .theme-action-btn:hover {
     border-color: var(--color-primary);
     color: var(--color-primary);
+}
+
+/* ==================== 响应式设计 ==================== */
+
+/* 平板设备 (768px - 1023px) */
+@media (max-width: 1023px) {
+    .editor-header {
+        height: 52px;
+        padding: 0 var(--spacing-sm);
+    }
+
+    .file-tree {
+        width: 220px;
+    }
+}
+
+/* 手机设备 (< 768px) */
+@media (max-width: 767px) {
+    .editor-header {
+        height: 48px;
+        padding: 0 var(--spacing-xs);
+    }
+
+    .header-left {
+        gap: var(--spacing-sm);
+    }
+
+    .back-btn {
+        padding: 6px var(--spacing-sm);
+        font-size: 13px;
+    }
+
+    .editor-title {
+        font-size: 14px;
+    }
+
+    .activity-bar {
+        gap: 2px;
+        padding: 4px;
+    }
+
+    .activity-btn {
+        width: 36px;
+        height: 36px;
+    }
+
+    .file-tree {
+        position: fixed;
+        left: -250px;
+        width: 250px;
+        z-index: 1000;
+        transition: left var(--transition-normal);
+    }
+
+    .file-tree.is-open {
+        left: 0;
+    }
+
+    .editor-main {
+        width: 100%;
+    }
 }

@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI 聊天测试</title>
+    <link rel="stylesheet" href="/static/editor/chat.css?v=2">
+    <style>
+        body {
+            margin: 0;
+            padding: 20px;
+            font-family: Arial, sans-serif;
+        }
+        .test-info {
+            background: #f0f0f0;
+            padding: 20px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+        }
+    </style>
+</head>
+<body>
+    <div class="test-info">
+        <h1>AI 聊天面板测试页面</h1>
+        <p>如果你能看到右侧的 AI 聊天面板（🤖 AI 助手），说明聊天功能正常。</p>
+        <p>如果看不到，请按 F12 打开开发者工具查看 Console 是否有错误。</p>
+    </div>
+
+    <!-- AI 聊天面板 -->
+    <div id="chat-panel" class="chat-panel">
+        <div class="chat-header">
+            <div class="chat-title">
+                <span class="chat-icon">🤖</span>
+                <span>AI 助手</span>
+            </div>
+            <div class="chat-controls">
+                <select id="chat-context-selector" class="chat-context-selector">
+                    <option value="current_document">当前文档</option>
+                    <option value="selection">选中内容</option>
+                    <option value="knowledge_base">整个知识库</option>
+                </select>
+                <button id="chat-settings-btn" class="chat-btn" title="设置">⚙️</button>
+                <button id="chat-toggle-btn" class="chat-btn" title="折叠">−</button>
+            </div>
+        </div>
+        <div class="chat-messages" id="chat-messages">
+            <div class="chat-message chat-message-assistant">
+                <div class="chat-message-content">
+                    你好！我是 AI 助手。如果你能看到这条消息，说明聊天面板已经正确显示。
+                </div>
+            </div>
+        </div>
+        <div class="chat-input-area">
+            <textarea id="chat-input" class="chat-input" placeholder="输入消息... (Ctrl+Enter 发送)" rows="3"></textarea>
+            <button id="chat-send-btn" class="chat-send-btn">发送</button>
+        </div>
+    </div>
+
+    <script src="/static/editor/chat-context.js?v=5"></script>
+    <script src="/static/editor/chat-config.js"></script>
+    <script src="/static/editor/chat.js?v=3"></script>
+</body>
+</html>

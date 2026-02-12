@@ -2553,3 +2553,136 @@ document.addEventListener('keydown', function(e) {
 window.showPreviewTooltip = showPreviewTooltip;
 window.hidePreviewTooltip = hidePreviewTooltip;
 window.clearPreviewCache = clearPreviewCache;
+
+// ==================== Toast 通知系统 ====================
+
+let toastContainer = null;
+let toastIdCounter = 0;
+
+// 初始化 Toast 容器
+function initToastContainer() {
+    if (!toastContainer) {
+        toastContainer = document.createElement('div');
+        toastContainer.className = 'toast-container';
+        document.body.appendChild(toastContainer);
+    }
+    return toastContainer;
+}
+
+// 显示 Toast 通知
+function showToast(options) {
+    const container = initToastContainer();
+
+    // 默认选项
+    const config = {
+        type: 'info', // success, error, warning, info
+        title: '',
+        message: '',
+        duration: 3000, // 自动关闭时间（毫秒），0 表示不自动关闭
+        closable: true,
+        ...options
+    };
+
+    // 创建 Toast 元素
+    const toast = document.createElement('div');
+    const toastId = 'toast-' + (++toastIdCounter);
+    toast.id = toastId;
+    toast.className = 'toast toast-' + config.type;
+
+    // 图标映射
+    const icons = {
+        success: '✓',
+        error: '✕',
+        warning: '⚠',
+        info: 'ℹ'
+    };
+
+    // 构建 Toast 内容
+    let html = '<div class="toast-icon">' + icons[config.type] + '</div>';
+    html += '<div class="toast-content">';
+    if (config.title) {
+        html += '<div class="toast-title">' + escapeHtml(config.title) + '</div>';
+    }
+    if (config.message) {
+        html += '<div class="toast-message">' + escapeHtml(config.message) + '</div>';
+    }
+    html += '</div>';
+
+    if (config.closable) {
+        html += '<button class="toast-close" aria-label="关闭">×</button>';
+    }
+
+    toast.innerHTML = html;
+
+    // 添加到容器
+    container.appendChild(toast);
+
+    // 关闭按钮事件
+    if (config.closable) {
+        const closeBtn = toast.querySelector('.toast-close');
+        closeBtn.addEventListener('click', function() {
+            closeToast(toastId);
+        });
+    }
+
+    // 自动关闭
+    if (config.duration > 0) {
+        setTimeout(function() {
+            closeToast(toastId);
+        }, config.duration);
+    }
+
+    return toastId;
+}
+
+// 关闭 Toast
+function closeToast(toastId) {
+    const toast = document.getElementById(toastId);
+    if (!toast) return;
+
+    toast.classList.add('toast-exit');
+
+    setTimeout(function() {
+        if (toast.parentNode) {
+            toast.parentNode.removeChild(toast);
+        }
+
+        // 如果容器为空，移除容器
+        if (toastContainer && toastContainer.children.length === 0) {
+            toastContainer.parentNode.removeChild(toastContainer);
+            toastContainer = null;
+        }
+    }, 200); // 与动画时间一致
+}
+
+// HTML 转义函数
+function escapeHtml(text) {
+    const div = document.createElement('div');
+    div.textContent = text;
+    return div.innerHTML;
+}
+
+// 便捷方法
+function showSuccessToast(message, title) {
+    return showToast({ type: 'success', message: message, title: title || '成功' });
+}
+
+function showErrorToast(message, title) {
+    return showToast({ type: 'error', message: message, title: title || '错误', duration: 0 });
+}
+
+function showWarningToast(message, title) {
+    return showToast({ type: 'warning', message: message, title: title || '警告' });
+}
+
+function showInfoToast(message, title) {
+    return showToast({ type: 'info', message: message, title: title || '提示' });
+}
+
+// 暴露到全局作用域
+window.showToast = showToast;
+window.closeToast = closeToast;
+window.showSuccessToast = showSuccessToast;
+window.showErrorToast = showErrorToast;
+window.showWarningToast = showWarningToast;
+window.showInfoToast = showInfoToast;

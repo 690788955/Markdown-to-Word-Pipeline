@@ -28,8 +28,11 @@ EditorApp.State = (function() {
         // 布局状态
         fileTreeWidth: 240,
         gitPanelWidth: 320,
+        chatPanelWidth: 380,
         fileTreeCollapsed: false,
         gitPanelCollapsed: true,
+        chatPanelCollapsed: true,
+        chatMaximized: false,
         focusMode: false,
 
         // 操作状态

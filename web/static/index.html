@@ -5,9 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>运维文档生成系统</title>
     <link rel="stylesheet" href="/static/style.css?v=12">
-    <!-- Vditor Markdown 编辑器（本地文件，支持离线使用） -->
-    <link rel="stylesheet" href="/static/vendor/vditor/dist/index.css" />
-    <script src="/static/vendor/vditor/dist/index.min.js"></script>
+    <link rel="stylesheet" href="/static/style-wizard.css?v=1">
 </head>
 <body>
     <div class="container">
@@ -74,40 +72,78 @@
         <div id="utilityOverlay" class="utility-overlay"></div>
 
         <main>
-            <!-- 配置区域 -->
-            <section class="config-bar">
-                <div class="config-bar-row config-bar-inputs">
-                    <div class="config-item">
-                        <label>客户配置</label>
-                        <div class="client-select-row">
-                            <select id="clientSelect">
-                                <option value="">加载中...</option>
-                            </select>
-                            <button id="lockBtn" class="btn btn-icon" style="display:none;" onclick="toggleClientLock()" title="锁定/解锁配置">
-                                <span id="lockIcon">🔓</span>
+            <!-- 配置区域 - 步骤式布局 -->
+            <section class="config-wizard">
+                <!-- 步骤 1: 选择客户 -->
+                <div class="config-step">
+                    <div class="step-header">
+                        <div class="step-number">1</div>
+                        <div class="step-info">
+                            <h3 class="step-title">选择客户配置</h3>
+                            <p class="step-hint">从列表中选择一个客户配置开始</p>
+                        </div>
+                    </div>
+                    <div class="step-content">
+                        <div class="config-item">
+                            <label>客户配置</label>
+                            <div class="client-select-row">
+                                <select id="clientSelect">
+                                    <option value="">加载中...</option>
+                                </select>
+                                <button id="lockBtn" class="btn btn-icon" style="display:none;" onclick="toggleClientLock()" title="锁定/解锁配置">
+                                    <span id="lockIcon">🔓</span>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 步骤 2: 配置选项 -->
+                <div class="config-step">
+                    <div class="step-header">
+                        <div class="step-number">2</div>
+                        <div class="step-info">
+                            <h3 class="step-title">配置选项</h3>
+                            <p class="step-hint">自定义客户名称和输出格式</p>
+                        </div>
+                    </div>
+                    <div class="step-content">
+                        <div class="config-row">
+                            <div class="config-item">
+                                <label>客户名称</label>
+                                <input type="text" id="clientNameInput" placeholder="可选，覆盖默认名称">
+                            </div>
+                            <div class="config-item">
+                                <label>输出格式</label>
+                                <select id="formatSelect">
+                                    <option value="word" selected>Word (.docx)</option>
+                                    <option value="pdf">PDF (.pdf)</option>
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 步骤 3: 生成文档 -->
+                <div class="config-step">
+                    <div class="step-header">
+                        <div class="step-number">3</div>
+                        <div class="step-info">
+                            <h3 class="step-title">生成文档</h3>
+                            <p class="step-hint">选择文档类型或一键生成全部</p>
+                        </div>
+                    </div>
+                    <div class="step-content">
+                        <div class="action-buttons">
+                            <button id="generateAllBtn" class="btn btn-primary btn-lg" disabled>
+                                <span class="btn-text">全部生成</span>
+                                <span class="btn-loading" style="display:none;">生成中...</span>
+                            </button>
+                            <button id="newConfigBtn" class="btn btn-secondary" onclick="showConfigModal()">
+                                <span class="btn-text">+ 新建配置</span>
                             </button>
                         </div>
                     </div>
-                    <div class="config-item">
-                        <label>客户名称</label>
-                        <input type="text" id="clientNameInput" placeholder="可选，覆盖默认名称">
-                    </div>
-                    <div class="config-item">
-                        <label>输出格式</label>
-                        <select id="formatSelect">
-                            <option value="word" selected>Word (.docx)</option>
-                            <option value="pdf">PDF (.pdf)</option>
-                        </select>
-                    </div>
-                </div>
-                <div class="config-bar-row config-bar-actions">
-                    <button id="generateAllBtn" class="btn btn-primary btn-lg" disabled>
-                        <span class="btn-text">全部生成</span>
-                        <span class="btn-loading" style="display:none;">生成中...</span>
-                    </button>
-                    <button id="newConfigBtn" class="btn btn-secondary" onclick="showConfigModal()">
-                        <span class="btn-text">+ 新建配置</span>
-                    </button>
                 </div>
             </section>
 
@@ -150,11 +186,11 @@
     </div>
 
     <!-- 新建/编辑配置模态框 -->
-    <div id="configModal" class="modal">
+    <div id="configModal" class="modal" role="dialog" aria-modal="true" aria-labelledby="modalTitle">
         <div class="modal-content modal-lg">
             <div class="modal-header">
                 <h2 id="modalTitle">新建配置</h2>
-                <button class="modal-close" onclick="hideConfigModal()">&times;</button>
+                <button class="modal-close" onclick="hideConfigModal()" aria-label="关闭对话框">&times;</button>
             </div>
             <div class="modal-body">
                 <form id="configForm">
@@ -585,11 +621,11 @@
     </div>
 
     <!-- 确认删除对话框 -->
-    <div id="confirmModal" class="modal">
+    <div id="confirmModal" class="modal" role="dialog" aria-modal="true" aria-labelledby="confirmModalTitle">
         <div class="modal-content modal-sm">
             <div class="modal-header">
-                <h2>确认删除</h2>
-                <button class="modal-close" onclick="hideConfirmModal()">&times;</button>
+                <h2 id="confirmModalTitle">确认删除</h2>
+                <button class="modal-close" onclick="hideConfirmModal()" aria-label="关闭对话框">&times;</button>
             </div>
             <div class="modal-body">
                 <p id="confirmMessage">确定要删除此配置吗？</p>
@@ -602,7 +638,7 @@
     </div>
 
     <!-- Markdown 编辑器模态框 -->
-    <div id="editorModal" class="modal">
+    <div id="editorModal" class="modal" role="dialog" aria-modal="true" aria-labelledby="editorTitle">
         <div class="modal-content modal-fullscreen">
             <div class="modal-header editor-header">
                 <div class="editor-title-section">
@@ -610,7 +646,7 @@
                     <span id="editorPath" class="editor-path"></span>
                 </div>
                 <div class="editor-actions">
-                    <select id="editorModeSelect" class="editor-mode-select" onchange="changeEditorMode()">
+                    <select id="editorModeSelect" class="editor-mode-select" onchange="changeEditorMode()" aria-label="选择编辑模式">
                         <option value="ir">即时渲染</option>
                         <option value="wysiwyg">所见即所得</option>
                         <option value="sv">分屏预览</option>
@@ -619,7 +655,7 @@
                         <span class="btn-text">💾 保存</span>
                         <span class="btn-loading" style="display:none;">保存中...</span>
                     </button>
-                    <button class="modal-close" onclick="closeEditor()">&times;</button>
+                    <button class="modal-close" onclick="closeEditor()" aria-label="关闭编辑器">&times;</button>
                 </div>
             </div>
             <div class="modal-body editor-body">
@@ -629,11 +665,11 @@
     </div>
 
     <!-- 新建模块对话框 -->
-    <div id="newModuleModal" class="modal">
+    <div id="newModuleModal" class="modal" role="dialog" aria-modal="true" aria-labelledby="newModuleModalTitle">
         <div class="modal-content modal-sm">
             <div class="modal-header">
-                <h2>新建模块</h2>
-                <button class="modal-close" onclick="hideNewModuleModal()">&times;</button>
+                <h2 id="newModuleModalTitle">新建模块</h2>
+                <button class="modal-close" onclick="hideNewModuleModal()" aria-label="关闭对话框">&times;</button>
             </div>
             <div class="modal-body">
                 <div class="form-group">

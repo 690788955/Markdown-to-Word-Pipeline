@@ -29,3 +29,25 @@ Thumbs.db
 web/static/node_modules/
 web/static/vendor/
 web/static/package-lock.json
+
+# 隐藏文件
+.env.example
+.gitlab-ci.yml
+.custom
+.editor-order.json
+
+# 隐藏目录
+.claude/
+.github/
+.kiro/
+.opencode/
+.spec-workflow/
+.vscode/
+.idea/
+
+# 非项目代码目录
+_bmad/
+_bmad-output/
+docs/
+fonts/
+AGENTS.md

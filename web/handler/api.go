@@ -16,6 +16,7 @@ import (
 	"strings"
 	"sync"
 
+	"doc-generator-web/config"
 	"doc-generator-web/service"
 )
 
@@ -67,12 +68,13 @@ type APIHandler struct {
 	editorSvc     *service.EditorService
 	gitSvc        *service.GitService
 	resourceSvc   *service.ResourceService
+	chatSvc       *service.ChatService
 	srcDir        string
 	adminPassword string
 }
 
 // NewAPIHandler 创建 API 处理器实例
-func NewAPIHandler(clientSvc *service.ClientService, docSvc *service.DocumentService, buildSvc *service.BuildService, moduleSvc *service.ModuleService, templateSvc *service.TemplateService, configMgr *service.ConfigManager, editorSvc *service.EditorService, srcDir string, adminPassword string, fontsDir string, templatesDir string, clientsDir string) *APIHandler {
+func NewAPIHandler(clientSvc *service.ClientService, docSvc *service.DocumentService, buildSvc *service.BuildService, moduleSvc *service.ModuleService, templateSvc *service.TemplateService, configMgr *service.ConfigManager, editorSvc *service.EditorService, srcDir string, adminPassword string, fontsDir string, templatesDir string, clientsDir string, cfg *config.Config) *APIHandler {
 	// 创建变量服务
 	variableSvc := service.NewVariableService(srcDir)
 
@@ -83,6 +85,9 @@ func NewAPIHandler(clientSvc *service.ClientService, docSvc *service.DocumentSer
 
 	// 创建资源服务
 	resourceSvc := service.NewResourceService(fontsDir, templatesDir, clientsDir)
+
+	// 创建聊天服务
+	chatSvc := service.NewChatService(cfg)
 
 	// 检测 Git 是否可用
 	if version, err := gitSvc.CheckGitAvailable(); err == nil {
@@ -102,6 +107,7 @@ func NewAPIHandler(clientSvc *service.ClientService, docSvc *service.DocumentSer
 		editorSvc:     editorSvc,
 		gitSvc:        gitSvc,
 		resourceSvc:   resourceSvc,
+		chatSvc:       chatSvc,
 		srcDir:        srcDir,
 		adminPassword: adminPassword,
 	}
@@ -157,6 +163,16 @@ func (h *APIHandler) RegisterRoutes(mux *http.ServeMux) {
 	mux.HandleFunc("/api/resources/fonts/", h.handleResourceFontDetail)
 	mux.HandleFunc("/api/resources/templates", h.handleResourceTemplates)
 	mux.HandleFunc("/api/resources/templates/", h.handleResourceTemplateDetail)
+	// 新增：AI 聊天路由
+	mux.HandleFunc("/api/chat/message", h.handleChatMessage)
+	mux.HandleFunc("/api/chat/stream", h.handleChatStream)
+	mux.HandleFunc("/api/chat/context", h.handleChatContext)
+	mux.HandleFunc("/api/chat/models", h.handleChatModels)
+	// RAG 知识库路由
+	mux.HandleFunc("/api/chat/rag/index", h.handleRAGIndex)
+	mux.HandleFunc("/api/chat/rag/status", h.handleRAGStatus)
+	mux.HandleFunc("/api/chat/rag/search", h.handleRAGSearch)
+	mux.HandleFunc("/api/chat/rag/test-embedding", h.handleTestEmbedding)
 }
 
 // handleClients 处理客户列表请求
@@ -2136,5 +2152,310 @@ func (h *APIHandler) handleGitFileShow(w http.ResponseWriter, r *http.Request) {
 
 	h.successResponse(w, map[string]interface{}{
 		"content": content,
+	})
+}
+
+// handleChatMessage 处理聊天消息（非流式）
+func (h *APIHandler) handleChatMessage(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		h.methodNotAllowed(w)
+		return
+	}
+
+	// 获取请求头中的配置
+	apiEndpoint := r.Header.Get("X-API-Endpoint")
+	apiKey := r.Header.Get("X-API-Key")
+	model := r.Header.Get("X-Model")
+
+	if apiEndpoint == "" || apiKey == "" || model == "" {
+		h.errorResponse(w, http.StatusBadRequest, "missing API configuration in headers", service.ErrChatConfigMissing)
+		return
+	}
+
+	// 获取 Embedding API 配置（可选，默认回退到聊天 API 配置）
+	embeddingEndpoint := r.Header.Get("X-Embedding-Endpoint")
+	embeddingKey := r.Header.Get("X-Embedding-Key")
+	embeddingModel := r.Header.Get("X-Embedding-Model")
+
+	// 解析请求体（限制 2MB）
+	r.Body = http.MaxBytesReader(w, r.Body, 2<<20)
+	var req service.ChatRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		h.errorResponse(w, http.StatusBadRequest, fmt.Sprintf("invalid request body: %v", err), ErrInvalidInput)
+		return
+	}
+
+	// 调用聊天服务
+	resp, err := h.chatSvc.SendMessage(r.Context(), apiEndpoint, apiKey, model, embeddingEndpoint, embeddingKey, embeddingModel, &req)
+	if err != nil {
+		h.errorResponse(w, http.StatusInternalServerError, err.Error(), service.ErrChatAPIError)
+		return
+	}
+
+	// 返回响应
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(resp)
+}
+
+// handleChatStream 处理流式聊天消息（SSE）
+func (h *APIHandler) handleChatStream(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		h.methodNotAllowed(w)
+		return
+	}
+
+	// 获取请求头中的配置
+	apiEndpoint := r.Header.Get("X-API-Endpoint")
+	apiKey := r.Header.Get("X-API-Key")
+	model := r.Header.Get("X-Model")
+
+	if apiEndpoint == "" || apiKey == "" || model == "" {
+		h.errorResponse(w, http.StatusBadRequest, "missing API configuration in headers", service.ErrChatConfigMissing)
+		return
+	}
+
+	// 获取 Embedding API 配置（可选，默认回退到聊天 API 配置）
+	embeddingEndpoint := r.Header.Get("X-Embedding-Endpoint")
+	embeddingKey := r.Header.Get("X-Embedding-Key")
+	embeddingModel := r.Header.Get("X-Embedding-Model")
+
+	// 解析请求体（限制 2MB）
+	r.Body = http.MaxBytesReader(w, r.Body, 2<<20)
+	var req service.ChatRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		h.errorResponse(w, http.StatusBadRequest, fmt.Sprintf("invalid request body: %v", err), ErrInvalidInput)
+		return
+	}
+
+	// 调用流式聊天服务
+	if err := h.chatSvc.StreamMessage(w, r.Context(), apiEndpoint, apiKey, model, embeddingEndpoint, embeddingKey, embeddingModel, &req); err != nil {
+		log.Printf("[handleChatStream] Error: %v", err)
+	}
+}
+
+// handleChatContext 处理上下文提取请求
+func (h *APIHandler) handleChatContext(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		h.methodNotAllowed(w)
+		return
+	}
+
+	// 解析请求体（限制 64KB）
+	r.Body = http.MaxBytesReader(w, r.Body, 64<<10)
+	var req service.ContextExtractionRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		h.errorResponse(w, http.StatusBadRequest, fmt.Sprintf("invalid request body: %v", err), ErrInvalidInput)
+		return
+	}
+
+	// 调用上下文提取服务
+	resp, err := h.chatSvc.ExtractContext(req.Type, req.Path, req.Selection)
+	if err != nil {
+		h.errorResponse(w, http.StatusInternalServerError, err.Error(), service.ErrChatAPIError)
+		return
+	}
+
+	// 返回响应
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(resp)
+}
+
+// handleChatModels 处理获取模型列表请求
+func (h *APIHandler) handleChatModels(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodGet {
+		h.methodNotAllowed(w)
+		return
+	}
+
+	// 从请求头获取 API 配置
+	apiEndpoint := r.Header.Get("X-API-Endpoint")
+	apiKey := r.Header.Get("X-API-Key")
+
+	if apiEndpoint == "" || apiKey == "" {
+		h.errorResponse(w, http.StatusBadRequest, "missing API endpoint or key", service.ErrChatConfigMissing)
+		return
+	}
+
+	// 调用模型列表服务
+	ctx := r.Context()
+	resp, err := h.chatSvc.GetModels(ctx, apiEndpoint, apiKey)
+	if err != nil {
+		h.errorResponse(w, http.StatusInternalServerError, err.Error(), service.ErrChatAPIError)
+		return
+	}
+
+	// 返回响应
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(resp)
+}
+
+// handleRAGIndex 处理文档索引请求
+func (h *APIHandler) handleRAGIndex(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		h.methodNotAllowed(w)
+		return
+	}
+
+	// 从请求头获取 Embedding API 配置
+	apiEndpoint := r.Header.Get("X-Embedding-Endpoint")
+	apiKey := r.Header.Get("X-Embedding-Key")
+	embeddingModel := r.Header.Get("X-Embedding-Model")
+
+	// 如果没有独立的 embedding 配置，回退到聊天 API 配置（需要转换端点）
+	chatEndpoint := r.Header.Get("X-API-Endpoint")
+	if apiEndpoint == "" && chatEndpoint != "" {
+		apiEndpoint = service.ChatEndpointToEmbeddingEndpoint(chatEndpoint)
+	}
+	if apiKey == "" {
+		apiKey = r.Header.Get("X-API-Key")
+	}
+
+	if apiEndpoint == "" || apiKey == "" {
+		h.errorResponse(w, http.StatusBadRequest, "missing API endpoint or key", service.ErrChatConfigMissing)
+		return
+	}
+
+	// 调用索引服务
+	ctx := r.Context()
+	err := h.chatSvc.RAGSvc.IndexDocuments(ctx, apiEndpoint, apiKey, embeddingModel)
+	if err != nil {
+		h.errorResponse(w, http.StatusInternalServerError, fmt.Sprintf("failed to index documents: %v", err), service.ErrChatAPIError)
+		return
+	}
+
+	// 返回成功响应
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(map[string]interface{}{
+		"success": true,
+		"message": "Documents indexed successfully",
+	})
+}
+
+// handleRAGStatus 处理获取索引状态请求
+func (h *APIHandler) handleRAGStatus(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodGet {
+		h.methodNotAllowed(w)
+		return
+	}
+
+	// 获取索引状态
+	status, err := h.chatSvc.RAGSvc.GetIndexStatus()
+	if err != nil {
+		h.errorResponse(w, http.StatusInternalServerError, fmt.Sprintf("failed to get index status: %v", err), service.ErrChatAPIError)
+		return
+	}
+
+	// 返回响应（扁平格式，与其它聊天端点一致）
+	status["success"] = true
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(status)
+}
+
+// handleRAGSearch 处理文档搜索请求
+func (h *APIHandler) handleRAGSearch(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		h.methodNotAllowed(w)
+		return
+	}
+
+	// 从请求头获取 Embedding API 配置
+	apiEndpoint := r.Header.Get("X-Embedding-Endpoint")
+	apiKey := r.Header.Get("X-Embedding-Key")
+	embeddingModel := r.Header.Get("X-Embedding-Model")
+
+	// 如果没有独立的 embedding 配置，回退到聊天 API 配置（需要转换端点）
+	chatEndpoint := r.Header.Get("X-API-Endpoint")
+	if apiEndpoint == "" && chatEndpoint != "" {
+		apiEndpoint = service.ChatEndpointToEmbeddingEndpoint(chatEndpoint)
+	}
+	if apiKey == "" {
+		apiKey = r.Header.Get("X-API-Key")
+	}
+
+	if apiEndpoint == "" || apiKey == "" {
+		h.errorResponse(w, http.StatusBadRequest, "missing API endpoint or key", service.ErrChatConfigMissing)
+		return
+	}
+
+	// 解析请求体（限制 64KB）
+	r.Body = http.MaxBytesReader(w, r.Body, 64<<10)
+	var req struct {
+		Query string `json:"query"`
+		TopK  int    `json:"topK"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		h.errorResponse(w, http.StatusBadRequest, fmt.Sprintf("invalid request body: %v", err), ErrInvalidInput)
+		return
+	}
+
+	if req.TopK <= 0 {
+		req.TopK = 3
+	}
+
+	// 调用搜索服务
+	ctx := r.Context()
+	results, err := h.chatSvc.RAGSvc.Search(ctx, apiEndpoint, apiKey, embeddingModel, req.Query, req.TopK)
+	if err != nil {
+		h.errorResponse(w, http.StatusInternalServerError, fmt.Sprintf("failed to search documents: %v", err), service.ErrChatAPIError)
+		return
+	}
+
+	// 构建响应
+	response := map[string]interface{}{
+		"success": true,
+		"results": results,
+	}
+
+	// 返回响应
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(response)
+}
+
+// handleTestEmbedding 处理 Embedding 连接测试请求
+func (h *APIHandler) handleTestEmbedding(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		h.methodNotAllowed(w)
+		return
+	}
+
+	// 从请求头获取 Embedding API 配置
+	apiEndpoint := r.Header.Get("X-Embedding-Endpoint")
+	apiKey := r.Header.Get("X-Embedding-Key")
+	embeddingModel := r.Header.Get("X-Embedding-Model")
+
+	if apiEndpoint == "" || apiKey == "" {
+		h.errorResponse(w, http.StatusBadRequest, "missing Embedding API endpoint or key", service.ErrChatConfigMissing)
+		return
+	}
+
+	// 解析请求体（限制 64KB）
+	r.Body = http.MaxBytesReader(w, r.Body, 64<<10)
+	var req struct {
+		Text string `json:"text"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		h.errorResponse(w, http.StatusBadRequest, fmt.Sprintf("invalid request body: %v", err), ErrInvalidInput)
+		return
+	}
+
+	if req.Text == "" {
+		req.Text = "test"
+	}
+
+	// 调用 Embedding 服务测试
+	embSvc := service.NewEmbeddingService()
+	ctx := r.Context()
+	embedding, err := embSvc.GenerateEmbedding(ctx, apiEndpoint, apiKey, embeddingModel, req.Text)
+	if err != nil {
+		h.errorResponse(w, http.StatusInternalServerError, fmt.Sprintf("Embedding test failed: %v", err), service.ErrChatAPIError)
+		return
+	}
+
+	// 返回成功响应
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(map[string]interface{}{
+		"success":   true,
+		"dimension": len(embedding),
+		"message":   "Embedding connection successful",
 	})
 }

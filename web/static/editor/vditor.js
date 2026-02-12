@@ -7,6 +7,71 @@ EditorApp.Vditor = (function() {
     'use strict';
 
     const state = EditorApp.State.getState();
+    
+    // ==================== Vditor 懒加载 ====================
+    
+    let vditorLoading = false;
+    let vditorLoaded = false;
+    
+    async function loadVditor() {
+        if (vditorLoaded) return;
+        if (vditorLoading) {
+            // 等待加载完成
+            return new Promise((resolve) => {
+                const checkInterval = setInterval(() => {
+                    if (vditorLoaded) {
+                        clearInterval(checkInterval);
+                        resolve();
+                    }
+                }, 100);
+            });
+        }
+        
+        vditorLoading = true;
+        
+        try {
+            // 加载 CSS
+            const cssLink = document.createElement('link');
+            cssLink.rel = 'stylesheet';
+            cssLink.href = '/static/vendor/vditor/dist/index.css';
+            document.head.appendChild(cssLink);
+            
+            // 加载 highlight.js 主题
+            const hljsLink = document.createElement('link');
+            hljsLink.id = 'hljsTheme';
+            hljsLink.rel = 'stylesheet';
+            hljsLink.href = '/static/vendor/vditor/dist/js/highlight.js/styles/github.min.css';
+            document.head.appendChild(hljsLink);
+            
+            // 尝试从 CDN 加载 JS，失败则使用本地
+            await new Promise((resolve, reject) => {
+                const cdnScript = document.createElement('script');
+                cdnScript.src = 'https://cdn.jsdelivr.net/npm/vditor@3.11.2/dist/index.min.js';
+                cdnScript.onload = () => {
+                    console.log('[Vditor] 从 CDN 加载成功');
+                    resolve();
+                };
+                cdnScript.onerror = () => {
+                    console.warn('[Vditor] CDN 加载失败，使用本地文件');
+                    // Fallback 到本地
+                    const localScript = document.createElement('script');
+                    localScript.src = '/static/vendor/vditor/dist/index.min.js';
+                    localScript.onload = resolve;
+                    localScript.onerror = reject;
+                    document.head.appendChild(localScript);
+                };
+                document.head.appendChild(cdnScript);
+            });
+            
+            vditorLoaded = true;
+            console.log('[Vditor] 懒加载完成');
+        } catch (error) {
+            console.error('[Vditor] 懒加载失败:', error);
+            throw error;
+        } finally {
+            vditorLoading = false;
+        }
+    }
 
     // ==================== 主题支持 ====================
 
@@ -172,12 +237,18 @@ EditorApp.Vditor = (function() {
             return;
         }
 
-        // 创建 Vditor 编辑器
+        // 创建 Vditor 编辑器（异步）
         const linkBase = EditorApp.Utils.calculateLinkBase(tab.path);
-        create(editorContainer, tab, linkBase);
+        create(editorContainer, tab, linkBase).catch(err => {
+            console.error('[Vditor] 创建编辑器失败:', err);
+            EditorApp.Utils.showToast('编辑器加载失败', 'error');
+        });
     }
 
-    function create(container, tab, linkBase = '/api/src/') {
+    async function create(container, tab, linkBase = '/api/src/') {
+        // 懒加载 Vditor
+        await loadVditor();
+        
         requestAnimationFrame(() => {
             const editor = new Vditor(container, {
                 cdn: '/static/vendor/vditor',
